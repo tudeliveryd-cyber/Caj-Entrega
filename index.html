@@ -799,7 +799,8 @@ function viewMsg(){
   if(S.dia!==today())return aviso;
   const h=new Date().getHours();const saludo=h<12?"¡Buen día":h<19?"¡Buenas tardes":"¡Buenas noches";
   const nm=S.mode==="db"?(personName(S.me)||"").split(" ")[0]:"";
-  const txt=MSGS[dayIndex(today())%MSGS.length];
+  const hs=String(S.me||"").split("").reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7);
+  const txt=MSGS[(dayIndex(today())+hs)%MSGS.length];
   return aviso+`<div class="msg-dia"><div class="msg-h">☀️ ${saludo}${nm&&nm!=="Vos"?", "+esc(nm):""}!</div><p>${esc(txt)}</p>
     ${S.mode==="db"&&S.owner&&!aviso?`<button type="button" class="linkbtn small-link" data-msg>📢 Publicar un aviso para todos</button>`:""}</div>`}
 function openMsg(){edit=null;const cur=msgDia&&msgDia.texto||"";
