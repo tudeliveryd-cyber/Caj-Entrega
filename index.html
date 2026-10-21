@@ -570,7 +570,8 @@ async function loadMonth(from,to){if(oldLoaded.has(from)||!db)return;oldLoaded.a
   if(S.owner){try{const q=await egCol().where("dia",">=",from).where("dia","<=",to).get();for(const d of q.docs)S.oldE.set(d.id,{...d.data(),_id:d.id})}catch(e){}}
   render(true)}
 function logout(){closeSheet();if(auth)auth.signOut().then(()=>location.reload());else location.reload()}
-function blockScreen(title,txt){document.getElementById("fab").hidden=true;document.querySelector("nav.tabs").hidden=true;
+function blockScreen(title,txt){
+  if(document.body.classList.contains("demo")&&title==="Esperando aprobación")txt+=`<br><br><button type="button" class="ghost" data-demoaprobar>▶ Simular que el dueño aprueba (demo)</button>`;document.getElementById("fab").hidden=true;document.querySelector("nav.tabs").hidden=true;
   main.innerHTML=`<div class="block"><img src="icon-192.png" alt="" width="72" height="72"><h2>${title}</h2><p>${txt}</p><button type="button" class="ghost" data-logout>Salir</button></div>`}
 function unblock(){document.querySelector("nav.tabs").hidden=false;render(true)}
 /* ---------- login ---------- */
@@ -619,7 +620,7 @@ function showVerify(u){hideLogin();blockScreen("Verificá tu e-mail",`Te mandamo
 {const c=lsGet(LSC,null);if(c&&c.pct)S.cfg={pct:c.pct,por:c.por||{}}}
 loadLocal();setSync("Conectando…");
 /* ---------- MODO DEMO (?demo): base en memoria, vista de delivery, datos de ejemplo ---------- */
-function startDemo(){
+function startDemo(modo){
   const store=new Map(),cols=[],docsL=[];
   const parent=p=>p.split("/").slice(0,-1).join("/");
   const snapDoc=(path)=>{const d=store.get(path);return{id:path.split("/").pop(),exists:!!d,data:()=>d?JSON.parse(JSON.stringify(d)):undefined}};
@@ -642,6 +643,11 @@ function startDemo(){
   const fs={collection:p=>query(p,[]),doc:docRef,settings(){},enablePersistence(){return Promise.resolve()}};
   const me="demo",t=today(),y=addDays(t,-1),at=(dia,h,m)=>{const d=fromKey(dia);d.setHours(h,m,0,0);return d.getTime()};
   const put=(p,d)=>store.set(p,d);
+  const seedBase=()=>{
+  put("ranking/r2",{nome:"Juan",dias:{[t]:11,[y]:9}});
+  put("ranking/r3",{nome:"Pedro",dias:{[t]:6,[y]:12}});
+  put("ranking/_mensaje",{texto:"Bienvenidos a la app de Tú Delivery. Registren todas las entregas del día y no se olviden de anotar los pedidos.",criadoEm:at(t,7,0)});};
+  const seedFull=()=>{
   put("turnos/demo",{nome:"Carlos Demo",aprobado:true,baja:false});
   const E="turnos/demo/entregas/";
   put(E+"e1",{valor:15000,metodo:"efectivo",cliente:"Farmacia Central",obs:"",dia:t,criadoEm:at(t,9,10)});
@@ -657,17 +663,23 @@ function startDemo(){
   put("turnos/demo/privado/p1",{valor:10000,tipo:"personal",obs:"",dia:t,criadoEm:at(t,12,40)});
   put("turnos/demo/solicitudes/s1",{tipo:"uniforme",detalle:"Remera talle M",estado:"proceso",respuesta:"El viernes te la entrego en la oficina.",criadoEm:at(y,18,0)});
   put("liq/demo/dias/"+y,{dia:y,monto:9600,sentido:"paga",total:53000,pagadoEm:at(y,20,0)});
-  put("ranking/r2",{nome:"Juan",dias:{[t]:11,[y]:9}});
-  put("ranking/r3",{nome:"Pedro",dias:{[t]:6,[y]:12}});
-  put("ranking/_mensaje",{texto:"Bienvenidos a la app de Tú Delivery. Registren todas las entregas del día y no se olviden de anotar los pedidos.",criadoEm:at(t,7,0)});
+  };
+  seedBase();
+  window.__demoAprobar=()=>{store.set("turnos/demo",{...(store.get("turnos/demo")||{}),aprobado:true});notify()};
   const user={uid:me,email:"demo@tudelivery",emailVerified:true,getIdToken(){return Promise.resolve("")},reload(){return Promise.resolve()}};
-  auth={currentUser:user,signOut(){return Promise.resolve()},onAuthStateChanged(){}};
+  user.sendEmailVerification=()=>Promise.resolve();
+  const go=()=>{auth.currentUser=user;setTimeout(()=>{hideLogin();boot(fs,user)},250)};
+  auth={currentUser:null,signOut(){return Promise.resolve()},onAuthStateChanged(){},setPersistence(){},
+    sendPasswordResetEmail(){return Promise.resolve()},
+    createUserWithEmailAndPassword(m,pw){if(!pw)return Promise.reject({code:"auth/missing-password"});if(pw.length<6)return Promise.reject({code:"auth/weak-password"});
+      if(!/.+@.+\..+/.test(m))return Promise.reject({code:"auth/invalid-email"});user.email=m;go();return Promise.resolve({user})},
+    signInWithEmailAndPassword(m,pw){if(!pw)return Promise.reject({code:"auth/missing-password"});user.email=m;seedFull();go();return Promise.resolve({user})}};
   document.body.classList.add("demo");
   const bn=document.createElement("div");bn.className="demo-banner";bn.textContent="MODO DEMOSTRACIÓN · datos de ejemplo";document.body.prepend(bn);
-  boot(fs,user);
+  if(modo==="lleno"){seedFull();auth.currentUser=user;boot(fs,user)}else showLogin();
 }
 (function startFirebase(){
-  if(/[?&]demo\b/.test(location.search)){startDemo();return}
+  {const dm=location.search.match(/[?&]demo(?:=([^&]*))?/);if(dm){startDemo(dm[1]||"");return}}
   const cfg=window.FIREBASE_CONFIG;
   if(!window.firebase||!cfg||!cfg.apiKey){S.mode="local";setSync("Guardado en este celular");render(true);return}
   firebase.initializeApp(cfg);auth=firebase.auth();
@@ -705,7 +717,7 @@ function startData(me){
     cfgRef.onSnapshot(s=>{if(s.exists){const d=s.data();S.cfg={pct:d.pct||30,por:d.por||{}};lsSet(LSC,S.cfg);render(true)}},()=>{})}
   subscribeUser(me);
   if(S.owner)egCol().where("dia",">=",addDays(today(),-WINDOW)).limit(1000).onSnapshot(snap=>{S.egastos=new Map(snap.docs.map(d=>[d.id,{...d.data(),_id:d.id}]));render()},()=>{});
-  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}rank.set(d.id,d.data())}if(S.tab==="dia")render();if(S.tab==="rank")render(true)},()=>{});
+  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}rank.set(d.id,d.data())}{const sig=JSON.stringify(msgDia);if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(S.tab==="rank")render(true)},()=>{});
   if(S.owner)db.collection("turnos").limit(200).onSnapshot(snap=>{for(const d of snap.docs){S.people.set(d.id,d.data());subscribeUser(d.id);scheduleRank(d.id)}render(true)},()=>{});
   setSync("Sincronizado");render(true);
 }
@@ -1360,6 +1372,7 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-other")){S.val=0;S.err="";refreshForm();const v=document.getElementById("val");v.value="";v.focus()}
   else if(t.id==="save")save();
   else if(t.id==="savecamino")save(true);
+  else if(t.hasAttribute("data-demoaprobar")){if(window.__demoAprobar)window.__demoAprobar()}
   else if(t.hasAttribute("data-msg"))openMsg();
   else if(t.hasAttribute("data-hoy")){S.dia=today();render(true)}
   else if(t.dataset.cant){S.cant=Math.min(200,Math.max(1,S.cant+Number(t.dataset.cant)));refreshForm()}
