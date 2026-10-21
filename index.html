@@ -359,6 +359,8 @@ nav.tabs .badge{position:absolute;top:2px;right:22%}
 .p-muted{background:var(--bg);color:var(--muted)}
 .sheet textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:16px var(--body);background:var(--bg);color:var(--ink);resize:vertical}
 nav.tabs button{font-size:10.5px}
+.chg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;background:var(--bg);border-radius:8px;padding:8px 10px}
+.chg small{display:block;font-size:11px;color:var(--muted)}.chg b{font-size:13px;overflow-wrap:anywhere}
 .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
@@ -425,7 +427,7 @@ const EGT={premio:"Premios",nafta:"Nafta",publicidad:"Publicidad",telefono:"Tel�
 const G={tipo:"gasolina",val:0,obs:""};
 const ST={certificado:"Certificado de trabajo",uniforme:"Uniforme",mochila:"Mochila",casco:"Casco / equipo",adelanto:"Adelanto de dinero",otro:"Otro"};
 const SE={pendiente:{n:"Pendiente",c:"due"},proceso:{n:"En proceso",c:"transfer"},listo:{n:"Listo",c:"cash"},rechazado:{n:"Rechazado",c:"muted"}};
-const sols=new Map();let solTipo="certificado",solPara=null;
+const sols=new Map(),cambios=new Map();let solTipo="certificado",solPara=null;
 const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const gs=n=>"₲ "+Math.round(n||0).toLocaleString("es-PY");
 const pad=n=>String(n).padStart(2,"0");
@@ -492,9 +494,12 @@ function subscribeUser(u){
     for(const k of[...S.items.keys()])if(k.startsWith(u+"|"))S.items.delete(k);
     for(const d of snap.docs)S.items.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});
     setSync(snap.metadata.hasPendingWrites?"Guardando…":"Sincronizado");render();scheduleRank(u)},()=>setSync("Sin conexión")));
-  gasCol(u).where("dia",">=",from).limit(1000).onSnapshot(snap=>{
+  if(u===S.me)gasCol(u).where("dia",">=",from).limit(1000).onSnapshot(snap=>{
     for(const k of[...S.gastos.keys()])if(k.startsWith(u+"|"))S.gastos.delete(k);
     for(const d of snap.docs)S.gastos.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
+  db.collection("turnos/"+u+"/cambios").limit(200).onSnapshot(snap=>{
+    for(const k of[...cambios.keys()])if(k.startsWith(u+"|"))cambios.delete(k);
+    for(const d of snap.docs)cambios.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
   db.collection("turnos/"+u+"/solicitudes").limit(200).onSnapshot(snap=>{
     for(const k of[...sols.keys()])if(k.startsWith(u+"|"))sols.delete(k);
     for(const d of snap.docs)sols.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
@@ -527,7 +532,7 @@ const oldLoaded=new Set();
 async function loadMonth(from,to){if(oldLoaded.has(from)||!db)return;oldLoaded.add(from);
   const us=S.owner?[...new Set([S.me,...S.people.keys()])]:[S.me];
   for(const u of us){try{const q=await colFor(u).where("dia",">=",from).where("dia","<=",to).get();for(const d of q.docs)S.old.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});
-    const g=await gasCol(u).where("dia",">=",from).where("dia","<=",to).get();for(const d of g.docs)S.oldG.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id})}catch(e){}}
+    if(u!==S.me)continue;const g=await gasCol(u).where("dia",">=",from).where("dia","<=",to).get();for(const d of g.docs)S.oldG.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id})}catch(e){}}
   if(S.owner){try{const q=await egCol().where("dia",">=",from).where("dia","<=",to).get();for(const d of q.docs)S.oldE.set(d.id,{...d.data(),_id:d.id})}catch(e){}}
   render(true)}
 function logout(){closeSheet();if(auth)auth.signOut().then(()=>location.reload());else location.reload()}
@@ -644,6 +649,8 @@ const caminoList=()=>[...S.items.entries()].filter(([,d])=>isCamino(d)&&(S.filte
 const cuentaTxt=(prod,val)=>prod?`Producto ${gs(prod)} + Delivery ${gs(val)} = Total ${gs(prod+val)}`:`Delivery ${gs(val)}`;
 const listDay=k=>visible().filter(([,d])=>d.dia===k).sort((a,b)=>(b[1].criadoEm||0)-(a[1].criadoEm||0));
 const listRange=(a,b)=>visible().filter(([,d])=>d.dia>=a&&d.dia<=b);
+const ownView=()=>S.mode!=="db"||!S.owner||S.filter===S.me;
+const myGt=(a,b)=>ownView()?gStats(gastosRange(a,b)).total:undefined;
 const visGastos=()=>[...new Map([...S.oldG,...S.gastos]).entries()].filter(([,d])=>S.filter==="all"||d._u===S.filter);
 const gastosRange=(a,b)=>visGastos().filter(([,d])=>d.dia>=a&&d.dia<=b).sort((x,y)=>(y[1].criadoEm||0)-(x[1].criadoEm||0));
 function gStats(list){const g={total:0,n:list.length,tipo:{}};for(const[,d]of list){g.total+=d.valor;g.tipo[d.tipo]=(g.tipo[d.tipo]||0)+d.valor}return g}
@@ -703,7 +710,7 @@ function whoBar(){
 function paint(){
   {const f=document.getElementById("fab");if(f)f.hidden=S.mode==="db"&&showEmp()}
   document.getElementById("badge").hidden=true;
-  {const b=document.getElementById("sol-badge");const n=[...sols.values()].filter(x=>(S.owner?x.estado==="pendiente":false)&&!isBaja(x._u)).length;b.hidden=!n;b.textContent=n}
+  {const b=document.getElementById("sol-badge");const n=S.owner?[...sols.values()].filter(x=>x.estado==="pendiente"&&!isBaja(x._u)).length+[...cambios.values()].filter(x=>x.estado==="pendiente"&&!isBaja(x._u)).length:0;b.hidden=!n;b.textContent=n}
   document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",x.dataset.tab===S.tab));
   const key=[S.tab,S.dia,S.filter,S.people.size,S.mode,S.cfg.pct].join("|");
   if(S.tab==="dia"){
@@ -713,7 +720,7 @@ function paint(){
     document.getElementById("dia-list").innerHTML=viewDiaList(list);
     {const cl=caminoList();const el=document.getElementById("camino-list");const ev=showEmp()&&S.mode==="db";el.hidden=!cl.length||ev;el.innerHTML=cl.length&&!ev?viewCamino(cl):""}
     document.getElementById("mode-note").textContent=noteTxt();
-    document.getElementById("gastos-list").innerHTML=viewGastosList();
+    {const gl=document.getElementById("gastos-list");if(gl)gl.innerHTML=viewGastosList()}
     const egl=document.getElementById("egastos-list");if(egl)egl.innerHTML=viewEGastosList();
     drawSug();
   }else if(S.tab==="rank"){builtKey=key;main.innerHTML=viewRanking()}
@@ -762,10 +769,11 @@ function viewDiaShell(){
   <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
   <section class="sec camino-sec" id="camino-list" hidden></section>
   <section class="sec" id="dia-list"></section>
-  <section class="sec" aria-label="Gastos del día">
-    <div class="sec-h"><h2>${showEmp()?"Gastos de los deliverys":"Gastos del día"}</h2>${showEmp()&&S.mode==="db"?"":`<button type="button" class="small add-g" data-opengasto>+ Gasto</button>`}</div>
+  ${ownView()?`<section class="sec" aria-label="Mis gastos personales">
+    <div class="sec-h"><h2>Mis gastos personales</h2><button type="button" class="small add-g" data-opengasto>+ Gasto</button></div>
+    <p class="hint" style="margin:0">Solo vos los ves.</p>
     <div id="gastos-list"></div>
-  </section>
+  </section>`:""}
   ${showEmp()?`<section class="sec emp-sec" aria-label="Gastos de la empresa">
     <div class="sec-h"><h2>Gastos de la empresa</h2><button type="button" class="small add-e" data-openegasto>+ Gasto empresa</button></div>
     <div id="egastos-list"></div></section>`:""}
@@ -826,16 +834,16 @@ function viewSummary(list){
     ${fijosBlock(list)}
     ${(()=>{const pr=list.reduce((a,[,d])=>a+(d.producto||0),0);return pr?`<div class="prod-note">Además se cobró ${gs(pr)} de productos para los comercios. No entra en la comisión.</div>`:""})()}
     ${showEmp()?empresaBlock(s,egStats(egRange(S.dia,S.dia)).total,"Resultado de la empresa hoy"):""}
-    ${acertoBlock(s,acertoLabel("Liquidación del día",gr),single?payControl(single,S.dia,s,false):"",gStats(gastosRange(S.dia,S.dia)).total)}
+    ${acertoBlock(s,acertoLabel("Liquidación del día",gr),single?payControl(single,S.dia,s,false):"",myGt(S.dia,S.dia))}
     ${driverTable(gr,S.dia)}
     <div class="sum-actions">${canPct?`<button type="button" class="linkbtn" data-pct>Comisiones · cambiar</button>`:"<span></span>"}<button type="button" class="linkbtn" data-copy>Copiar resumen del día</button></div>`;
 }
-function rowHtml(key,d,showDate){const t=d.criadoEm?new Date(d.criadoEm):null;
+function rowHtml(key,d,showDate){const t=d.criadoEm?new Date(d.criadoEm):null;const pcb=pendingCambio(key);
   const showWho=S.mode!=="db"||(S.owner&&S.filter==="all");
   const sub=[showWho&&("Delivery: "+esc(groupName(groupKey(d)))),d.producto&&("Prod. "+gs(d.producto)+" · cobrado "+gs(d.producto+d.valor)),d.obs&&esc(d.obs)].filter(Boolean).join(" · ");
   return `<button class="row" data-edit="${esc(key)}"><span class="time num">${showDate?ddmm(d.dia):(t?pad(t.getHours())+":"+pad(t.getMinutes()):"")}</span>
     <span class="who"><b>${esc(d.cliente)||"Sin cliente"}</b>${sub?`<small>${sub}</small>`:""}</span>
-    <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?"—":gs(d.valor)}</b><span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span></span></button>`}
+    <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?"—":gs(d.valor)}</b><span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span>${pcb?`<span class="pill p-due">${pcb.tipo==="borrar"?"Pide borrar":"Cambio pedido"}</span>`:""}</span></button>`}
 function viewCamino(cl){
   const showWho=S.mode==="db"&&S.owner&&S.filter==="all";
   return `<div class="sec-h"><h2>En camino</h2><span>${plural(cl.length,"pedido")}</span></div><div class="list">
@@ -880,7 +888,7 @@ function gastosBlock(from,to){
   const tipos=Object.entries(g.tipo).sort((a,b)=>b[1]-a[1]);const max=Math.max(...tipos.map(t=>t[1]));
   let per="";if(S.mode==="db"&&S.owner&&S.filter==="all"){const m=new Map();for(const[,d]of l)m.set(d._u,(m.get(d._u)||0)+d.valor);
     if(m.size>1)per=[...m.entries()].sort((a,b)=>b[1]-a[1]).map(([u,v])=>`<div class="g-item"><div class="who"><b>${esc(personName(u))}</b></div><div class="r"><b class="num">${gs(v)}</b></div></div>`).join("")}
-  return `<section class="sec"><div class="sec-h"><h2>${showEmp()?"Gastos de los deliverys":"Gastos"}</h2><span class="num">${gs(g.total)}</span></div><div class="list">
+  return `<section class="sec"><div class="sec-h"><h2>Mis gastos personales</h2><span class="num">${gs(g.total)}</span></div><div class="list">
     ${tipos.map(([t,v])=>`<div class="rk-row"><span class="rk-pos"></span><div class="rk-main"><div class="rk-name"><b>${GT[t]||"Otro"}</b></div><span class="rk-bar"><i class="gbar" style="width:${(v/max*100).toFixed(1)}%"></i></span></div><span class="rk-n num">${gs(v)}</span></div>`).join("")}
     ${per?`<div class="group-h"><span>Por delivery</span><span></span></div>${per}`:""}</div></section>`}
 function viewAnotados(){
@@ -933,8 +941,8 @@ function totTiles(T,gt){
     <div class="tile"><div class="k">Total cobrado</div><div class="v num">${gs(T.total)}</div></div>
     <div class="tile"><div class="k">Comisión empresa</div><div class="v num">${gs(T.com)}</div></div>
     <div class="tile"><div class="k">Promedio por entrega</div><div class="v num">${gs(T.n?T.total/T.n:0)}</div></div>
-    <div class="tile"><div class="k c-due">Gastos</div><div class="v num c-due">${gs(gt||0)}</div></div>
-    <div class="tile"><div class="k c-cash">Queda limpio</div><div class="v num ${T.fica-(gt||0)<0?"c-due":"c-cash"}">${gs(T.fica-(gt||0))}</div></div>
+    ${gt===undefined?"":`<div class="tile"><div class="k c-due">Gastos</div><div class="v num c-due">${gs(gt||0)}</div></div>
+    <div class="tile"><div class="k c-cash">Queda limpio</div><div class="v num ${T.fica-(gt||0)<0?"c-due":"c-cash"}">${gs(T.fica-(gt||0))}</div></div>`}
   </div>`}
 function viewSemana(){
   const t=today();const days=[];for(let i=0;i<7;i++)days.push(addDays(t,-i));
@@ -944,15 +952,15 @@ function viewSemana(){
     return `<button class="wrow" data-goto="${k}"><span class="d">${dayName(k)}<small class="num">${ddmm(k)}</small></span>
       <span class="bar" aria-hidden="true"><i class="d-cash" style="width:${w(s.efectivo)}"></i><i class="d-transfer" style="width:${w(s.transferencia)}"></i><i class="d-due" style="width:${w(s.anotado)}"></i></span>
       <span class="t num">${gs(s.total)}<small>${plural(s.n,"entrega")}</small></span></button>`}).join("");
-  return `${totTiles(T,gStats(gastosRange(days[6],t)).total)}
+  return `${totTiles(T,myGt(days[6],t))}
   ${S.mode==="db"&&S.owner?pendBlock(days[6],t):""}
-  <section class="summary">${acertoBlock(T,acertoLabel("Liquidación de la semana",gr),"",gStats(gastosRange(days[6],t)).total)}${driverTable(gr)}${showEmp()?empresaBlock(T,egStats(egRange(days[6],t)).total,"Resultado de la empresa · 7 días"):""}
+  <section class="summary">${acertoBlock(T,acertoLabel("Liquidación de la semana",gr),"",myGt(days[6],t))}${driverTable(gr)}${showEmp()?empresaBlock(T,egStats(egRange(days[6],t)).total,"Resultado de la empresa · 7 días"):""}
     <div class="sum-actions"><span></span><button type="button" class="linkbtn" data-copyweek>${hideMoney()?"Copiar resumen de la semana":"Copiar liquidación de la semana"}</button></div></section>
   <section class="sec"><div class="sec-h"><h2>Últimos 7 días</h2></div>
     <div class="legend"><span><i class="dot d-cash"></i>Efectivo</span><span><i class="dot d-transfer"></i>Transferencia</span><span><i class="dot d-due"></i>Anotado</span></div>
     <div class="week">${bars}</div></section>
   ${showEmp()?egastosBlock(days[6],t):""}
-  ${gastosBlock(days[6],t)}
+  ${ownView()?gastosBlock(days[6],t):""}
   ${clientesBlock(wl)}`;
 }
 function viewMes(){
@@ -963,18 +971,18 @@ function viewMes(){
   <div class="daynav"><button data-mes="-1" aria-label="Mes anterior" ${canPrev?"":"disabled"}>‹</button>
     <div class="daylabel"><b>${r.label}</b><span>${ddmm(r.from)} al ${ddmm(r.to)}</span></div>
     <button data-mes="1" aria-label="Mes siguiente" ${mesOff>=0?"disabled":""}>›</button></div>
-  ${totTiles(T,gStats(gastosRange(r.from,r.to)).total)}
+  ${totTiles(T,myGt(r.from,r.to))}
   <section class="summary">
     <div class="split">
       <div><div class="k c-cash"><span class="dot d-cash"></span>Efectivo</div>${showEmp()?'<div class="hold">con los deliverys</div>':""}<div class="v num">${gs(T.efectivo)}</div><div class="n">${plural(T.ne,"entrega")}</div></div>
       <div><div class="k c-transfer"><span class="dot d-transfer"></span>Transfer.</div>${showEmp()?'<div class="hold">a los deliverys</div>':""}<div class="v num">${gs(T.transferencia)}</div><div class="n">${plural(T.nt,"entrega")}</div></div>
       <div><div class="k c-due"><span class="dot d-due"></span>Anotado</div>${showEmp()?'<div class="hold">en la cuenta de la empresa</div>':""}<div class="v num">${gs(T.anotado)}</div><div class="n">${plural(T.na,"entrega")}</div></div>
     </div>
-    ${acertoBlock(T,acertoLabel("Liquidación del mes",gr),"",gStats(gastosRange(r.from,r.to)).total)}${driverTable(gr)}${showEmp()?empresaBlock(T,egStats(egRange(r.from,r.to)).total,"Resultado de la empresa · "+r.label):""}
+    ${acertoBlock(T,acertoLabel("Liquidación del mes",gr),"",myGt(r.from,r.to))}${driverTable(gr)}${showEmp()?empresaBlock(T,egStats(egRange(r.from,r.to)).total,"Resultado de la empresa · "+r.label):""}
     <div class="sum-actions"><button type="button" class="linkbtn" data-excel>Descargar en Excel</button><button type="button" class="linkbtn" data-copymes>Copiar resumen del mes</button></div></section>
   ${S.mode==="db"&&S.owner&&mesOff===0?pendBlock(r.from,r.to):""}
   ${showEmp()?egastosBlock(r.from,r.to):""}
-  ${gastosBlock(r.from,r.to)}
+  ${ownView()?gastosBlock(r.from,r.to):""}
   ${clientesBlock(ml)}`;
 }
 async function excel(){
@@ -989,7 +997,7 @@ async function excel(){
     rows.push(["Comisiones",T.com]);rows.push(["Gastos de la empresa",eg]);rows.push(["Ganancia",T.com-eg]);
     if(el.length){rows.push([]);rows.push(["Gastos de la empresa"]);rows.push(["Fecha","Hora","Tipo","Monto","Detalle"]);
       for(const d of el)rows.push([ddmm(d.dia)+"/"+d.dia.slice(0,4),d.criadoEm?hhmm(d.criadoEm):"",EGT[d.tipo]||"Otro",d.valor,d.obs||""])}}
-  const gl=gastosRange(r.from,r.to).reverse();if(gl.length){rows.push([]);rows.push(["Gastos"]);rows.push(["Fecha","Hora","Delivery","Tipo","Monto","Detalle"]);
+  const gl=gastosRange(r.from,r.to).reverse();if(gl.length){rows.push([]);rows.push(["Mis gastos personales"]);rows.push(["Fecha","Hora","Delivery","Tipo","Monto","Detalle"]);
     for(const[,d]of gl)rows.push([ddmm(d.dia)+"/"+d.dia.slice(0,4),d.criadoEm?hhmm(d.criadoEm):"",personName(d._u),GT[d.tipo]||"Otro",d.valor,d.obs||""])}
   const csv="\ufeff"+rows.map(r=>r.map(q).join(";")).join("\r\n");
   const filename=`tu-delivery-${r.label.replace(" ","-")}.csv`;
@@ -1044,6 +1052,14 @@ function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].fil
   </div></div>`}
 function viewSol(){
   if(S.mode!=="db")return `<div class="empty">Las solicitudes funcionan cuando la app está conectada a la cuenta.</div>`;
+  const cl=[...cambios.values()].filter(x=>S.owner?!isBaja(x._u):x._u===S.me).sort((a,b)=>((a.estado==="pendiente")?0:1)-((b.estado==="pendiente")?0:1)||(b.criadoEm||0)-(a.criadoEm||0));
+  const fmtE=e=>e?`${gs(e.valor)} · ${(M[e.metodo]||{n:""}).n}${e.cliente?" · "+esc(e.cliente):""}`:"";
+  const cCard=x=>{const st=x.estado==="pendiente"?'<span class="pill p-due">Pendiente</span>':x.estado==="aprobado"?'<span class="pill p-cash">Aprobado</span>':'<span class="pill p-muted">Rechazado</span>';
+    return cambiosHtml+`<div class="sol"><div class="sol-h"><div class="who"><b>${x.tipo==="borrar"?"Borrar entrega":"Cambiar entrega"}</b><small>${S.owner?esc(personName(x._u))+" · ":""}entrega del ${x.antes&&x.antes.dia?ddmm(x.antes.dia):""} · pedido ${ddmm(keyOf(new Date(x.criadoEm)))} ${hhmm(x.criadoEm)}</small></div>${st}</div>
+      <div class="chg"><div><small>Antes</small><b>${fmtE(x.antes)}</b></div>${x.tipo==="borrar"?`<div><small>Después</small><b class="c-due">Se borra</b></div>`:`<div><small>Después</small><b>${fmtE(x.despues)}</b></div>`}</div>
+      ${S.owner&&x.estado==="pendiente"?`<div class="sol-act"><button type="button" class="small ok" data-cok="${esc(x._u+"|"+x._id)}">Aprobar</button><button type="button" class="small baja" data-cno="${esc(x._u+"|"+x._id)}">Rechazar</button></div>`:""}</div>`};
+  const cPend=cl.filter(x=>x.estado==="pendiente"),cDone=cl.filter(x=>x.estado!=="pendiente").slice(0,10);
+  const cambiosHtml=(cPend.length||cDone.length)?`<section class="sec"><div class="sec-h"><h2>${S.owner?"Cambios pedidos en entregas":"Mis pedidos de cambio"}</h2><span>${cPend.length?plural(cPend.length,"pendiente"):""}</span></div>${cPend.map(cCard).join("")}${cDone.map(cCard).join("")}</section>`:"";
   const list=[...sols.values()].filter(x=>S.owner?!isBaja(x._u):x._u===S.me);
   const ord={pendiente:0,proceso:1,listo:2,rechazado:3};
   list.sort((a,b)=>(ord[a.estado]-ord[b.estado])||((b.criadoEm||0)-(a.criadoEm||0)));
@@ -1099,17 +1115,28 @@ function viewRanking(){
 /* ---------- sheets ---------- */
 function closeSheet(){edit=null;layer.innerHTML=""}
 function openEdit(key){const d=S.items.get(key);if(!d)return;edit={key,valor:d.valor,producto:d.producto||0,metodo:d.metodo,cliente:d.cliente||"",obs:d.obs||"",armed:false};drawSheet()}
+const needsApproval=()=>S.mode==="db"&&!S.owner;
+const pendingCambio=key=>{const it=S.items.get(key);if(!it)return null;for(const c of cambios.values())if(c._u===it._u&&c.entregaId===it._id&&c.estado==="pendiente")return c;return null};
 function drawSheet(){if(!edit){layer.innerHTML="";return}
+  const na=needsApproval(),pc=na&&pendingCambio(edit.key);
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Editar entrega">
-    <h3>Editar entrega</h3>
+    <h3>${na?"Pedir cambio":"Editar entrega"}</h3>
+    ${na?`<p class="hint" style="margin:0">${pc?"<b>Ya hay un cambio pendiente</b> para esta entrega. Esperá la respuesta del dueño.":"El dueño tiene que aprobar el cambio antes de que se aplique."}</p>`:""}
     <div class="money"><span>₲</span><input id="e-val" inputmode="numeric" value="${fmtInput(edit.valor)}" aria-label="Monto"></div>
     <div class="methods">${methodBtns("data-emetodo",edit.metodo)}</div>
     <div class="field"><label for="e-prod">Valor del producto (opcional)</label><input id="e-prod" inputmode="numeric" value="${fmtInput(edit.producto)}"></div>
     <div class="field"><label for="e-cli">Cliente o comercio</label><input id="e-cli" value="${esc(edit.cliente)}"></div>
     <div class="field"><label for="e-obs">Observación</label><input id="e-obs" value="${esc(edit.obs)}"></div>
-    <div class="btns"><button class="ghost" data-cancel>Cancelar</button><button class="primary" data-esave>Guardar</button></div>
-    <button class="danger ${edit.armed?"armed":""}" data-edel>${edit.armed?"Tocá de nuevo para eliminar":"Eliminar entrega"}</button>
+    <div class="btns"><button class="ghost" data-cancel>Cancelar</button><button class="primary" data-esave ${pc?"disabled":""}>${na?"Pedir cambio":"Guardar"}</button></div>
+    <button class="danger ${edit.armed?"armed":""}" data-edel ${pc?"disabled":""}>${edit.armed?(na?"Tocá de nuevo para pedir que se borre":"Tocá de nuevo para eliminar"):(na?"Pedir que se borre":"Eliminar entrega")}</button>
   </div></div>`}
+async function pedirCambio(key,tipo,despues){const it=S.items.get(key);if(!it)return;
+  const antes={valor:it.valor,producto:it.producto||0,metodo:it.metodo,cliente:it.cliente||"",obs:it.obs||"",dia:it.dia};
+  await db.collection("turnos/"+S.me+"/cambios").doc(uid()).set({tipo,entregaId:it._id,antes,despues:despues||null,estado:"pendiente",criadoEm:Date.now()})}
+async function resolverCambio(k,ok){const c=cambios.get(k);if(!c)return;
+  if(ok){const ref=colFor(c._u).doc(c.entregaId);
+    if(c.tipo==="borrar")await ref.delete();else await ref.update(c.despues)}
+  await db.doc("turnos/"+c._u+"/cambios/"+c._id).update({estado:ok?"aprobado":"rechazado",resueltoEm:Date.now()})}
 function openCamino(key){const d=S.items.get(key);if(!d)return;edit=null;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Pedido en camino">
     ${sheetHead("Finalizar entrega · "+(esc(d.cliente)||"Sin cliente"))}
@@ -1214,6 +1241,7 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-newsol")){if(S.canWrite===false){noPerm();return}openNewSol()}
   else if(t.dataset.sest){try{await setSol(t.dataset.sk,{estado:t.dataset.sest});toast("Solicitud: "+SE[t.dataset.sest].n)}catch(err){toast("No se guardó.")}}
   else if(t.dataset.sresp)openResp(t.dataset.sresp);
+  else if(t.dataset.cok||t.dataset.cno){const ok=!!t.dataset.cok;t.disabled=true;try{await resolverCambio(t.dataset.cok||t.dataset.cno,ok);toast(ok?"Cambio aprobado y aplicado":"Cambio rechazado")}catch(err){toast("No se guardó.");t.disabled=false}}
   else if(t.dataset.sdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Cancelar? Tocá de nuevo";return}
     try{await db.doc("turnos/"+S.me+"/solicitudes/"+t.dataset.sdel).delete();toast("Solicitud cancelada")}catch(err){toast("No se eliminó.")}}
   else if(t.hasAttribute("data-equipo"))openEquipo();
@@ -1235,7 +1263,7 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-openegasto")){if(!G.emp||!EGT[G.tipo]){G.emp=true;G.tipo="premio"}openGasto()}
   else if(t.dataset.egdel){const k="e"+t.dataset.egdel;if(gDelArm!==k){gDelArm=k;render();setTimeout(()=>{if(gDelArm===k){gDelArm=null;render()}},3000);return}
     gDelArm=null;try{await delEGasto(t.dataset.egdel);toast("Gasto eliminado")}catch(err){toast("No se eliminó.")}}
-  else if(t.dataset.edit){const d=S.items.get(t.dataset.edit);const r=d&&lockReason(d.dia);if(r){lockedMsg(r);return}openEdit(t.dataset.edit)}
+  else if(t.dataset.edit)openEdit(t.dataset.edit);
   else if(t.dataset.pay){const[u,dia]=t.dataset.pay.split("|");doPay(u,dia)}
   else if(t.dataset.unpay){const[u,dia]=t.dataset.unpay.split("|");const st=pagoOf(u,dia);
     if(st&&t.textContent==="actualizar"){doPay(u,dia)}else{try{await unPago(u,dia);toast("Marcado como pendiente")}catch(err){toast("No se guardó.")}}}
@@ -1307,9 +1335,13 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.emetodo){edit.metodo=t.dataset.emetodo;edit.armed=false;drawSheet()}
   else if(t.hasAttribute("data-esave")){if(!edit.valor){toast("Escribí el monto");return}
     const p={valor:edit.valor,producto:edit.producto||0,metodo:edit.metodo,cliente:edit.cliente.trim(),obs:edit.obs.trim()};
-    const k=edit.key;closeSheet();try{await patchItem(k,p);toast("Entrega actualizada")}catch(err){toast("No se guardó.")}}
+    const k=edit.key;closeSheet();
+    if(needsApproval()){try{await pedirCambio(k,"editar",p);toast("Pedido de cambio enviado al dueño")}catch(err){toast("No se envió.")}return}
+    try{await patchItem(k,p);toast("Entrega actualizada")}catch(err){toast("No se guardó.")}}
   else if(t.hasAttribute("data-edel")){if(!edit.armed){edit.armed=true;drawSheet();return}
-    const k=edit.key;closeSheet();try{await delItem(k);toast("Entrega eliminada")}catch(err){toast("No se eliminó.")}}
+    const k=edit.key;closeSheet();
+    if(needsApproval()){try{await pedirCambio(k,"borrar",null);toast("Pedido para borrar enviado al dueño")}catch(err){toast("No se envió.")}return}
+    try{await delItem(k);toast("Entrega eliminada")}catch(err){toast("No se eliminó.")}}
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&layer.innerHTML&&!document.getElementById("n-val"))closeSheet()});
 })();
