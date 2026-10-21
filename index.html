@@ -372,6 +372,11 @@ body.compact .clock{font-size:20px}
 .sheet{grid-template-columns:minmax(0,1fr)}
 .sheet>*{min-width:0;max-width:100%}
 .money input,.g-row input{width:100%}
+.daylabel.pick{position:relative;cursor:pointer;display:block;border-radius:10px;padding:2px 10px}
+.daylabel.pick:active{background:var(--surface)}
+.daylabel .cal{width:18px;height:18px;vertical-align:-2px;color:var(--accent)}
+#dpick{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px!important;border:0;padding:0;-webkit-appearance:none;appearance:none}
+.today-link{justify-self:center;margin-top:-8px}
 .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
@@ -781,9 +786,11 @@ function viewDiaShell(){
   const forWho=S.mode==="db"&&S.owner?` · para ${esc(personName(writeTarget()))}`:"";
   return `
   <div class="daynav"><button data-day="-1" aria-label="Día anterior">‹</button>
-    <div class="daylabel"><b>${dayName(S.dia)}</b><span>${dayLong(S.dia)}</span></div>
+    <label class="daylabel pick" for="dpick"><b>${dayName(S.dia)} <svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></b><span>${dayLong(S.dia)}</span>
+      <input type="date" id="dpick" value="${S.dia}" max="${today()}" aria-label="Elegir día"></label>
     <button data-day="1" aria-label="Día siguiente" ${isToday?"disabled":""}>›</button></div>
   ${lockReason(S.dia)||(showEmp()&&S.mode==="db")?"":`<button type="button" class="anotar" data-anotar><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg><span><b>Anotar pedido</b><small>Producto + delivery = cuánto cobrar</small></span></button>`}
+  ${S.dia!==today()?`<button type="button" class="linkbtn today-link" data-hoy>Volver a hoy</button>`:""}
   <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
   <section class="sec camino-sec" id="camino-list" hidden></section>
   <section class="sec" id="dia-list"></section>
@@ -1220,9 +1227,11 @@ function resumo(title,list){const gr=groups(list);let t="Tú Delivery · "+(hide
 
 /* ---------- events ---------- */
 document.querySelector("nav.tabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(!b)return;S.tab=b.dataset.tab;render(true);window.scrollTo(0,0)});
+document.addEventListener("change",e=>{if(e.target.id==="dpick")e.target.dispatchEvent(new Event("input",{bubbles:true}))});
 document.addEventListener("input",e=>{const id=e.target.id;
   if(id==="val"){S.val=parseVal(e.target.value);e.target.value=fmtInput(S.val);S.err="";refreshForm()}
   if(id==="prod"){S.prod=parseVal(e.target.value);e.target.value=fmtInput(S.prod);refreshForm()}
+  if(id==="dpick"){const v=e.target.value;if(v&&v<=today()&&v!==S.dia){S.dia=v;if(S.mode==="db"&&v<addDays(today(),-WINDOW+1)){const d=fromKey(v);loadMonth(keyOf(new Date(d.getFullYear(),d.getMonth(),1)),keyOf(new Date(d.getFullYear(),d.getMonth()+1,0)))}render(true)}return}
   if(id==="cant"){const v=Math.min(200,parseVal(e.target.value));e.target.value=v||"";S.cant=Math.max(1,v||1);refreshForm()}
   if(id==="gval"){G.val=parseVal(e.target.value);e.target.value=fmtInput(G.val);refreshG()}
   if(id==="gobs")G.obs=e.target.value;
@@ -1272,6 +1281,7 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-other")){S.val=0;S.err="";refreshForm();const v=document.getElementById("val");v.value="";v.focus()}
   else if(t.id==="save")save();
   else if(t.id==="savecamino")save(true);
+  else if(t.hasAttribute("data-hoy")){S.dia=today();render(true)}
   else if(t.dataset.cant){S.cant=Math.min(200,Math.max(1,S.cant+Number(t.dataset.cant)));refreshForm()}
   else if(t.dataset.fijocli){S.cliente=t.dataset.fijocli;S.err="";const c=document.getElementById("cli");if(c)c.value=S.cliente;refreshForm()}
   else if(t.dataset.diario){const r=lockReason(S.dia);if(r){lockedMsg(r);return}openDiario(t.dataset.diario)}
