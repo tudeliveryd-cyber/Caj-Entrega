@@ -368,6 +368,10 @@ nav.tabs button{font-size:10.5px}
 .clock{font-family:var(--display);font-stretch:85%;font-weight:800;font-size:26px;line-height:1;color:#fff;letter-spacing:.02em}
 body.compact .clock{font-size:20px}
 .hdr-right .sync{font-size:11px}
+/* sheets never wider than the phone */
+.sheet{grid-template-columns:minmax(0,1fr)}
+.sheet>*{min-width:0;max-width:100%}
+.money input,.g-row input{width:100%}
 .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
