@@ -756,9 +756,9 @@ function startDemo(modo){
   auth.onAuthStateChanged(u=>{if(!u){started=false;showLogin();return}hideLogin();boot(fs,u)});
 })();
 /* get con límite de tiempo: con señal débil usa lo guardado en el celular */
-async function getT(ref){try{return await Promise.race([ref.get(),new Promise((_,rj)=>setTimeout(()=>rj({code:"timeout"}),6000))])}
+async function getT(ref){try{return await Promise.race([ref.get(),new Promise((_,rj)=>setTimeout(()=>rj({code:"timeout"}),4000))])}
   catch(e){lastErr=(e&&(e.code||e.message))||String(e);try{return await ref.get({source:"cache"})}catch(x){return undefined}}}
-let lastErr="",bootStage="inicio";
+var lastErr="",bootStage="inicio";
 window.addEventListener("error",e=>{lastErr=(e&&e.message)||"error"});
 window.addEventListener("unhandledrejection",e=>{const r=e&&e.reason;lastErr=(r&&(r.code||r.message))||String(r)});
 setTimeout(function watch(){const sy=document.getElementById("sync");if(sy&&/Conectando/.test(sy.textContent)){
