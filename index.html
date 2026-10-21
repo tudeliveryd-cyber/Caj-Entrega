@@ -377,6 +377,15 @@ body.compact .clock{font-size:20px}
 .daylabel .cal{width:18px;height:18px;vertical-align:-2px;color:var(--accent)}
 #dpick{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px!important;border:0;padding:0;-webkit-appearance:none;appearance:none}
 .today-link{justify-self:center;margin-top:-8px}
+.msg-dia{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 22%,var(--surface)),var(--surface));border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:6px}
+.msg-h{font-family:var(--display);font-stretch:85%;font-weight:800;font-size:19px}
+.msg-dia p{margin:0;font-size:15px;line-height:1.45}
+.msg-dia small{color:var(--muted);font-size:12px}
+.msg-dia .linkbtn{justify-self:start}
+.aviso{background:color-mix(in srgb,var(--due) 16%,var(--surface));border:1px solid var(--due);border-radius:14px;padding:14px 16px;display:grid;gap:6px}
+.aviso-h{font-family:var(--display);font-stretch:85%;font-weight:800;font-size:18px;color:var(--due)}
+.aviso p{margin:0;font-size:15px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.aviso small{color:var(--muted);font-size:12px}.aviso .linkbtn{justify-self:start}
 .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
@@ -444,6 +453,8 @@ const G={tipo:"gasolina",val:0,obs:""};
 const ST={certificado:"Certificado de trabajo",uniforme:"Uniforme",mochila:"Mochila",casco:"Casco / equipo",otro:"Otro"};
 const SE={pendiente:{n:"Pendiente",c:"due"},proceso:{n:"En proceso",c:"transfer"},listo:{n:"Listo",c:"cash"},rechazado:{n:"Rechazado",c:"muted"}};
 const sols=new Map(),cambios=new Map();let solTipo="certificado",solPara=null;
+const MSGS=["Cada entrega que hacés le alegra el día a alguien. ¡Gracias por tu trabajo!", "Manejá con cuidado: tu familia te espera en casa.", "Hoy es un buen día para dar lo mejor de vos. ¡Vamos con todo!", "«Todo lo puedo en Cristo que me fortalece.» Filipenses 4:13", "Una sonrisa al entregar vale más que mil palabras.", "El esfuerzo de hoy es el logro de mañana.", "Casco puesto, celular guardado y a rodar seguro.", "«Esforzate y sé valiente.» Josué 1:9", "No hay entrega chica cuando se hace con ganas.", "Sos parte importante de Tú Delivery. ¡Gracias por estar!", "La puntualidad también es una forma de respeto. ¡Vos podés!", "Si llueve, andá más despacio. Llegar bien es lo más importante.", "«Encomienda a Jehová tu camino, y confía en él.» Salmo 37:5", "Hoy puede ser tu mejor día de la semana. ¡A buscar ese premio!", "Tomá agua, descansá un rato y seguí con energía.", "Cada cliente contento recomienda a Tú Delivery. ¡Gracias a vos!", "Los grandes resultados se construyen con pequeños pasos.", "«Este es el día que hizo el Señor; alegrémonos en él.» Salmo 118:24", "Respetá los semáforos: un minuto de espera no cambia el día, un accidente sí.", "Tu trabajo honesto vale oro. ¡Seguí así!", "Empezá el día con fe y terminá con gratitud.", "Revisá frenos y luces antes de salir. Tu moto te cuida si vos la cuidás.", "La actitud con la que salís hoy hace la diferencia.", "«Mira que te mando que te esfuerces y seas valiente.» Josué 1:9", "Un buen día de trabajo empieza con una buena actitud. ¡Arriba!", "Gracias por tu responsabilidad: los clientes confían en vos.", "No te compares con nadie: superá al vos de ayer.", "Llevá paciencia en la mochila; siempre hace falta.", "«Jehová es mi pastor; nada me faltará.» Salmo 23:1", "Hoy es otra oportunidad para hacerlo mejor que ayer.", "Saludá a cada cliente con alegría: eso es Tú Delivery.", "Cuidate del sol: protector, agua y gorra cuando paran.", "El que trabaja con amor nunca trabaja de más.", "«Fiel es el que os llama.» 1 Tesalonicenses 5:24", "Cada kilómetro cuenta. ¡Vamos que hoy se puede!", "Una entrega a tiempo es una promesa cumplida.", "Si estás cansado, pará un momento. La salud primero.", "Juntos somos más fuertes: gracias por ser parte del equipo.", "«Bienaventurado el hombre que confía en Jehová.» Jeremías 17:7", "Que hoy te vaya excelente en cada viaje. ¡Buen día!"];
+let msgDia=null;
 const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const gs=n=>"₲ "+Math.round(n||0).toLocaleString("es-PY");
 const pad=n=>String(n).padStart(2,"0");
@@ -644,7 +655,7 @@ function startData(me){
     cfgRef.onSnapshot(s=>{if(s.exists){const d=s.data();S.cfg={pct:d.pct||30,por:d.por||{}};lsSet(LSC,S.cfg);render(true)}},()=>{})}
   subscribeUser(me);
   if(S.owner)egCol().where("dia",">=",addDays(today(),-WINDOW)).limit(1000).onSnapshot(snap=>{S.egastos=new Map(snap.docs.map(d=>[d.id,{...d.data(),_id:d.id}]));render()},()=>{});
-  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();for(const d of snap.docs)rank.set(d.id,d.data());if(S.tab==="rank")render(true)},()=>{});
+  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}rank.set(d.id,d.data())}if(S.tab==="dia")render();if(S.tab==="rank")render(true)},()=>{});
   if(S.owner)db.collection("turnos").limit(200).onSnapshot(snap=>{for(const d of snap.docs){S.people.set(d.id,d.data());subscribeUser(d.id);scheduleRank(d.id)}render(true)},()=>{});
   setSync("Sincronizado");render(true);
 }
@@ -781,10 +792,27 @@ function drawSug(){
 }
 const methodBtns=(attr,cur)=>Object.keys(M).map(k=>`<button type="button" class="method m-${M[k].c}" ${attr}="${k}" aria-pressed="${cur===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("");
 
+function dayIndex(k){const d=fromKey(k);return Math.floor((d-new Date(d.getFullYear(),0,0))/864e5)+d.getFullYear()*7}
+function viewMsg(){
+  const aviso=msgDia&&msgDia.texto?`<div class="aviso"><div class="aviso-h">📢 Aviso de Tú Delivery</div><p>${esc(msgDia.texto)}</p><small>${msgDia.criadoEm?"Publicado el "+ddmm(keyOf(new Date(msgDia.criadoEm)))+" "+hhmm(msgDia.criadoEm):""}</small>
+    ${S.mode==="db"&&S.owner?`<button type="button" class="linkbtn small-link" data-msg>Cambiar o quitar aviso</button>`:""}</div>`:"";
+  if(S.dia!==today())return aviso;
+  const h=new Date().getHours();const saludo=h<12?"¡Buen día":h<19?"¡Buenas tardes":"¡Buenas noches";
+  const nm=S.mode==="db"?(personName(S.me)||"").split(" ")[0]:"";
+  const txt=MSGS[dayIndex(today())%MSGS.length];
+  return aviso+`<div class="msg-dia"><div class="msg-h">☀️ ${saludo}${nm&&nm!=="Vos"?", "+esc(nm):""}!</div><p>${esc(txt)}</p>
+    ${S.mode==="db"&&S.owner&&!aviso?`<button type="button" class="linkbtn small-link" data-msg>📢 Publicar un aviso para todos</button>`:""}</div>`}
+function openMsg(){edit=null;const cur=msgDia&&msgDia.texto||"";
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Aviso para el equipo">
+    ${sheetHead("📢 Aviso para el equipo")}
+    <p class="hint" style="margin:0">Aparece arriba en la app de todos los deliverys y queda hasta que lo cambies o lo quites.</p>
+    <div class="field"><label for="m-txt">Aviso</label><textarea id="m-txt" rows="4" maxlength="400" placeholder="Ej.: Mañana reunión a las 8:00 en la oficina.">${esc(cur)}</textarea></div>
+    <button type="button" class="primary" data-msave>Publicar aviso</button>
+    ${cur?`<button type="button" class="danger" data-mdel>Quitar aviso</button>`:""}</div></div>`}
 function viewDiaShell(){
   const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · para ${esc(personName(writeTarget()))}`:"";
-  return `
+  return `${viewMsg()}
   <div class="daynav"><button data-day="-1" aria-label="Día anterior">‹</button>
     <label class="daylabel pick" for="dpick"><b>${dayName(S.dia)} <svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></b><span>${dayLong(S.dia)}</span>
       <input type="date" id="dpick" value="${S.dia}" max="${today()}" aria-label="Elegir día"></label>
@@ -1281,6 +1309,7 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-other")){S.val=0;S.err="";refreshForm();const v=document.getElementById("val");v.value="";v.focus()}
   else if(t.id==="save")save();
   else if(t.id==="savecamino")save(true);
+  else if(t.hasAttribute("data-msg"))openMsg();
   else if(t.hasAttribute("data-hoy")){S.dia=today();render(true)}
   else if(t.dataset.cant){S.cant=Math.min(200,Math.max(1,S.cant+Number(t.dataset.cant)));refreshForm()}
   else if(t.dataset.fijocli){S.cliente=t.dataset.fijocli;S.err="";const c=document.getElementById("cli");if(c)c.value=S.cliente;refreshForm()}
@@ -1332,6 +1361,8 @@ layer.addEventListener("click",async e=>{
   if(e.target.hasAttribute&&e.target.hasAttribute("data-close")){closeSheet();return}
   const t=e.target.closest("button");if(!t)return;
   if(t.hasAttribute("data-cancel")){closeSheet();return}
+  if(t.hasAttribute("data-msave")||t.hasAttribute("data-mdel")){const v=t.hasAttribute("data-mdel")?"":document.getElementById("m-txt").value.trim();closeSheet();
+    try{if(v)await db.doc("ranking/_mensaje").set({texto:v,criadoEm:Date.now()});else await db.doc("ranking/_mensaje").delete();toast(v?"Aviso publicado para todos":"Aviso quitado")}catch(err){toast("No se guardó.")}return}
   if(t.dataset.spara){solPara=t.dataset.spara;layer.querySelectorAll("[data-spara]").forEach(c=>c.classList.toggle("on",c===t));return}
   if(t.dataset.stipo){solTipo=t.dataset.stipo;layer.querySelectorAll("[data-stipo]").forEach(c=>c.classList.toggle("on",c===t));return}
   if(t.hasAttribute("data-ssave")){const det=document.getElementById("s-det").value.trim();if(solTipo==="otro"&&!det){toast("Escribí qué necesitás");return}
