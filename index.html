@@ -428,7 +428,7 @@ const GPRESETS=[5000,10000,15000,20000,30000];
 const LSG="caixa_gastos_v1",LSE="caixa_egastos_v1";
 const EGT={premio:"Premios",nafta:"Nafta",publicidad:"Publicidad",telefono:"Teléfono/Internet",alquiler:"Alquiler",sueldo:"Sueldos",otro:"Otro"};
 const G={tipo:"gasolina",val:0,obs:""};
-const ST={certificado:"Certificado de trabajo",uniforme:"Uniforme",mochila:"Mochila",casco:"Casco / equipo",adelanto:"Adelanto de dinero",otro:"Otro"};
+const ST={certificado:"Certificado de trabajo",uniforme:"Uniforme",mochila:"Mochila",casco:"Casco / equipo",otro:"Otro"};
 const SE={pendiente:{n:"Pendiente",c:"due"},proceso:{n:"En proceso",c:"transfer"},listo:{n:"Listo",c:"cash"},rechazado:{n:"Rechazado",c:"muted"}};
 const sols=new Map(),cambios=new Map();let solTipo="certificado",solPara=null;
 const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -1068,7 +1068,7 @@ function viewSol(){
   const ord={pendiente:0,proceso:1,listo:2,rechazado:3};
   list.sort((a,b)=>(ord[a.estado]-ord[b.estado])||((b.criadoEm||0)-(a.criadoEm||0)));
   const card=x=>{const e=SE[x.estado]||SE.pendiente;return `<div class="sol">
-    <div class="sol-h"><div class="who"><b>${ST[x.tipo]||"Otro"}</b><small>${S.owner?esc(personName(x._u))+" · ":""}${ddmm(keyOf(new Date(x.criadoEm)))} ${hhmm(x.criadoEm)}${x.porDueno?" · registrada por el dueño":""}</small></div><span class="pill p-${e.c}">${e.n}</span></div>
+    <div class="sol-h"><div class="who"><b>${ST[x.tipo]||(x.tipo==="adelanto"?"Adelanto de dinero":"Otro")}</b><small>${S.owner?esc(personName(x._u))+" · ":""}${ddmm(keyOf(new Date(x.criadoEm)))} ${hhmm(x.criadoEm)}${x.porDueno?" · registrada por el dueño":""}</small></div><span class="pill p-${e.c}">${e.n}</span></div>
     ${x.detalle?`<p class="sol-d">${esc(x.detalle)}</p>`:""}
     ${x.respuesta?`<p class="sol-r"><b>Respuesta:</b> ${esc(x.respuesta)}</p>`:""}
     ${S.owner?`<div class="sol-act">${x.estado!=="proceso"&&x.estado!=="listo"?`<button type="button" class="small" data-sest="proceso" data-sk="${esc(x._u+"|"+x._id)}">En proceso</button>`:""}${x.estado!=="listo"?`<button type="button" class="small ok" data-sest="listo" data-sk="${esc(x._u+"|"+x._id)}">Listo</button>`:""}${x.estado==="pendiente"?`<button type="button" class="small baja" data-sest="rechazado" data-sk="${esc(x._u+"|"+x._id)}">Rechazar</button>`:""}<button type="button" class="linkbtn small-link" data-sresp="${esc(x._u+"|"+x._id)}">Responder</button></div>`
@@ -1092,7 +1092,7 @@ function openNewSol(){edit=null;
 function openResp(k){const x=sols.get(k);if(!x)return;edit=null;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Responder">
     ${sheetHead("Responder a "+esc(personName(x._u)))}
-    <p class="hint" style="margin:0">${ST[x.tipo]||"Otro"}${x.detalle?" · "+esc(x.detalle):""}</p>
+    <p class="hint" style="margin:0">${ST[x.tipo]||(x.tipo==="adelanto"?"Adelanto de dinero":"Otro")}${x.detalle?" · "+esc(x.detalle):""}</p>
     <div class="field"><label for="r-txt">Respuesta</label><textarea id="r-txt" rows="3" placeholder="Ej.: retirá el certificado el viernes en la oficina">${esc(x.respuesta||"")}</textarea></div>
     <button type="button" class="primary" data-rsave="${esc(k)}">Guardar respuesta</button></div></div>`}
 async function setSol(k,patch){const x=sols.get(k);if(!x)return;await db.doc("turnos/"+x._u+"/solicitudes/"+x._id).update({...patch,actualizado:Date.now()})}
