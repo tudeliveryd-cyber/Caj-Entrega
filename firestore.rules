@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner() {
+      return signedIn() && request.auth.token.email == 'tudeliveryd@gmail.com' && request.auth.token.email_verified == true;
+    }
+    function rolesDoc() { return /databases/$(database)/documents/config/roles; }
+    function isSocio() { return signedIn() && exists(rolesDoc()) && request.auth.uid in get(rolesDoc()).data.get('socios', []); }
+    function isAdmin() { return isOwner() || isSocio(); }
+    function person(uid) { return get(/databases/$(database)/documents/turnos/$(uid)).data; }
+    function approved(uid) {
+      return exists(/databases/$(database)/documents/turnos/$(uid))
+        && person(uid).get('aprobado', false) == true && person(uid).get('baja', false) != true;
+    }
+
+    // Configuración: roles legible por todos los que entran; comisiones solo dueño y socios.
+    match /config/roles { allow read: if signedIn(); allow write: if isOwner(); }
+    match /config/{doc} { allow read, write: if isAdmin(); }
+
+    // Cada delivery: su ficha y sus entregas, gastos y solicitudes.
+    match /turnos/{uid} {
+      allow read: if isAdmin() || request.auth.uid == uid;
+      allow create: if isAdmin() || (request.auth.uid == uid
+        && request.resource.data.get('aprobado', false) == false
+        && request.resource.data.get('baja', false) == false);
+      allow update: if isAdmin() || (request.auth.uid == uid
+        && request.resource.data.get('aprobado', false) == resource.data.get('aprobado', false)
+        && request.resource.data.get('baja', false) == resource.data.get('baja', false));
+      allow delete: if isOwner();
+      match /{sub}/{id} {
+        allow read: if isAdmin() || request.auth.uid == uid;
+        allow write: if isAdmin() || (request.auth.uid == uid && approved(uid));
+      }
+    }
+
+    // Liquidaciones pagadas: solo dueño y socios marcan; cada delivery ve las suyas.
+    match /liq/{uid}/{rest=**} {
+      allow read: if isAdmin() || request.auth.uid == uid;
+      allow write: if isAdmin();
+    }
+
+    // Ranking: solo cantidades de entregas.
+    match /ranking/{uid} {
+      allow read: if isAdmin() || (signedIn() && approved(request.auth.uid));
+      allow write: if isAdmin() || (request.auth.uid == uid && approved(uid));
+    }
+
+    // Gastos y resultado de la empresa.
+    match /empresa/{rest=**} { allow read, write: if isAdmin(); }
+  }
+}
