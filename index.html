@@ -439,6 +439,10 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .li-row.no .li-no{background:var(--due);border-color:var(--due);color:#fff}
 .li-p{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px;font:16px var(--body);background:var(--bg);color:var(--ink);text-align:right}
 .li-row.no .li-p{visibility:hidden}
+.li-notas{display:grid;gap:6px;padding:10px 12px;border-radius:12px;background:var(--due-bg);font-size:14px}
+.li-notas b{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--due)}
+.li-nota{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.li-t{background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit;cursor:pointer}
 .li-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
 .li-add input{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:16px var(--body);background:var(--bg);color:var(--ink);min-width:0}
 .li-tot{display:grid;gap:4px;padding:12px 14px;border-radius:12px;background:var(--transfer-bg)}
@@ -1067,33 +1071,39 @@ function updMapLink(){const a=document.getElementById("maplink");if(a)a.href=map
 document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("#maplink");if(!a)return;updMapLink();
   if(!mapQ()&&!linkIn(ubicTxt)){e.preventDefault();toast("Escribí primero el nombre del comercio o cliente");const c=document.getElementById("cli");if(c)c.focus()}},true);
 /* lista de compras: el cliente manda la lista, el delivery la marca en el mercado */
+function isNota(t){const w=t.trim().split(/\s+/).length;
+  return /[:?]\s*$/.test(t)||/por favor|porfa|gracias|obrigad|\bmand[ae]r?\b|\bfoto\b|^\s*(oi|ol[aá]|hola|bom dia|boa tarde|boa noite|buen[oa]s)\b/i.test(t)||(w>=7&&!/^\s*\d/.test(t))}
 function parseLista(t){let lines=String(t||"").split(/\r?\n/);if(lines.filter(x=>x.trim()).length===1)lines=lines[0].split(/[,;]/);
-  return lines.map(x=>x.replace(/^\s*([-•*·✓✔]|\d+[.)-])\s*/,"").trim()).filter(Boolean).slice(0,80).map(t=>({t,ok:null,p:0}))}
-function listaSum(){return LL?LL.items.filter(x=>x.ok!==false).reduce((a,x)=>a+(x.p||0),0):0}
+  return lines.map(x=>x.replace(/^\s*([-•*·✓✔]|\d+[.)-])\s*/,"").trim()).filter(Boolean).slice(0,80).map(t=>({t,ok:null,p:0,nota:isNota(t)}))}
+function listaSum(){return LL?LL.items.filter(x=>x.ok!==false&&!x.nota).reduce((a,x)=>a+(x.p||0),0):0}
 function listaProd(){const sm=listaSum();return LL.tique||sm||0}
 function listaWa(){const d=S.items.get(LL.key)||{};const pr=listaProd(),dv=d.valor||0;
-  const ln=LL.items.map(x=>x.ok===false?`✗ ${x.t} (no había)`:x.ok?`✓ ${x.t}${x.p?" — "+gs(x.p):""}`:`• ${x.t}`).join("\n");
+  const ln=LL.items.filter(x=>!x.nota).map(x=>x.ok===false?`✗ ${x.t} (no había)`:x.ok?`✓ ${x.t}${x.p?" — "+gs(x.p):""}`:`• ${x.t}`).join("\n");
   return "https://wa.me/?text="+encodeURIComponent(`*Tú Delivery · Tu pedido*${d.cliente?" · "+d.cliente:""}\n\n${ln}\n\nProductos: ${gs(pr)}\nDelivery: ${gs(dv)}\n*Total a pagar: ${gs(pr+dv)}*`)}
-function listaRows(){return LL.items.map((x,i)=>`<div class="li-row ${x.ok===true?"ok":x.ok===false?"no":""}"><button type="button" class="li-ck" data-lok="${i}" aria-label="Comprado">✓</button><span class="li-t">${esc(x.t)}</span>
-  <input class="li-p" data-lp="${i}" inputmode="numeric" autocomplete="off" placeholder="₲ precio" value="${x.p?fmtInput(x.p):""}"><button type="button" class="li-no" data-lno="${i}" aria-label="No había">✗</button></div>`).join("")}
-function listaTot(){const d=S.items.get(LL.key)||{};const sm=listaSum(),pr=listaProd(),dv=d.valor||0;const n=LL.items.filter(x=>x.ok===true).length,nn=LL.items.filter(x=>x.ok===false).length,pe=LL.items.length-n-nn;
+function listaRows(){const notas=LL.items.map((x,i)=>[x,i]).filter(([x])=>x.nota);
+  return (notas.length?`<div class="li-notas"><b>📝 Mensaje del cliente</b>${notas.map(([x,i])=>`<div class="li-nota"><span>${esc(x.t)}</span><button type="button" class="linkbtn small-link" data-lnota="${i}">es producto</button></div>`).join("")}</div>`:"")
+   +`<div class="li-list">`+LL.items.map((x,i)=>x.nota?"":`<div class="li-row ${x.ok===true?"ok":x.ok===false?"no":""}"><button type="button" class="li-ck" data-lok="${i}" aria-label="Comprado">✓</button><button type="button" class="li-t" data-lnota="${i}">${esc(x.t)}</button>
+  <input class="li-p" data-lp="${i}" inputmode="numeric" autocomplete="off" placeholder="₲ precio" value="${x.p?fmtInput(x.p):""}"><button type="button" class="li-no" data-lno="${i}" aria-label="No había">✗</button></div>`).join("")+`</div>`}
+function listaTot(){const d=S.items.get(LL.key)||{};const sm=listaSum(),pr=listaProd(),dv=d.valor||0;const P=LL.items.filter(x=>!x.nota);const n=P.filter(x=>x.ok===true).length,nn=P.filter(x=>x.ok===false).length,pe=P.length-n-nn;
   const t=document.getElementById("li-tot");if(t)t.innerHTML=`<div><span>${n} comprados · ${nn} no había · ${pe} pendientes</span></div>
     <div><span>Productos${LL.tique?" (tique)":sm?" (suma)":""}</span><b class="num">${gs(pr)}</b></div><div><span>Delivery</span><b class="num">${gs(dv)}</b></div>
     <div class="big2"><span>Cobrar al cliente</span><b class="num">${gs(pr+dv)}</b></div>`;
   const a=document.getElementById("li-wa");if(a)a.href=listaWa()}
 function openLista(key){const d=S.items.get(key);if(!d)return;edit=null;
   LL={key,items:JSON.parse(JSON.stringify(d.lista||[])),tique:d.listaTique||0};
+  for(const x of LL.items)if(x.nota===undefined)x.nota=(x.ok===null||x.ok===undefined)&&!x.p&&isNota(x.t);
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet lista-sh" role="dialog" aria-label="Lista de compras">
     ${sheetHead("🛒 "+esc(d.cliente||"Lista de compras"))}
     <p class="hint" style="margin:0">Tocá <b>✓</b> cuando lo pongas en el carrito o <b>✗</b> si no había. El precio es opcional: el app suma solo.</p>
-    <div class="li-list" id="li-list">${listaRows()}</div>
+    <div id="li-list" style="display:grid;gap:10px">${listaRows()}</div>
+    <p class="hint" style="margin:0">¿Una línea no es producto? Tocá el texto y pasa a “Mensaje del cliente”.</p>
     <div class="li-add"><input id="li-new" autocomplete="off" placeholder="Agregar producto"><button type="button" class="small" data-ladd>+ Agregar</button></div>
     <div class="field"><label for="li-tique">Total del tique (opcional, si no pusiste precios)</label><div class="money small-money"><span>₲</span><input id="li-tique" inputmode="numeric" autocomplete="off" placeholder="Ej.: 85.000" value="${LL.tique?fmtInput(LL.tique):""}"></div></div>
     <div class="li-tot" id="li-tot"></div>
     <a class="wa-big" id="li-wa" href="#" target="_blank" rel="noopener">📲 Enviar la cuenta al cliente</a>
     <button type="button" class="primary" data-lsave>Guardar lista</button></div></div>`;listaTot()}
 async function saveLista(){if(!LL)return;const key=LL.key;const it=S.items.get(key);if(!it)return;
-  const items=LL.items.map(x=>({t:x.t,ok:x.ok===undefined?null:x.ok,p:x.p||0}));const pr=listaProd();
+  const items=LL.items.map(x=>({t:x.t,ok:x.ok===undefined?null:x.ok,p:x.p||0,nota:!!x.nota}));const pr=listaProd();
   const p={lista:items,listaTique:LL.tique||0};if(pr)p.producto=pr;
   Object.assign(it,p);LL=null;closeSheet();render();
   try{const w=await sendW(patchItem(key,p));toast(w==="wait"?"Lista guardada en el celular":"Lista guardada"+(pr?" · productos "+gs(pr):""))}catch(e){toast("No se guardó.")}}
@@ -1103,6 +1113,7 @@ layer.addEventListener("input",e=>{if(!LL)return;const el=e.target;
 layer.addEventListener("click",e=>{if(!LL)return;const t=e.target.closest&&e.target.closest("button");if(!t)return;
   if(t.dataset.lok!==undefined||t.dataset.lno!==undefined){const i=Number(t.dataset.lok??t.dataset.lno);const v=t.dataset.lok!==undefined;const x=LL.items[i];x.ok=x.ok===v?null:v;
     t.closest(".li-row").className="li-row "+(x.ok===true?"ok":x.ok===false?"no":"");listaTot()}
+  else if(t.dataset.lnota!==undefined){const x=LL.items[Number(t.dataset.lnota)];x.nota=!x.nota;if(x.nota){x.ok=null;x.p=0}document.getElementById("li-list").innerHTML=listaRows();listaTot()}
   else if(t.hasAttribute("data-ladd")){const inp=document.getElementById("li-new");const v=inp.value.trim();if(!v)return;LL.items.push({t:v,ok:null,p:0});document.getElementById("li-list").innerHTML=listaRows();inp.value="";listaTot()}
   else if(t.hasAttribute("data-lsave"))saveLista()});
 /* meta del día: cantidad de entregas por delivery que define el dueño */
@@ -1159,7 +1170,7 @@ function viewCamino(cl){
   ${cl.map(([k,d])=>`<div class="cam-row"><div class="cam-info">
       <div class="who"><b>${esc(d.cliente)||"Sin cliente"}</b><small>${[showWho&&esc(personName(d._u)),d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
       <div class="amt"><small>Cobrar</small><b class="num">${gs((d.producto||0)+d.valor)}</b></div></div>
-    <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>x.ok!==null&&x.ok!==undefined).length}/${d.lista.length}</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${linkIn(d.ubic)?"Ubicación":"Mapa"}</a><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
+    <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>!x.nota&&x.ok!==null&&x.ok!==undefined).length}/${d.lista.filter(x=>!x.nota).length}</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${linkIn(d.ubic)?"Ubicación":"Mapa"}</a><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
 function fijosBlock(list){
   const m=new Map();for(const[,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0});const r=m.get(k);if(d.diario)r.diario+=d.valor;else r.n+=(d.cant||1)}
   if(!m.size)return"";const can=!lockReason(S.dia);
