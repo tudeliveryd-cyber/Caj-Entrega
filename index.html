@@ -421,6 +421,10 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .meta-bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
 .meta.done .meta-bar i{background:var(--cash)}
 .meta small{color:var(--muted)}
+.ub-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.ub-btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:11px 12px;font:600 14px var(--body);cursor:pointer;white-space:nowrap}
+.map-btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:9px 14px;font:600 14px var(--body);cursor:pointer}
+.cam-act{flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -506,7 +510,7 @@ const norm=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[̀-�
 const WINDOW=31;
 const LS="caixa_entregas_v1",LSC="caixa_config_v2",LSP="caixa_pagos_v1";
 
-let sinCliOk=false,builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
+let ubicTxt="",sinCliOk=false,builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
 const subs=new Map(),rank=new Map(),rankTimers=new Map();
 const S={tab:"dia",dia:today(),val:0,prod:0,cant:1,metodo:"efectivo",cliente:"",obs:"",items:new Map(),old:new Map(),oldG:new Map(),oldE:new Map(),gastos:new Map(),priv:new Map(),egastos:new Map(),people:new Map(),pagos:new Map(),
   mode:"wait",err:"",cfg:{pct:30,por:{}},me:"local",owner:true,filter:"all",askName:false,canWrite:null};
@@ -826,7 +830,7 @@ function pendientes(from,to){
   return out.sort((a,b)=>(b.debe+b.recibe)-(a.debe+a.recibe))}
 /* frequent customers from visible history */
 function clientes(){const m=new Map();for(const[,d]of visible()){const c=(d.cliente||"").trim();if(!c)continue;const k=norm(c);
-  if(!m.has(k))m.set(k,{nome:c,n:0,vals:new Map(),last:0,total:0});const r=m.get(k);r.n++;r.total+=d.valor;r.vals.set(d.valor,(r.vals.get(d.valor)||0)+1);if((d.criadoEm||0)>r.last){r.last=d.criadoEm||0;r.nome=c}}
+  if(!m.has(k))m.set(k,{nome:c,n:0,vals:new Map(),last:0,total:0});const r=m.get(k);r.n++;r.total+=d.valor;r.vals.set(d.valor,(r.vals.get(d.valor)||0)+1);if((d.criadoEm||0)>r.last){r.last=d.criadoEm||0;r.nome=c;if(d.ubic)r.ubic=d.ubic}else if(d.ubic&&!r.ubic)r.ubic=d.ubic}
   for(const r of m.values())r.val=[...r.vals.entries()].sort((a,b)=>b[1]-a[1])[0][0];
   return[...m.values()].sort((a,b)=>b.n-a.n)}
 
@@ -895,7 +899,7 @@ function drawSug(){
   else if(!cliFocus){box.innerHTML="";box.hidden=true;return}
   list=list.slice(0,5);
   box.hidden=!list.length;
-  box.innerHTML=list.map(c=>`<button type="button" class="sug" data-cli="${esc(c.nome)}" data-cval="${c.val}"><b>${esc(c.nome)}</b><span class="num">${gs(c.val)} · ${plural(c.n,"vez")}</span></button>`).join("").replace(/vezs/g,"veces");
+  box.innerHTML=list.map(c=>`<button type="button" class="sug" data-cli="${esc(c.nome)}" data-cval="${c.val}" data-cubic="${esc(c.ubic||"")}"><b>${esc(c.nome)}</b><span class="num">${gs(c.val)} · ${plural(c.n,"vez")}</span></button>`).join("").replace(/vezs/g,"veces");
 }
 const methodBtns=(attr,cur)=>Object.keys(M).map(k=>`<button type="button" class="method m-${M[k].c}" ${attr}="${k}" aria-pressed="${cur===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("");
 
@@ -1020,6 +1024,12 @@ function rowHtml(key,d,showDate){const t=d.criadoEm?new Date(d.criadoEm):null;co
   return `<button class="row" data-edit="${esc(key)}"><span class="time num">${showDate?ddmm(d.dia):(t?pad(t.getHours())+":"+pad(t.getMinutes()):"")}</span>
     <span class="who"><b>${esc(d.cliente)||"Sin cliente"}</b>${sub?`<small>${sub}</small>`:""}</span>
     <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?((d.cant||1)>1?"× "+d.cant:"—"):gs(d.valor)}</b><span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span>${pcb?`<span class="pill p-due">${pcb.tipo==="borrar"?"Pide borrar":"Cambio pedido"}</span>`:""}</span></button>`}
+/* ubicación: link que mandó el cliente, o búsqueda en Google Maps por nombre del comercio */
+const CIUDAD="Santa Rita, Paraguay";
+function linkIn(t){const m=String(t||"").match(/https?:\/\/\S+/);return m?m[0]:""}
+function mapUrl(q,ub){const l=linkIn(ub);if(l)return l;const txt=[ub&&String(ub).trim(),q&&String(q).trim()].filter(Boolean).join(" ");
+  return "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent((txt||"")+", "+CIUDAD)}
+function openMap(url){const w=window.open(url,"_blank");if(!w)location.href=url}
 /* meta del día: cantidad de entregas por delivery que define el dueño */
 function viewMeta(list){
   if(S.mode!=="db"||S.dia!==today())return"";
@@ -1074,7 +1084,7 @@ function viewCamino(cl){
   ${cl.map(([k,d])=>`<div class="cam-row"><div class="cam-info">
       <div class="who"><b>${esc(d.cliente)||"Sin cliente"}</b><small>${[showWho&&esc(personName(d._u)),d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
       <div class="amt"><small>Cobrar</small><b class="num">${gs((d.producto||0)+d.valor)}</b></div></div>
-    <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
+    <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button><button type="button" class="map-btn" data-mapa="${esc(k)}">📍 ${linkIn(d.ubic)?"Ubicación":"Mapa"}</button><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
 function fijosBlock(list){
   const m=new Map();for(const[,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0});const r=m.get(k);if(d.diario)r.diario+=d.valor;else r.n+=(d.cant||1)}
   if(!m.size)return"";const can=!lockReason(S.dia);
@@ -1402,11 +1412,13 @@ function openName(){edit=null;const cur=S.people.get(S.me);layer.innerHTML=`<div
   <div class="field"><label for="n-val">Tu nombre</label><input id="n-val" autocomplete="name" value="${esc(cur?cur.nome:"")}" placeholder="Ej.: Juan"></div>
   <button class="primary" data-nsave>Guardar</button></div></div>`;setTimeout(()=>{const n=document.getElementById("n-val");if(n)n.focus()},50)}
 function sheetHead(title){return `<div class="sheet-h"><h3>${title}</h3><button type="button" class="x" data-cancel aria-label="Cerrar">✕</button></div>`}
-function openEntry(cm){edit=null;sinCliOk=false;const isToday=S.dia===today();
+function openEntry(cm){edit=null;sinCliOk=false;if(!S.cliente)ubicTxt="";const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
   const cliente=`<div class="field"><label for="cli">${cm?"Pedido / cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
-      <div class="sugs" id="cli-sug" hidden></div></div>`;
+      <div class="sugs" id="cli-sug" hidden></div></div>
+    <div class="field"><label for="ubic">Ubicación (opcional)</label><div class="ub-row"><input id="ubic" autocomplete="off" placeholder="Pegá la ubicación del WhatsApp" value="${esc(ubicTxt)}"><button type="button" class="ub-btn" data-buscarmapa>📍 Buscar</button></div>
+      <small class="hint" style="margin:0">Tocá <b>📍 Buscar</b> para ver el comercio en el mapa, o pegá acá la ubicación que te mandó el cliente.</small></div>`;
   const prod=`<div class="field"><label for="prod">${cm?"Valor del producto (lo que pagaste o dice el tique)":"Valor del producto (opcional, para saber cuánto cobrar)"}</label>
     <div class="money ${cm?"":"small-money"}"><span>₲</span><input id="prod" inputmode="numeric" autocomplete="off" placeholder="Ej.: 30.000" value="${fmtInput(S.prod)}"></div></div>`;
   const val=`<div class="field"><label for="val">${cm?"Valor del delivery":"Monto del delivery (tocá un atajo o escribí el precio)"}</label>
@@ -1454,6 +1466,7 @@ document.addEventListener("input",e=>{const id=e.target.id;
   if(id==="cant"){const v=Math.min(200,parseVal(e.target.value));e.target.value=v||"";S.cant=Math.max(1,v||1);refreshForm()}
   if(id==="gval"){G.val=parseVal(e.target.value);e.target.value=fmtInput(G.val);refreshG()}
   if(id==="gobs")G.obs=e.target.value;
+  if(id==="ubic")ubicTxt=e.target.value;
   if(id==="cli"){S.cliente=e.target.value;sinCliOk=false;if(S.err&&S.err.startsWith("¿Sin nombre")){S.err="";refreshForm()}drawSug()}if(id==="obs")S.obs=e.target.value});
 document.addEventListener("focusin",e=>{if(e.target.id==="cli"){cliFocus=true;drawSug()}});
 document.addEventListener("focusout",e=>{if(e.target.id==="cli")setTimeout(()=>{cliFocus=false;drawSug()},200)});
@@ -1475,8 +1488,8 @@ async function save(camino){
   sinCliOk=false;
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
-  if(S.prod)d.producto=S.prod;if(camino)d.estado="camino";if(fx&&S.cant>1)d.cant=S.cant;
-  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";S.err="";closeSheet();
+  if(S.prod)d.producto=S.prod;if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(fx&&S.cant>1)d.cant=S.cant;
+  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";S.err="";closeSheet();
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
   try{const w=await sendW(addItem(d,writeTarget()));if(w==="wait"){toast("Guardado en el celular · se envía al volver la señal")}else toast(d.metodo==="fijo"&&!camino?`Registrado${d.cant>1?" "+d.cant+" entregas":""} · cliente fijo (${d.cliente})`:`Registrado: ${gs(d.valor)} · ${label}`)}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast(e&&e.code==="quota_exceeded"?"Almacenamiento lleno":"No se guardó. Probá de nuevo.")}
@@ -1496,7 +1509,7 @@ document.addEventListener("click",async e=>{
     try{await db.doc("turnos/"+S.me+"/solicitudes/"+t.dataset.sdel).delete();toast("Solicitud cancelada")}catch(err){toast("No se eliminó.")}}
   else if(t.hasAttribute("data-equipo"))openEquipo();
   else if(t.hasAttribute("data-logout"))logout();
-  else if(t.dataset.cli!==undefined){S.cliente=t.dataset.cli;const v=Number(t.dataset.cval);if(v)S.val=v;S.err="";cliFocus=false;refreshForm();drawSug();const c=document.getElementById("cli");if(c)c.value=S.cliente}
+  else if(t.dataset.cli!==undefined){S.cliente=t.dataset.cli;if(t.dataset.cubic){ubicTxt=t.dataset.cubic;const ui=document.getElementById("ubic");if(ui)ui.value=ubicTxt}const v=Number(t.dataset.cval);if(v)S.val=v;S.err="";cliFocus=false;refreshForm();drawSug();const c=document.getElementById("cli");if(c)c.value=S.cliente}
   else if(t.dataset.preset){S.val=Number(t.dataset.preset);S.err="";refreshForm()}
   else if(t.dataset.metodo){S.metodo=t.dataset.metodo;S.err="";refreshForm()}
   else if(t.hasAttribute("data-other")){S.val=0;S.err="";refreshForm();const v=document.getElementById("val");v.value="";v.focus()}
@@ -1523,6 +1536,8 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.wapend){const[u,f,to]=t.dataset.wapend.split("|");waPend(u,f,to)}
   else if(t.hasAttribute("data-cerrar"))openCierre();
   else if(t.hasAttribute("data-meta"))openMeta();
+  else if(t.hasAttribute("data-buscarmapa")){const q=(S.cliente||"").trim()||(S.obs||"").trim();if(!q&&!linkIn(ubicTxt)){toast("Escribí primero el nombre del comercio o cliente");const c=document.getElementById("cli");if(c)c.focus();return}openMap(mapUrl(q,ubicTxt))}
+  else if(t.dataset.mapa){const d=S.items.get(t.dataset.mapa)||S.old.get(t.dataset.mapa);if(d)openMap(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}
   else if(t.dataset.cobrar!==undefined||t.dataset.descobrar!==undefined){const un=t.dataset.descobrar!==undefined;const nm=un?t.dataset.descobrar:t.dataset.cobrar;
     if(!un&&!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Confirmar?";setTimeout(()=>{t.classList.remove("armed");t.textContent="✓ Cobrado"},3000);return}
     const keys=anotList().filter(([,d])=>(d.cliente||"Sin cliente").trim()===nm&&(un?!!d.cobradoEm:!d.cobradoEm)).map(([k])=>k);
