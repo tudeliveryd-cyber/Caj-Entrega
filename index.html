@@ -755,17 +755,27 @@ function startDemo(modo){
   fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
   auth.onAuthStateChanged(u=>{if(!u){started=false;showLogin();return}hideLogin();boot(fs,u)});
 })();
-async function boot(fs,u){
+/* get con límite de tiempo: con señal débil usa lo guardado en el celular */
+async function getT(ref){try{return await Promise.race([ref.get(),new Promise((_,rj)=>setTimeout(()=>rj({code:"timeout"}),6000))])}
+  catch(e){lastErr=(e&&(e.code||e.message))||String(e);try{return await ref.get({source:"cache"})}catch(x){return undefined}}}
+let lastErr="",bootStage="inicio";
+window.addEventListener("error",e=>{lastErr=(e&&e.message)||"error"});
+window.addEventListener("unhandledrejection",e=>{const r=e&&e.reason;lastErr=(r&&(r.code||r.message))||String(r)});
+setTimeout(function watch(){const sy=document.getElementById("sync");if(sy&&/Conectando/.test(sy.textContent)){
+  let b=document.getElementById("boot-warn");if(!b){b=document.createElement("div");b.id="boot-warn";b.className="net-banner";document.body.prepend(b)}
+  b.innerHTML=`No se pudo conectar (${esc(bootStage)}${lastErr?" · "+esc(lastErr):""}). <button type="button" class="linkbtn" style="color:#fff" onclick="location.reload()">Reintentar</button>`;setTimeout(watch,5000)}
+  else{const b=document.getElementById("boot-warn");if(b)b.remove()}},12000);
+async function boot(fs,u){bootStage="cuenta";
   const mail=(u.email||"").toLowerCase();
   if(mail===OWNER_EMAIL&&!u.emailVerified){showVerify(u);return}
   /* el permiso de dueño depende del e-mail verificado: renovar el token para que el servidor lo vea */
   if(mail===OWNER_EMAIL){try{await Promise.race([u.getIdToken(true),new Promise(r=>setTimeout(r,4000))])}catch(e){}}
-  db=fs;const me=u.uid;isRealOwner=mail===OWNER_EMAIL;
-  try{const r=await db.doc("config/roles").get();roles={socios:(r.exists&&r.data().socios)||[]}}catch(e){}
+  db=fs;const me=u.uid;isRealOwner=mail===OWNER_EMAIL;bootStage="permisos";
+  try{const r=await getT(db.doc("config/roles"));if(r)roles={socios:(r.exists&&r.data().socios)||[]}}catch(e){}
   S.me=me;S.owner=isRealOwner||roles.socios.includes(me);S.canWrite=true;
   S.mode="db";S.filter=S.owner?"all":me;S.items=new Map();S.gastos=new Map();S.priv=new Map();S.egastos=new Map();S.pagos=new Map();
-  let p=null;try{p=await db.doc("turnos/"+me).get()}catch(e){}
-  if(p&&p.exists)S.people.set(me,p.data());
+  bootStage="perfil";let p=null;try{p=await getT(db.doc("turnos/"+me))}catch(e){}bootStage="datos";
+  if(p===undefined){}else if(p&&p.exists)S.people.set(me,p.data());
   else if(regName){try{await saveName(regName)}catch(e){}}
   else S.askName=true;
   if(!S.owner){
