@@ -1076,7 +1076,7 @@ function viewSol(){
   </div>`};
   const pend=list.filter(x=>x.estado==="pendiente"||x.estado==="proceso"),done=list.filter(x=>x.estado==="listo"||x.estado==="rechazado");
   return `${S.owner?`<p class="emp-hint" style="margin:0">Sos el dueño: acá recibís lo que piden los deliverys. Ellos ven en esta pestaña el botón “Nueva solicitud”.</p>
-    <button type="button" class="small add-e" data-newsol style="justify-self:start">+ Registrar solicitud de un delivery</button>`:`<button type="button" class="anotar" data-newsol><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span><b>Nueva solicitud</b><small>Certificado, uniforme, mochila, adelanto…</small></span></button>`}
+    <button type="button" class="small add-e" data-newsol style="justify-self:start">+ Registrar solicitud de un delivery</button>`:`<button type="button" class="anotar" data-newsol><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span><b>Nueva solicitud</b><small>Certificado, uniforme, mochila, casco…</small></span></button>`}
   <section class="sec"><div class="sec-h"><h2>${S.owner?"Solicitudes de los deliverys":"Mis solicitudes"}</h2><span>${pend.length?plural(pend.length,"abierta"):""}</span></div>
     ${pend.length?pend.map(card).join(""):`<div class="empty">${S.owner?"No hay solicitudes abiertas.":"No tenés solicitudes abiertas. Tocá “Nueva solicitud” para pedir algo a la empresa."}</div>`}</section>
   ${done.length?`<section class="sec"><div class="sec-h"><h2>Resueltas</h2></div>${done.slice(0,15).map(card).join("")}</section>`:""}`}
