@@ -555,6 +555,8 @@ function authMsg(e){const c=(e&&e.code)||"";
   if(/email-already-in-use/.test(c))return"Ese e-mail ya tiene cuenta. Tocá “Entrar”.";
   if(/weak-password/.test(c))return"La contraseña necesita al menos 6 caracteres.";
   if(/invalid-email/.test(c))return"Revisá el e-mail.";
+  if(/missing-password/.test(c))return"Escribí la contraseña.";
+  if(/operation-not-allowed/.test(c))return"El login con e-mail todavía no está activado en Firebase.";
   if(/network/.test(c))return"Sin conexión. Probá de nuevo.";
   if(/too-many-requests/.test(c))return"Muchos intentos. Esperá unos minutos.";
   return"No se pudo entrar. Probá de nuevo."}
