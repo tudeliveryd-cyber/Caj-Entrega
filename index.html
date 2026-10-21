@@ -759,7 +759,7 @@ async function boot(fs,u){
   const mail=(u.email||"").toLowerCase();
   if(mail===OWNER_EMAIL&&!u.emailVerified){showVerify(u);return}
   /* el permiso de dueño depende del e-mail verificado: renovar el token para que el servidor lo vea */
-  if(mail===OWNER_EMAIL){try{await u.getIdToken(true)}catch(e){}}
+  if(mail===OWNER_EMAIL){try{await Promise.race([u.getIdToken(true),new Promise(r=>setTimeout(r,4000))])}catch(e){}}
   db=fs;const me=u.uid;isRealOwner=mail===OWNER_EMAIL;
   try{const r=await db.doc("config/roles").get();roles={socios:(r.exists&&r.data().socios)||[]}}catch(e){}
   S.me=me;S.owner=isRealOwner||roles.socios.includes(me);S.canWrite=true;
