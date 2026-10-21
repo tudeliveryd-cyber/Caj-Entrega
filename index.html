@@ -361,6 +361,9 @@ nav.tabs .badge{position:absolute;top:2px;right:22%}
 nav.tabs button{font-size:10.5px}
 .chg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;background:var(--bg);border-radius:8px;padding:8px 10px}
 .chg small{display:block;font-size:11px;color:var(--muted)}.chg b{font-size:13px;overflow-wrap:anywhere}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper .step{width:52px;height:52px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 24px var(--body);cursor:pointer;flex:none}
+.stepper input{flex:1;min-width:0;text-align:center;border:1px solid var(--line);border-radius:12px;padding:12px;font:800 24px var(--body)!important;background:var(--bg);color:var(--ink)}
 .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
@@ -447,7 +450,7 @@ const LS="caixa_entregas_v1",LSC="caixa_config_v2",LSP="caixa_pagos_v1";
 
 let builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
 const subs=new Map(),rank=new Map(),rankTimers=new Map();
-const S={tab:"dia",dia:today(),val:0,prod:0,metodo:"efectivo",cliente:"",obs:"",items:new Map(),old:new Map(),oldG:new Map(),oldE:new Map(),gastos:new Map(),egastos:new Map(),people:new Map(),pagos:new Map(),
+const S={tab:"dia",dia:today(),val:0,prod:0,cant:1,metodo:"efectivo",cliente:"",obs:"",items:new Map(),old:new Map(),oldG:new Map(),oldE:new Map(),gastos:new Map(),egastos:new Map(),people:new Map(),pagos:new Map(),
   mode:"wait",err:"",cfg:{pct:30,por:{}},me:"local",owner:true,filter:"all",askName:false,canWrite:null};
 const main=document.getElementById("main"),layer=document.getElementById("layer");
 
@@ -518,7 +521,7 @@ async function setBaja(u,b){const cur=S.people.get(u)||{};const patch={baja:!!b,
 async function syncRank(u){
   if(isBaja(u))return;
   const from=addDays(today(),-65);const dias={};
-  for(const[,d]of S.items)if(d._u===u&&d.dia>=from&&!isCamino(d)&&!d.diario)dias[d.dia]=(dias[d.dia]||0)+1;
+  for(const[,d]of S.items)if(d._u===u&&d.dia>=from&&!isCamino(d)&&!d.diario)dias[d.dia]=(dias[d.dia]||0)+(d.cant||1);
   const nome=(S.people.get(u)&&S.people.get(u).nome)||"";const cur=rank.get(u);
   if(cur&&JSON.stringify(cur.dias||{})===JSON.stringify(dias)&&(cur.nome||"")===nome)return;
   if(!cur&&!Object.keys(dias).length&&!nome)return;
@@ -636,7 +639,7 @@ const pctOf=u=>(S.cfg.por&&S.cfg.por[u])||S.cfg.pct;
 function stats(list){
   const s={n:0,total:0,efectivo:0,transferencia:0,anotado:0,fijo:0,ne:0,nt:0,na:0,nf:0,com:0,pcts:new Set()};
   for(const[,d]of list){s.total+=d.valor;
-    if(d.metodo==="fijo"){s.fijo+=d.valor;if(!d.diario){s.nf++;s.n++}continue}
+    if(d.metodo==="fijo"){s.fijo+=d.valor;if(!d.diario){const c=d.cant||1;s.nf+=c;s.n+=c}continue}
     s.n++;s[d.metodo]+=d.valor;s[d.metodo==="efectivo"?"ne":d.metodo==="transferencia"?"nt":"na"]++;
     const p=pctOf(d._u);s.pcts.add(p);s.com+=d.valor*p/100}
   s.com=Math.round(s.com);s.fica=s.total-s.com;s.saldo=s.com-s.anotado;
@@ -733,11 +736,12 @@ function noteTxt(){
   return S.owner?"Ves las entregas de todos los deliverys. Cada delivery ve solo las suyas.":"Solo vos y el dueño de Tú Delivery ven tus entregas.";
 }
 function refreshForm(){
-  const sv=document.getElementById("save");if(sv){const fx=S.metodo==="fijo";sv.disabled=(!S.val&&!fx)||saving;sv.textContent=fx?"Registrar entrega · cliente fijo":"Registrar "+(S.val?gs(S.val):"entrega")}
+  const sv=document.getElementById("save");if(sv){const fx=S.metodo==="fijo";sv.disabled=(!S.val&&!fx)||saving;sv.textContent=fx?(S.cant>1?"Registrar "+S.cant+" entregas · cliente fijo":"Registrar entrega · cliente fijo"):"Registrar "+(S.val?gs(S.val):"entrega")}
   const sc=document.getElementById("savecamino");if(sc)sc.disabled=!S.val||saving;
   {const fx=S.metodo==="fijo";const mb=document.getElementById("money-block");
    if(mb){mb.hidden=fx;if(sc)sc.hidden=fx;
     const lb=document.querySelector('label[for="cli"]');if(lb)lb.textContent=fx?"Nombre del cliente fijo (ej.: el restaurante)":"Cliente o comercio";
+    {const fq=document.getElementById("fijo-cant");if(fq)fq.hidden=!fx;const ci=document.getElementById("cant");if(ci&&document.activeElement!==ci)ci.value=S.cant}
     const fc=document.getElementById("fijo-chips");if(fc){const names=[...new Set([...S.items.values()].filter(d=>d.metodo==="fijo"&&d.cliente).map(d=>d.cliente.trim()))].slice(0,6);
       fc.hidden=!fx||!names.length;fc.innerHTML=names.map(n=>`<button type="button" class="chip ${norm(n)===norm(S.cliente)?"on":""}" data-fijocli="${esc(n)}">${esc(n)}</button>`).join("")}}}
   const cb=document.getElementById("cobrar");if(cb){cb.hidden=!S.prod;if(!S.prod){cb.innerHTML=""}cb.innerHTML=S.prod?`<div><span>Cobrar al cliente</span><b class="num">${gs(S.prod+S.val)}</b></div><small>Producto ${gs(S.prod)} + delivery ${gs(S.val)}</small><button type="button" class="linkbtn" data-copycuenta>Copiar cuenta para WhatsApp</button>`:""}
@@ -843,7 +847,7 @@ function rowHtml(key,d,showDate){const t=d.criadoEm?new Date(d.criadoEm):null;co
   const sub=[showWho&&("Delivery: "+esc(groupName(groupKey(d)))),d.producto&&("Prod. "+gs(d.producto)+" · cobrado "+gs(d.producto+d.valor)),d.obs&&esc(d.obs)].filter(Boolean).join(" · ");
   return `<button class="row" data-edit="${esc(key)}"><span class="time num">${showDate?ddmm(d.dia):(t?pad(t.getHours())+":"+pad(t.getMinutes()):"")}</span>
     <span class="who"><b>${esc(d.cliente)||"Sin cliente"}</b>${sub?`<small>${sub}</small>`:""}</span>
-    <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?"—":gs(d.valor)}</b><span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span>${pcb?`<span class="pill p-due">${pcb.tipo==="borrar"?"Pide borrar":"Cambio pedido"}</span>`:""}</span></button>`}
+    <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?((d.cant||1)>1?"× "+d.cant:"—"):gs(d.valor)}</b><span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span>${pcb?`<span class="pill p-due">${pcb.tipo==="borrar"?"Pide borrar":"Cambio pedido"}</span>`:""}</span></button>`}
 function viewCamino(cl){
   const showWho=S.mode==="db"&&S.owner&&S.filter==="all";
   return `<div class="sec-h"><h2>En camino</h2><span>${plural(cl.length,"pedido")}</span></div><div class="list">
@@ -852,7 +856,7 @@ function viewCamino(cl){
       <div class="amt"><small>Cobrar</small><b class="num">${gs((d.producto||0)+d.valor)}</b></div></div>
     <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
 function fijosBlock(list){
-  const m=new Map();for(const[,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0});const r=m.get(k);if(d.diario)r.diario+=d.valor;else r.n++}
+  const m=new Map();for(const[,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0});const r=m.get(k);if(d.diario)r.diario+=d.valor;else r.n+=(d.cant||1)}
   if(!m.size)return"";const can=!lockReason(S.dia);
   return `<div class="fijos"><div class="ac-h">Clientes fijos · pagan diario, sin %</div>
     ${[...m.values()].map(r=>`<div class="fijo-row"><div class="who"><b>${esc(r.nome)}</b><small>${plural(r.n,"entrega")}${r.diario?" · diario "+gs(r.diario):" · diario sin registrar"}</small></div>
@@ -918,7 +922,7 @@ function pendBlock(from,to){
       <div class="pend-days">${p.ds.map(x=>`<span class="pday num">${ddmm(x.dia)} · ${x.s.saldo>0?"debe":"recibe"} ${gs(Math.abs(x.s.saldo))}</span>`).join("")}</div>
       ${S.owner?`<button type="button" class="small pay" data-payall="${esc(p.u)}" data-from="${from}" data-to="${to}">Marcar todo pagado</button>`:""}</div>`).join("")}</div></section>`;
 }
-function topClientes(list,n){const m=new Map();for(const[,d]of list){const c=(d.cliente||"").trim()||"Sin cliente";const k=norm(c);if(!m.has(k))m.set(k,{nome:c,n:0,total:0});const r=m.get(k);r.n++;r.total+=d.valor}
+function topClientes(list,n){const m=new Map();for(const[,d]of list){const c=(d.cliente||"").trim()||"Sin cliente";const k=norm(c);if(!m.has(k))m.set(k,{nome:c,n:0,total:0});const r=m.get(k);r.n+=(d.diario?0:(d.cant||1));r.total+=d.valor}
   return[...m.values()].sort((a,b)=>b.n-a.n||b.total-a.total).slice(0,n)}
 function clientesBlock(list){
   const top=topClientes(list,8);if(!top.length)return"";const max=Math.max(...top.map(c=>c.n));
@@ -1114,7 +1118,7 @@ function viewRanking(){
 
 /* ---------- sheets ---------- */
 function closeSheet(){edit=null;layer.innerHTML=""}
-function openEdit(key){const d=S.items.get(key);if(!d)return;edit={key,valor:d.valor,producto:d.producto||0,metodo:d.metodo,cliente:d.cliente||"",obs:d.obs||"",armed:false};drawSheet()}
+function openEdit(key){const d=S.items.get(key);if(!d)return;edit={key,valor:d.valor,cant:d.cant||1,producto:d.producto||0,metodo:d.metodo,cliente:d.cliente||"",obs:d.obs||"",armed:false};drawSheet()}
 const needsApproval=()=>S.mode==="db"&&!S.owner;
 const pendingCambio=key=>{const it=S.items.get(key);if(!it)return null;for(const c of cambios.values())if(c._u===it._u&&c.entregaId===it._id&&c.estado==="pendiente")return c;return null};
 function drawSheet(){if(!edit){layer.innerHTML="";return}
@@ -1124,6 +1128,7 @@ function drawSheet(){if(!edit){layer.innerHTML="";return}
     ${na?`<p class="hint" style="margin:0">${pc?"<b>Ya hay un cambio pendiente</b> para esta entrega. Esperá la respuesta del dueño.":"El dueño tiene que aprobar el cambio antes de que se aplique."}</p>`:""}
     <div class="money"><span>₲</span><input id="e-val" inputmode="numeric" value="${fmtInput(edit.valor)}" aria-label="Monto"></div>
     <div class="methods">${methodBtns("data-emetodo",edit.metodo)}</div>
+    ${edit.metodo==="fijo"?`<div class="field"><label for="e-cant">Cantidad de entregas (cliente fijo)</label><input id="e-cant" inputmode="numeric" value="${edit.cant}"></div>`:""}
     <div class="field"><label for="e-prod">Valor del producto (opcional)</label><input id="e-prod" inputmode="numeric" value="${fmtInput(edit.producto)}"></div>
     <div class="field"><label for="e-cli">Cliente o comercio</label><input id="e-cli" value="${esc(edit.cliente)}"></div>
     <div class="field"><label for="e-obs">Observación</label><input id="e-obs" value="${esc(edit.obs)}"></div>
@@ -1170,7 +1175,7 @@ function openEntry(cm){edit=null;const isToday=S.dia===today();
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet entry-sheet" role="dialog" aria-label="${cm?"Anotar pedido":"Nueva entrega"}">
     ${sheetHead((cm?"Anotar pedido":"Nueva entrega")+(isToday?"":" · "+ddmm(S.dia))+forWho)}
     ${cm?cliente+prod+presets+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
-       :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
+       :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
     <p class="err" id="err" ${S.err?"":"hidden"}>${esc(S.err)}</p>
     ${cm?`<button type="button" class="primary" id="savecamino" ${S.val?"":"disabled"}>Guardar pedido</button>`
        :`<button type="button" class="primary" id="save" ${S.val?"":"disabled"}>Registrar ${S.val?gs(S.val):"entrega"}</button>
@@ -1204,6 +1209,7 @@ document.querySelector("nav.tabs").addEventListener("click",e=>{const b=e.target
 document.addEventListener("input",e=>{const id=e.target.id;
   if(id==="val"){S.val=parseVal(e.target.value);e.target.value=fmtInput(S.val);S.err="";refreshForm()}
   if(id==="prod"){S.prod=parseVal(e.target.value);e.target.value=fmtInput(S.prod);refreshForm()}
+  if(id==="cant"){const v=Math.min(200,parseVal(e.target.value));e.target.value=v||"";S.cant=Math.max(1,v||1);refreshForm()}
   if(id==="gval"){G.val=parseVal(e.target.value);e.target.value=fmtInput(G.val);refreshG()}
   if(id==="gobs")G.obs=e.target.value;
   if(id==="cli"){S.cliente=e.target.value;drawSug()}if(id==="obs")S.obs=e.target.value});
@@ -1225,11 +1231,11 @@ async function save(camino){
   if(!camino&&S.metodo==="anotado"&&!S.cliente.trim()){S.err="Para anotar, poné el nombre del cliente.";refreshForm();return}
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
-  if(S.prod)d.producto=S.prod;if(camino)d.estado="camino";
-  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.obs="";S.cliente="";S.err="";closeSheet();
+  if(S.prod)d.producto=S.prod;if(camino)d.estado="camino";if(fx&&S.cant>1)d.cant=S.cant;
+  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";S.err="";closeSheet();
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
-  try{await addItem(d,writeTarget());toast(d.metodo==="fijo"&&!camino?`Registrado · cliente fijo (${d.cliente})`:`Registrado: ${gs(d.valor)} · ${label}`)}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast(e&&e.code==="quota_exceeded"?"Almacenamiento lleno":"No se guardó. Probá de nuevo.")}
+  try{await addItem(d,writeTarget());toast(d.metodo==="fijo"&&!camino?`Registrado${d.cant>1?" "+d.cant+" entregas":""} · cliente fijo (${d.cliente})`:`Registrado: ${gs(d.valor)} · ${label}`)}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast(e&&e.code==="quota_exceeded"?"Almacenamiento lleno":"No se guardó. Probá de nuevo.")}
   saving=false;refreshForm();render();
 }
 async function doPay(u,dia){const list=[...S.items.entries()].filter(([,d])=>!isCamino(d)&&d._u===u&&d.dia===dia&&!isLegacy(d));
@@ -1252,6 +1258,7 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-other")){S.val=0;S.err="";refreshForm();const v=document.getElementById("val");v.value="";v.focus()}
   else if(t.id==="save")save();
   else if(t.id==="savecamino")save(true);
+  else if(t.dataset.cant){S.cant=Math.min(200,Math.max(1,S.cant+Number(t.dataset.cant)));refreshForm()}
   else if(t.dataset.fijocli){S.cliente=t.dataset.fijocli;S.err="";const c=document.getElementById("cli");if(c)c.value=S.cliente;refreshForm()}
   else if(t.dataset.diario){const r=lockReason(S.dia);if(r){lockedMsg(r);return}openDiario(t.dataset.diario)}
   else if(t.hasAttribute("data-anotar")){if(S.mode==="db"&&!S.owner&&S.canWrite===false){noPerm();return}openEntry(true);setTimeout(()=>{const c=document.getElementById("cli");if(c)c.focus()},60)}
@@ -1294,6 +1301,7 @@ layer.addEventListener("input",e=>{const id=e.target.id;
   if(!edit)return;
   if(id==="e-val"){edit.valor=parseVal(e.target.value);e.target.value=fmtInput(edit.valor)}
   if(id==="e-prod"){edit.producto=parseVal(e.target.value);e.target.value=fmtInput(edit.producto)}
+  if(id==="e-cant"){edit.cant=Math.max(1,Math.min(200,parseVal(e.target.value)||1))}
   if(id==="e-cli")edit.cliente=e.target.value;if(id==="e-obs")edit.obs=e.target.value});
 layer.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="n-val"){e.preventDefault();layer.querySelector("[data-nsave]").click()}});
 layer.addEventListener("click",async e=>{
@@ -1334,7 +1342,7 @@ layer.addEventListener("click",async e=>{
   if(!edit)return;
   if(t.dataset.emetodo){edit.metodo=t.dataset.emetodo;edit.armed=false;drawSheet()}
   else if(t.hasAttribute("data-esave")){if(!edit.valor){toast("Escribí el monto");return}
-    const p={valor:edit.valor,producto:edit.producto||0,metodo:edit.metodo,cliente:edit.cliente.trim(),obs:edit.obs.trim()};
+    const p={valor:edit.valor,cant:edit.metodo==="fijo"?(edit.cant||1):1,producto:edit.producto||0,metodo:edit.metodo,cliente:edit.cliente.trim(),obs:edit.obs.trim()};
     const k=edit.key;closeSheet();
     if(needsApproval()){try{await pedirCambio(k,"editar",p);toast("Pedido de cambio enviado al dueño")}catch(err){toast("No se envió.")}return}
     try{await patchItem(k,p);toast("Entrega actualizada")}catch(err){toast("No se guardó.")}}
