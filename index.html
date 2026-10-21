@@ -591,7 +591,7 @@ function subscribeUser(u){
   subs.set(u,colFor(u).where("dia",">=",from).limit(1000).onSnapshot(snap=>{
     for(const k of[...S.items.keys()])if(k.startsWith(u+"|"))S.items.delete(k);
     for(const d of snap.docs)S.items.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});
-    setSync(snap.metadata.hasPendingWrites?"Guardando…":"Sincronizado");render();scheduleRank(u)},()=>setSync("Sin conexión")));
+    if(u===S.me)setSync(snap.metadata.hasPendingWrites?"Guardando…":snap.metadata.fromCache?"Cargando…":"Sincronizado");render();scheduleRank(u)},e=>{lastErr=(e&&(e.code||e.message))||"error";if(u===S.me)setSync("Sin conexión")}));
   if(u===S.me)privCol(u).where("dia",">=",from).limit(1000).onSnapshot(snap=>{
     S.priv=new Map(snap.docs.map(d=>[u+"|p:"+d.id,{...d.data(),_u:u,_id:d.id,priv:true}]));render()},()=>{});
   gasCol(u).where("dia",">=",from).limit(1000).onSnapshot(snap=>{
@@ -751,17 +751,17 @@ function startDemo(modo){
   if(!window.firebase||!cfg||!cfg.apiKey){S.mode="local";setSync("Guardado en este celular");render(true);return}
   firebase.initializeApp(cfg);auth=firebase.auth();
   try{auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(e){}
-  const fs=firebase.firestore();try{fs.settings({ignoreUndefinedProperties:true})}catch(e){}
+  const fs=firebase.firestore();try{fs.settings({ignoreUndefinedProperties:true,experimentalForceLongPolling:true})}catch(e){}
   fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
   auth.onAuthStateChanged(u=>{if(!u){started=false;showLogin();return}hideLogin();boot(fs,u)});
 })();
 /* get con límite de tiempo: con señal débil usa lo guardado en el celular */
 async function getT(ref){try{return await Promise.race([ref.get(),new Promise((_,rj)=>setTimeout(()=>rj({code:"timeout"}),4000))])}
-  catch(e){lastErr=(e&&(e.code||e.message))||String(e);try{return await ref.get({source:"cache"})}catch(x){return undefined}}}
+  catch(e){lastErr=(e&&(e.code||e.message))||String(e);try{return await Promise.race([ref.get({source:"cache"}),new Promise((_,rj)=>setTimeout(()=>rj(0),2000))])}catch(x){return undefined}}}
 var lastErr="",bootStage="inicio";
 window.addEventListener("error",e=>{lastErr=(e&&e.message)||"error"});
 window.addEventListener("unhandledrejection",e=>{const r=e&&e.reason;lastErr=(r&&(r.code||r.message))||String(r)});
-setTimeout(function watch(){const sy=document.getElementById("sync");if(sy&&/Conectando/.test(sy.textContent)){
+setTimeout(function watch(){const sy=document.getElementById("sync");if(sy&&/Conectando|Cargando|Sin conexión/.test(sy.textContent)&&navigator.onLine!==false){
   let b=document.getElementById("boot-warn");if(!b){b=document.createElement("div");b.id="boot-warn";b.className="net-banner";document.body.prepend(b)}
   b.innerHTML=`No se pudo conectar (${esc(bootStage)}${lastErr?" · "+esc(lastErr):""}). <button type="button" class="linkbtn" style="color:#fff" onclick="location.reload()">Reintentar</button>`;setTimeout(watch,5000)}
   else{const b=document.getElementById("boot-warn");if(b)b.remove()}},12000);
@@ -798,7 +798,7 @@ function startData(me){
   if(S.owner){let first=true;db.collection("turnos").limit(200).onSnapshot(snap=>{for(const d of snap.docs){const prev=S.people.get(d.id),nd=d.data();
     if(!first&&d.id!==S.me&&nd.cierre&&nd.cierre.dia===today()&&!(prev&&prev.cierre&&prev.cierre.em===nd.cierre.em))toast("🏁 "+(nd.nome||"Un delivery")+" cerró su día");
     S.people.set(d.id,nd);subscribeUser(d.id);scheduleRank(d.id)}first=false;render(true)},()=>{})}
-  setSync("Sincronizado");render(true);
+  setSync("Cargando…");bootStage="datos";render(true);
 }
 
 /* ---------- calculations ---------- */
