@@ -386,6 +386,7 @@ body.compact .clock{font-size:20px}
 .aviso-h{font-family:var(--display);font-stretch:85%;font-weight:800;font-size:18px;color:var(--due)}
 .aviso p{margin:0;font-size:15px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
 .aviso small{color:var(--muted);font-size:12px}.aviso .linkbtn{justify-self:start}
+.demo-banner{position:sticky;top:0;z-index:20;background:var(--accent);color:var(--accent-ink);text-align:center;font:700 11px var(--body);letter-spacing:.08em;padding:4px 8px}
 .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
@@ -617,7 +618,56 @@ function showVerify(u){hideLogin();blockScreen("Verificá tu e-mail",`Te mandamo
 /* ---------- arranque ---------- */
 {const c=lsGet(LSC,null);if(c&&c.pct)S.cfg={pct:c.pct,por:c.por||{}}}
 loadLocal();setSync("Conectando…");
+/* ---------- MODO DEMO (?demo): base en memoria, vista de delivery, datos de ejemplo ---------- */
+function startDemo(){
+  const store=new Map(),cols=[],docsL=[];
+  const parent=p=>p.split("/").slice(0,-1).join("/");
+  const snapDoc=(path)=>{const d=store.get(path);return{id:path.split("/").pop(),exists:!!d,data:()=>d?JSON.parse(JSON.stringify(d)):undefined}};
+  const notify=()=>setTimeout(()=>{cols.forEach(l=>l.run());docsL.forEach(l=>l.run())},0);
+  function query(path,filters){
+    const run=()=>[...store.entries()].filter(([k])=>parent(k)===path).filter(([,d])=>filters.every(([f,op,v])=>{const x=d[f];
+      return op==="=="?x===v:op===">="?x>=v:op==="<="?x<=v:op===">"?x>v:op==="<"?x<v:op==="!="?x!==v:true})).map(([k])=>snapDoc(k));
+    const snap=()=>{const docs=run();return{docs,size:docs.length,empty:!docs.length,metadata:{hasPendingWrites:false,fromCache:false}}};
+    return{where(f,op,v){return query(path,[...filters,[f,op,v]])},limit(){return this},orderBy(){return this},
+      get(){return Promise.resolve(snap())},
+      onSnapshot(cb){const l={run:()=>cb(snap())};cols.push(l);setTimeout(l.run,0);return()=>{const i=cols.indexOf(l);if(i>=0)cols.splice(i,1)}},
+      doc(id){return docRef(path+"/"+(id||uid()))},add(d){const r=docRef(path+"/"+uid());return r.set(d).then(()=>r)}}}
+  function docRef(path){return{id:path.split("/").pop(),path,
+    get(){return Promise.resolve(snapDoc(path))},
+    set(d,o){store.set(path,o&&o.merge?{...(store.get(path)||{}),...d}:{...d});notify();return Promise.resolve()},
+    update(d){if(!store.has(path))return Promise.reject({code:"not-found"});store.set(path,{...store.get(path),...d});notify();return Promise.resolve()},
+    delete(){store.delete(path);notify();return Promise.resolve()},
+    onSnapshot(cb){const l={run:()=>cb(snapDoc(path))};docsL.push(l);setTimeout(l.run,0);return()=>{}},
+    collection(c){return query(path+"/"+c,[])}}}
+  const fs={collection:p=>query(p,[]),doc:docRef,settings(){},enablePersistence(){return Promise.resolve()}};
+  const me="demo",t=today(),y=addDays(t,-1),at=(dia,h,m)=>{const d=fromKey(dia);d.setHours(h,m,0,0);return d.getTime()};
+  const put=(p,d)=>store.set(p,d);
+  put("turnos/demo",{nome:"Carlos Demo",aprobado:true,baja:false});
+  const E="turnos/demo/entregas/";
+  put(E+"e1",{valor:15000,metodo:"efectivo",cliente:"Farmacia Central",obs:"",dia:t,criadoEm:at(t,9,10)});
+  put(E+"e2",{valor:20000,metodo:"transferencia",cliente:"Super 6",obs:"Barrio Centro",dia:t,criadoEm:at(t,10,5)});
+  put(E+"e3",{valor:25000,metodo:"anotado",cliente:"Lomitería Don José",obs:"",dia:t,criadoEm:at(t,11,30)});
+  put(E+"e4",{valor:10000,producto:30000,metodo:"efectivo",cliente:"Pedido Lucía",obs:"",dia:t,criadoEm:at(t,12,15)});
+  put(E+"e5",{valor:0,cant:4,metodo:"fijo",cliente:"Restaurante El Sabor",obs:"",dia:t,criadoEm:at(t,13,0)});
+  put(E+"e6",{valor:15000,producto:45000,metodo:"efectivo",estado:"camino",cliente:"Pedido Marta",obs:"Barrio San Blas",dia:t,criadoEm:at(t,14,20)});
+  put(E+"y1",{valor:15000,metodo:"efectivo",cliente:"Farmacia Central",obs:"",dia:y,criadoEm:at(y,9,0)});
+  put(E+"y2",{valor:20000,metodo:"transferencia",cliente:"Super 6",obs:"",dia:y,criadoEm:at(y,11,0)});
+  put(E+"y3",{valor:18000,metodo:"anotado",cliente:"Lomitería Don José",obs:"",dia:y,criadoEm:at(y,16,0)});
+  put("turnos/demo/gastos/g1",{valor:20000,tipo:"gasolina",obs:"Estación ruta 6",dia:t,criadoEm:at(t,8,40)});
+  put("turnos/demo/privado/p1",{valor:10000,tipo:"personal",obs:"",dia:t,criadoEm:at(t,12,40)});
+  put("turnos/demo/solicitudes/s1",{tipo:"uniforme",detalle:"Remera talle M",estado:"proceso",respuesta:"El viernes te la entrego en la oficina.",criadoEm:at(y,18,0)});
+  put("liq/demo/dias/"+y,{dia:y,monto:9600,sentido:"paga",total:53000,pagadoEm:at(y,20,0)});
+  put("ranking/r2",{nome:"Juan",dias:{[t]:11,[y]:9}});
+  put("ranking/r3",{nome:"Pedro",dias:{[t]:6,[y]:12}});
+  put("ranking/_mensaje",{texto:"Bienvenidos a la app de Tú Delivery. Registren todas las entregas del día y no se olviden de anotar los pedidos.",criadoEm:at(t,7,0)});
+  const user={uid:me,email:"demo@tudelivery",emailVerified:true,getIdToken(){return Promise.resolve("")},reload(){return Promise.resolve()}};
+  auth={currentUser:user,signOut(){return Promise.resolve()},onAuthStateChanged(){}};
+  document.body.classList.add("demo");
+  const bn=document.createElement("div");bn.className="demo-banner";bn.textContent="MODO DEMOSTRACIÓN · datos de ejemplo";document.body.prepend(bn);
+  boot(fs,user);
+}
 (function startFirebase(){
+  if(/[?&]demo\b/.test(location.search)){startDemo();return}
   const cfg=window.FIREBASE_CONFIG;
   if(!window.firebase||!cfg||!cfg.apiKey){S.mode="local";setSync("Guardado en este celular");render(true);return}
   firebase.initializeApp(cfg);auth=firebase.auth();
