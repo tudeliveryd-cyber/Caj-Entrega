@@ -414,6 +414,13 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .cob-h .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cob-h .r{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .due-split{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-top:6px}
+.meta{display:grid;gap:8px;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.meta-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.meta-h b{font-size:15px}
+.meta-bar{height:12px;border-radius:999px;background:var(--bg);overflow:hidden;border:1px solid var(--line)}
+.meta-bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.meta.done .meta-bar i{background:var(--cash)}
+.meta small{color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -481,7 +488,7 @@ const ST={certificado:"Certificado de trabajo",uniforme:"Uniforme",mochila:"Moch
 const SE={pendiente:{n:"Pendiente",c:"due"},proceso:{n:"En proceso",c:"transfer"},listo:{n:"Listo",c:"cash"},rechazado:{n:"Rechazado",c:"muted"}};
 const sols=new Map(),cambios=new Map();let solTipo="certificado",solPara=null;
 const MSGS=["Cada entrega que hacés le alegra el día a alguien. ¡Gracias por tu trabajo!", "Manejá con cuidado: tu familia te espera en casa.", "Hoy es un buen día para dar lo mejor de vos. ¡Vamos con todo!", "«Todo lo puedo en Cristo que me fortalece.» Filipenses 4:13", "Una sonrisa al entregar vale más que mil palabras.", "El esfuerzo de hoy es el logro de mañana.", "Casco puesto, celular guardado y a rodar seguro.", "«Esforzate y sé valiente.» Josué 1:9", "No hay entrega chica cuando se hace con ganas.", "Sos parte importante de Tú Delivery. ¡Gracias por estar!", "La puntualidad también es una forma de respeto. ¡Vos podés!", "Si llueve, andá más despacio. Llegar bien es lo más importante.", "«Encomienda a Jehová tu camino, y confía en él.» Salmo 37:5", "Hoy puede ser tu mejor día de la semana. ¡A buscar ese premio!", "El que madruga y trabaja con ganas, cosecha. ¡Vamos!", "Cada cliente contento recomienda a Tú Delivery. ¡Gracias a vos!", "Los grandes resultados se construyen con pequeños pasos.", "«Este es el día que hizo el Señor; alegrémonos en él.» Salmo 118:24", "Respetá los semáforos: un minuto de espera no cambia el día, un accidente sí.", "Tu trabajo honesto vale oro. ¡Seguí así!", "Empezá el día con fe y terminá con gratitud.", "Revisá frenos y luces antes de salir. Tu moto te cuida si vos la cuidás.", "La actitud con la que salís hoy hace la diferencia.", "«Mira que te mando que te esfuerces y seas valiente.» Josué 1:9", "Un buen día de trabajo empieza con una buena actitud. ¡Arriba!", "Gracias por tu responsabilidad: los clientes confían en vos.", "No te compares con nadie: superá al vos de ayer.", "Más entregas, más ganancia. ¡Hoy es día de romperla!", "«Jehová es mi pastor; nada me faltará.» Salmo 23:1", "Hoy es otra oportunidad para hacerlo mejor que ayer.", "Saludá a cada cliente con alegría: eso es Tú Delivery.", "Los mejores deliverys no esperan el pedido: están listos cuando llega.", "Trabajá con ganas hoy y mirá el ranking esta noche.", "«Fiel es el que os llama.» 1 Tesalonicenses 5:24", "Cada kilómetro cuenta. ¡Vamos que hoy se puede!", "Una entrega a tiempo es una promesa cumplida.", "Cada pedido entregado te acerca al premio de la semana. ¡A darle!", "Juntos somos más fuertes: gracias por ser parte del equipo.", "«Bienaventurado el hombre que confía en Jehová.» Jeremías 17:7", "Que hoy te vaya excelente en cada viaje. ¡Buen día!"];
-let msgDia=null;
+let msgDia=null,metaDia=0;
 const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const gs=n=>"₲ "+Math.round(n||0).toLocaleString("es-PY");
 const pad=n=>String(n).padStart(2,"0");
@@ -499,7 +506,7 @@ const norm=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[̀-�
 const WINDOW=31;
 const LS="caixa_entregas_v1",LSC="caixa_config_v2",LSP="caixa_pagos_v1";
 
-let builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
+let sinCliOk=false,builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
 const subs=new Map(),rank=new Map(),rankTimers=new Map();
 const S={tab:"dia",dia:today(),val:0,prod:0,cant:1,metodo:"efectivo",cliente:"",obs:"",items:new Map(),old:new Map(),oldG:new Map(),oldE:new Map(),gastos:new Map(),priv:new Map(),egastos:new Map(),people:new Map(),pagos:new Map(),
   mode:"wait",err:"",cfg:{pct:30,por:{}},me:"local",owner:true,filter:"all",askName:false,canWrite:null};
@@ -751,7 +758,7 @@ function startData(me){
     cfgRef.onSnapshot(s=>{if(s.exists){const d=s.data();S.cfg={pct:d.pct||30,por:d.por||{}};lsSet(LSC,S.cfg);render(true)}},()=>{})}
   subscribeUser(me);
   if(S.owner)egCol().where("dia",">=",addDays(today(),-WINDOW)).limit(1000).onSnapshot(snap=>{S.egastos=new Map(snap.docs.map(d=>[d.id,{...d.data(),_id:d.id}]));render()},()=>{});
-  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}rank.set(d.id,d.data())}{const sig=JSON.stringify(msgDia);if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(S.tab==="rank")render(true)},()=>{});
+  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;metaDia=0;for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}if(d.id==="_meta"){metaDia=Number(d.data().n)||0;continue}rank.set(d.id,d.data())}{const sig=JSON.stringify(msgDia)+"|"+metaDia;if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(S.tab==="rank")render(true)},()=>{});
   if(S.owner){let first=true;db.collection("turnos").limit(200).onSnapshot(snap=>{for(const d of snap.docs){const prev=S.people.get(d.id),nd=d.data();
     if(!first&&d.id!==S.me&&nd.cierre&&nd.cierre.dia===today()&&!(prev&&prev.cierre&&prev.cierre.em===nd.cierre.em))toast("🏁 "+(nd.nome||"Un delivery")+" cerró su día");
     S.people.set(d.id,nd);subscribeUser(d.id);scheduleRank(d.id)}first=false;render(true)},()=>{})}
@@ -850,6 +857,7 @@ function paint(){
     document.getElementById("dia-sum").innerHTML=viewSummary(list);
     document.getElementById("dia-list").innerHTML=viewDiaList(list);
     {const cl=caminoList();const el=document.getElementById("camino-list");const ev=showEmp()&&S.mode==="db";el.hidden=!cl.length||ev;el.innerHTML=cl.length&&!ev?viewCamino(cl):""}
+    {const mb=document.getElementById("meta-box");if(mb){const h=viewMeta(list);mb.hidden=!h;mb.innerHTML=h}}
     {const cb=document.getElementById("cierre-box");if(cb){const h=viewCierre(list);cb.hidden=!h;cb.innerHTML=h}}
     document.getElementById("mode-note").textContent=noteTxt();
     {const gl=document.getElementById("gastos-list");if(gl)gl.innerHTML=viewGastosList()}
@@ -921,6 +929,7 @@ function viewDiaShell(){
   ${S.dia!==today()?`<button type="button" class="linkbtn today-link" data-hoy>Volver a hoy</button>`:""}
   <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
   <section class="sec camino-sec" id="camino-list" hidden></section>
+  <section class="sec" id="meta-box" hidden></section>
   <section class="sec" id="cierre-box" hidden></section>
   <section class="sec" id="dia-list"></section>
   <section class="sec" aria-label="Gastos">
@@ -955,13 +964,14 @@ function payControl(u,dia,s,compact){
 const allItems=()=>[...new Map([...S.old,...S.items]).entries()];
 function liqLines(s){const r=saldoTxt(s);const fx=s.nf||s.fijo?`\nClientes fijos: ${plural(s.nf,"entrega")}${s.fijo?" · diario "+gs(s.fijo)+" (todo tuyo)":""}`:"";
   return `Entregas: ${s.n} · Total cobrado: ${gs(s.total)}\nEfectivo ${gs(s.efectivo)} · Transferencia ${gs(s.transferencia)} · Anotado ${gs(s.anotado)}${fx}\nComisión Tú Delivery: ${gs(s.com)}\nMenos anotado (ya está en la cuenta de la empresa): − ${gs(s.anotado)}\n*${s.saldo>0?"Tenés que pagar a la empresa":s.saldo<0?"La empresa te paga":"Liquidación en cero"}${s.saldo?": "+gs(r.v):""}*`}
-function waOpen(txt){const url="https://wa.me/?text="+encodeURIComponent(txt);const w=window.open(url,"_blank");if(!w)location.href=url}
+function telWa(u){let t=String((S.people.get(u)||{}).tel||"").replace(/\D/g,"");if(!t)return"";if(t.startsWith("595"))return t;if(t.startsWith("0"))t=t.slice(1);return "595"+t}
+function waOpen(txt,u){const n=u?telWa(u):"";const url="https://wa.me/"+n+"?text="+encodeURIComponent(txt);const w=window.open(url,"_blank");if(!w)location.href=url}
 function waDia(u,dia){const l=allItems().filter(([,d])=>d._u===u&&d.dia===dia&&!isCamino(d)&&!isLegacy(d));const s=stats(l);const st=pagoState(u,dia,s);
   const nm=(personName(u)||"").split(" ")[0];
-  waOpen(`*Tú Delivery · Liquidación*\nHola ${nm} 👋\n📅 ${fromKey(dia).toLocaleDateString("es-PY",{weekday:"long",day:"2-digit",month:"2-digit"})}\n\n${liqLines(s)}\n\n${st&&!st.changed?"✅ Pagado el "+ddmm(keyOf(new Date(st.p.pagadoEm)))+" "+hhmm(st.p.pagadoEm):"⏳ Pendiente"}\n¡Gracias por tu trabajo!`)}
+  waOpen(`*Tú Delivery · Liquidación*\nHola ${nm} 👋\n📅 ${fromKey(dia).toLocaleDateString("es-PY",{weekday:"long",day:"2-digit",month:"2-digit"})}\n\n${liqLines(s)}\n\n${st&&!st.changed?"✅ Pagado el "+ddmm(keyOf(new Date(st.p.pagadoEm)))+" "+hhmm(st.p.pagadoEm):"⏳ Pendiente"}\n¡Gracias por tu trabajo!`,u)}
 function waPend(u,from,to){const p=pendientes(from,to).find(x=>x.u===u);if(!p)return;const nm=(p.name||"").split(" ")[0];
   const res=p.debe-p.recibe;
-  waOpen(`*Tú Delivery · Liquidaciones pendientes*\nHola ${nm} 👋\n\n${p.ds.map(x=>`• ${ddmm(x.dia)}: ${x.s.saldo>0?"pagás":"recibís"} ${gs(Math.abs(x.s.saldo))} (${plural(x.s.n,"entrega")})`).join("\n")}\n\n*${res>0?"Total a pagar a la empresa: "+gs(res):res<0?"Total que la empresa te paga: "+gs(-res):"Total en cero"}*`)}
+  waOpen(`*Tú Delivery · Liquidaciones pendientes*\nHola ${nm} 👋\n\n${p.ds.map(x=>`• ${ddmm(x.dia)}: ${x.s.saldo>0?"pagás":"recibís"} ${gs(Math.abs(x.s.saldo))} (${plural(x.s.n,"entrega")})`).join("\n")}\n\n*${res>0?"Total a pagar a la empresa: "+gs(res):res<0?"Total que la empresa te paga: "+gs(-res):"Total en cero"}*`,u)}
 function acertoBlock(s,label,pay,gt){
   if(hideMoney())return pay?`<div class="acerto"><div class="ac-h">Liquidación del día</div><div class="ac-pay">${pay}</div></div>`:"";
   const r=saldoTxt(s);
@@ -1010,6 +1020,24 @@ function rowHtml(key,d,showDate){const t=d.criadoEm?new Date(d.criadoEm):null;co
   return `<button class="row" data-edit="${esc(key)}"><span class="time num">${showDate?ddmm(d.dia):(t?pad(t.getHours())+":"+pad(t.getMinutes()):"")}</span>
     <span class="who"><b>${esc(d.cliente)||"Sin cliente"}</b>${sub?`<small>${sub}</small>`:""}</span>
     <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?((d.cant||1)>1?"× "+d.cant:"—"):gs(d.valor)}</b><span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span>${pcb?`<span class="pill p-due">${pcb.tipo==="borrar"?"Pide borrar":"Cambio pedido"}</span>`:""}</span></button>`}
+/* meta del día: cantidad de entregas por delivery que define el dueño */
+function viewMeta(list){
+  if(S.mode!=="db"||S.dia!==today())return"";
+  if(showEmp())return `<div class="meta"><div class="meta-h"><b>🎯 Meta del día</b><span>${metaDia?plural(metaDia,"entrega")+" por delivery":"sin meta"}</span></div>
+    <button type="button" class="linkbtn small-link" data-meta style="justify-self:start">${metaDia?"Cambiar o quitar meta":"Definir una meta para los deliverys"}</button></div>`;
+  if(!metaDia||!ownView())return"";
+  const n=stats(list).n;const pc=Math.min(100,n/metaDia*100);const ok=n>=metaDia;
+  return `<div class="meta ${ok?"done":""}"><div class="meta-h"><b>🎯 Meta del día</b><span class="num"><b>${n}</b> de ${metaDia}</span></div>
+    <div class="meta-bar"><i style="width:${pc.toFixed(1)}%"></i></div>
+    <small>${ok?(n>metaDia?`🎉 ¡Meta cumplida y ${plural(n-metaDia,"entrega")} de más! Seguí así.`:"🎉 ¡Meta cumplida! Cada entrega de más suma para el premio."):n===0?"¡Vamos por la primera del día!":`Faltan ${plural(metaDia-n,"entrega")}. ¡Vos podés!`}</small></div>`}
+function openMeta(){edit=null;
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Meta del día">
+    ${sheetHead("🎯 Meta del día")}
+    <p class="hint" style="margin:0">Cantidad de entregas por día. Cada delivery ve una barra con cuántas le faltan. Vale para todos los días hasta que la cambies.</p>
+    <div class="field"><label for="meta-n">Entregas por delivery</label><input id="meta-n" inputmode="numeric" autocomplete="off" placeholder="Ej.: 15" value="${metaDia||""}"></div>
+    <button type="button" class="primary" data-metasave>Guardar meta</button>
+    ${metaDia?`<button type="button" class="danger" data-metadel>Quitar meta</button>`:""}</div></div>`;
+  setTimeout(()=>{const i=document.getElementById("meta-n");if(i)i.focus()},60)}
 /* cierre del día: el delivery avisa que terminó; el dueño ve quién cerró */
 const cierreOf=u=>{const p=S.people.get(u);return p&&p.cierre&&p.cierre.dia===today()?p.cierre:null};
 function viewCierre(list){
@@ -1252,11 +1280,11 @@ function premiosBlock(){
     <p class="hint">La semana va de lunes a domingo y el mes es el mes calendario. Gana quien hace más entregas.</p>`}
 function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].filter(u=>u!==S.me);
   const pend=all.filter(u=>!isAprob(u)&&!isBaja(u)),act=all.filter(u=>isAprob(u)&&!isBaja(u)),inact=all.filter(isBaja);
-  const mail=u=>{const p=S.people.get(u);return p&&p.email?" · "+esc(p.email):""};
+  const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")};
   const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b>${esc(personName(u))}${soc?' <span class="pill p-fijo">Socia/o</span>':""}</b><small>${kind==="pend"?"Esperando aprobación":kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-reactivar="${esc(u)}">Reactivar</button>`
-      :`${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">Dar de baja</button>`}</div></div>`};
+      :`<button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">Dar de baja</button>`}</div></div>`};
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Equipo">
     ${sheetHead("Equipo")}
     ${pend.length?`<div class="lbl">Nuevos · esperando aprobación</div><div class="list">${pend.map(u=>row(u,"pend")).join("")}</div>`:""}
@@ -1374,7 +1402,7 @@ function openName(){edit=null;const cur=S.people.get(S.me);layer.innerHTML=`<div
   <div class="field"><label for="n-val">Tu nombre</label><input id="n-val" autocomplete="name" value="${esc(cur?cur.nome:"")}" placeholder="Ej.: Juan"></div>
   <button class="primary" data-nsave>Guardar</button></div></div>`;setTimeout(()=>{const n=document.getElementById("n-val");if(n)n.focus()},50)}
 function sheetHead(title){return `<div class="sheet-h"><h3>${title}</h3><button type="button" class="x" data-cancel aria-label="Cerrar">✕</button></div>`}
-function openEntry(cm){edit=null;const isToday=S.dia===today();
+function openEntry(cm){edit=null;sinCliOk=false;const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
   const cliente=`<div class="field"><label for="cli">${cm?"Pedido / cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
@@ -1426,7 +1454,7 @@ document.addEventListener("input",e=>{const id=e.target.id;
   if(id==="cant"){const v=Math.min(200,parseVal(e.target.value));e.target.value=v||"";S.cant=Math.max(1,v||1);refreshForm()}
   if(id==="gval"){G.val=parseVal(e.target.value);e.target.value=fmtInput(G.val);refreshG()}
   if(id==="gobs")G.obs=e.target.value;
-  if(id==="cli"){S.cliente=e.target.value;drawSug()}if(id==="obs")S.obs=e.target.value});
+  if(id==="cli"){S.cliente=e.target.value;sinCliOk=false;if(S.err&&S.err.startsWith("¿Sin nombre")){S.err="";refreshForm()}drawSug()}if(id==="obs")S.obs=e.target.value});
 document.addEventListener("focusin",e=>{if(e.target.id==="cli"){cliFocus=true;drawSug()}});
 document.addEventListener("focusout",e=>{if(e.target.id==="cli")setTimeout(()=>{cliFocus=false;drawSug()},200)});
 document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;if(["val","cli","obs"].includes(e.target.id)){e.preventDefault();e.target.blur();save()}else if(["gval","gobs"].includes(e.target.id)){e.preventDefault();e.target.blur();saveGasto()}});
@@ -1443,6 +1471,8 @@ async function save(camino){
   if(!S.val&&!fx){S.err="Escribí el monto de la entrega.";refreshForm();return}
   if(fx&&!S.cliente.trim()){S.err="Poné el nombre del cliente fijo (ej.: el restaurante).";refreshForm();return}
   if(!camino&&S.metodo==="anotado"&&!S.cliente.trim()){S.err="Para anotar, poné el nombre del cliente.";refreshForm();return}
+  if(!fx&&!S.cliente.trim()&&!sinCliOk){sinCliOk=true;S.err="¿Sin nombre de cliente? Así no aparece en Mejores clientes. Escribilo arriba, o tocá Registrar de nuevo para guardar igual.";refreshForm();toast("Falta el cliente · tocá Registrar otra vez para guardar igual");const c=document.getElementById("cli");if(c)c.focus();return}
+  sinCliOk=false;
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
   if(S.prod)d.producto=S.prod;if(camino)d.estado="camino";if(fx&&S.cant>1)d.cant=S.cant;
@@ -1492,6 +1522,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.wa){const[u,dia]=t.dataset.wa.split("|");waDia(u,dia)}
   else if(t.dataset.wapend){const[u,f,to]=t.dataset.wapend.split("|");waPend(u,f,to)}
   else if(t.hasAttribute("data-cerrar"))openCierre();
+  else if(t.hasAttribute("data-meta"))openMeta();
   else if(t.dataset.cobrar!==undefined||t.dataset.descobrar!==undefined){const un=t.dataset.descobrar!==undefined;const nm=un?t.dataset.descobrar:t.dataset.cobrar;
     if(!un&&!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Confirmar?";setTimeout(()=>{t.classList.remove("armed");t.textContent="✓ Cobrado"},3000);return}
     const keys=anotList().filter(([,d])=>(d.cliente||"Sin cliente").trim()===nm&&(un?!!d.cobradoEm:!d.cobradoEm)).map(([k])=>k);
@@ -1546,6 +1577,20 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.aprobar){try{await aprobar(t.dataset.aprobar);toast("Delivery aprobado");setTimeout(openEquipo,400)}catch(err){toast("No se guardó.")}return}
   if(t.dataset.socio){try{await setSocio(t.dataset.socio,t.dataset.on==="1");toast(t.dataset.on==="1"?"Ahora es socio":"Ya no es socio");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-logout")){logout();return}
+  if(t.dataset.tel){const u=t.dataset.tel;const cur=(S.people.get(u)||{}).tel||"";
+    layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Teléfono">
+      ${sheetHead("📞 Teléfono de "+esc(personName(u)))}
+      <p class="hint" style="margin:0">Con el número, el botón 📲 WhatsApp abre directo la conversación con este delivery.</p>
+      <div class="field"><label for="t-num">Número de WhatsApp</label><input id="t-num" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej.: 0981 123 456" value="${esc(cur)}"></div>
+      <button type="button" class="primary" data-telsave="${esc(u)}">Guardar</button>
+      <button type="button" class="ghost" data-equipo2>Volver al equipo</button></div></div>`;
+    setTimeout(()=>{const i=document.getElementById("t-num");if(i)i.focus()},60);return}
+  if(t.dataset.telsave){const u=t.dataset.telsave;const v=document.getElementById("t-num").value.trim();const cur=S.people.get(u)||{};S.people.set(u,{...cur,tel:v});
+    try{await sendW(db.doc("turnos/"+u).set({tel:v},{merge:true}));toast(v?"Teléfono guardado":"Teléfono quitado")}catch(err){toast("No se guardó.")}openEquipo();return}
+  if(t.hasAttribute("data-equipo2")){openEquipo();return}
+  if(t.hasAttribute("data-metasave")||t.hasAttribute("data-metadel")){const v=t.hasAttribute("data-metadel")?0:Math.min(200,parseVal(document.getElementById("meta-n").value));closeSheet();
+    metaDia=v;render(true);
+    try{const w=await sendW(v?db.doc("ranking/_meta").set({n:v,criadoEm:Date.now()}):db.doc("ranking/_meta").delete());toast(v?"Meta: "+plural(v,"entrega")+" por día":"Meta quitada")}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-cierreok")){const n=stats(listDay(today()).filter(([,d])=>d._u===S.me)).n;const c={dia:today(),em:Date.now(),n};closeSheet();
     const cur=S.people.get(S.me)||{};S.people.set(S.me,{...cur,cierre:c});render(true);
     try{const w=await sendW(db.doc("turnos/"+S.me).set({cierre:c},{merge:true}));toast(w==="wait"?"Cierre guardado · se envía al volver la señal":"Día cerrado · ¡buen trabajo!")}catch(err){toast("No se guardó.")}return}
