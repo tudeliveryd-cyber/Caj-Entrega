@@ -583,6 +583,7 @@ loadLocal();setSync("Conectando…");
   const cfg=window.FIREBASE_CONFIG;
   if(!window.firebase||!cfg||!cfg.apiKey){S.mode="local";setSync("Guardado en este celular");render(true);return}
   firebase.initializeApp(cfg);auth=firebase.auth();
+  try{auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(e){}
   const fs=firebase.firestore();try{fs.settings({ignoreUndefinedProperties:true})}catch(e){}
   fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
   auth.onAuthStateChanged(u=>{if(!u){started=false;showLogin();return}hideLogin();boot(fs,u)});
