@@ -1122,11 +1122,11 @@ function pendBlock(from,to){
       <div class="pend-days">${p.ds.map(x=>`<span class="pday num">${ddmm(x.dia)} · ${x.s.saldo>0?"debe":"recibe"} ${gs(Math.abs(x.s.saldo))}</span>`).join("")}</div>
       ${S.owner?`<div class="pay-line"><button type="button" class="small pay" data-payall="${esc(p.u)}" data-from="${from}" data-to="${to}">Marcar todo pagado</button> <button type="button" class="linkbtn small-link wa" data-wapend="${esc(p.u)}|${from}|${to}">📲 Enviar por WhatsApp</button></div>`:""}</div>`).join("")}</div></section>`;
 }
-function topClientes(list,n){const m=new Map();for(const[,d]of list){const c=(d.cliente||"").trim()||"Sin cliente";const k=norm(c);if(!m.has(k))m.set(k,{nome:c,n:0,total:0});const r=m.get(k);r.n+=(d.diario?0:(d.cant||1));r.total+=d.valor}
+function topClientes(list,n){const m=new Map();for(const[,d]of list){const c=(d.cliente||"").trim();if(!c)continue;const k=norm(c);if(!m.has(k))m.set(k,{nome:c,n:0,total:0});const r=m.get(k);r.n+=(d.diario?0:(d.cant||1));r.total+=d.valor}
   return[...m.values()].sort((a,b)=>b.n-a.n||b.total-a.total).slice(0,n)}
 function clientesBlock(list){
   const top=topClientes(list,8);if(!top.length)return"";const max=Math.max(...top.map(c=>c.n));
-  return `<section class="sec"><div class="sec-h"><h2>Mejores comercios</h2><span>por entregas</span></div><div class="list">
+  return `<section class="sec"><div class="sec-h"><h2>Mejores clientes</h2><span>por entregas</span></div><div class="list">
     ${top.map((c,i)=>`<div class="rk-row"><span class="rk-pos ${i<3?"top":""}">${i+1}º</span><div class="rk-main"><div class="rk-name"><b>${esc(c.nome)}</b></div><span class="rk-bar"><i style="width:${(c.n/max*100).toFixed(1)}%"></i></span></div>
       <span class="rk-n num">${c.n}<small>${gs(c.total)}</small></span></div>`).join("")}</div></section>`}
 function viewInforme(){
@@ -1517,7 +1517,7 @@ document.addEventListener("click",async e=>{
     gDelArm=null;try{await delGasto(k);toast("Gasto eliminado")}catch(err){toast("No se eliminó.")}}
   else if(t.hasAttribute("data-copyweek")){const tk=today(),f=addDays(tk,-6);copy(resumo(`Liquidación ${ddmm(f)} al ${ddmm(tk)}`,listRange(f,tk)))}
   else if(t.hasAttribute("data-copymes")){const r=monthRange(mesOff);const ml=listRange(r.from,r.to);let txt=resumo("Resumen de "+r.label,ml);
-    const top=topClientes(ml,5);if(top.length)txt+="\n\nMejores comercios:\n"+top.map((c,i)=>`${i+1}. ${c.nome}: ${plural(c.n,"entrega")}`).join("\n");copy(txt)}
+    const top=topClientes(ml,5);if(top.length)txt+="\n\nMejores clientes:\n"+top.map((c,i)=>`${i+1}. ${c.nome}: ${plural(c.n,"entrega")}`).join("\n");copy(txt)}
 });
 layer.addEventListener("input",e=>{const id=e.target.id;
   if(id==="d-val"){e.target.value=fmtInput(parseVal(e.target.value));return}
