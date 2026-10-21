@@ -18,15 +18,15 @@ service cloud.firestore {
       allow create: if isAdmin() || (isMe(uid) && request.resource.data.get('aprobado', false) == false && request.resource.data.get('baja', false) == false);
       allow update: if isAdmin() || (isMe(uid) && request.resource.data.get('aprobado', false) == resource.data.get('aprobado', false) && request.resource.data.get('baja', false) == resource.data.get('baja', false));
       allow delete: if isOwner();
-      match /gastos/{id} { allow read, write: if isMe(uid) && (isAdmin() || approved(uid)); }
+      match /privado/{id} { allow read, write: if isMe(uid) && (isAdmin() || approved(uid)); }
       match /entregas/{id} {
         allow read: if isAdmin() || isMe(uid);
         allow create: if isAdmin() || (isMe(uid) && approved(uid));
         allow update, delete: if isAdmin() || (isMe(uid) && approved(uid) && resource.data.get('estado', '') == 'camino');
       }
       match /{sub}/{id} {
-        allow read: if sub != 'gastos' && (isAdmin() || isMe(uid));
-        allow write: if sub != 'gastos' && sub != 'entregas' && (isAdmin() || (isMe(uid) && approved(uid)));
+        allow read: if sub != 'privado' && (isAdmin() || isMe(uid));
+        allow write: if sub != 'privado' && sub != 'entregas' && (isAdmin() || (isMe(uid) && approved(uid)));
       }
     }
     match /liq/{uid}/{rest=**} { allow read: if isAdmin() || isMe(uid); allow write: if isAdmin(); }

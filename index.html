@@ -427,7 +427,7 @@ const ICON={
  transferencia:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>',
  anotado:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h10l4 4v14H5z"/><path d="M9 12h6M9 16h4"/></svg>',
  fijo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V9l8-6 8 6v12z"/><path d="M9 21v-6h6v6"/></svg>'};
-const GT={gasolina:"Nafta",almuerzo:"Almuerzo",cena:"Cena",mantenimiento:"Mantenimiento",otro:"Otro"};
+const GT={gasolina:"Nafta",almuerzo:"Almuerzo",cena:"Cena",mantenimiento:"Mantenimiento",otro:"Otro",personal:"🔒 Personal"};
 const GPRESETS=[5000,10000,15000,20000,30000];
 const LSG="caixa_gastos_v1",LSE="caixa_egastos_v1";
 const EGT={premio:"Premios",nafta:"Nafta",publicidad:"Publicidad",telefono:"Teléfono/Internet",alquiler:"Alquiler",sueldo:"Sueldos",otro:"Otro"};
@@ -454,7 +454,7 @@ const LS="caixa_entregas_v1",LSC="caixa_config_v2",LSP="caixa_pagos_v1";
 
 let builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
 const subs=new Map(),rank=new Map(),rankTimers=new Map();
-const S={tab:"dia",dia:today(),val:0,prod:0,cant:1,metodo:"efectivo",cliente:"",obs:"",items:new Map(),old:new Map(),oldG:new Map(),oldE:new Map(),gastos:new Map(),egastos:new Map(),people:new Map(),pagos:new Map(),
+const S={tab:"dia",dia:today(),val:0,prod:0,cant:1,metodo:"efectivo",cliente:"",obs:"",items:new Map(),old:new Map(),oldG:new Map(),oldE:new Map(),gastos:new Map(),priv:new Map(),egastos:new Map(),people:new Map(),pagos:new Map(),
   mode:"wait",err:"",cfg:{pct:30,por:{}},me:"local",owner:true,filter:"all",askName:false,canWrite:null};
 const main=document.getElementById("main"),layer=document.getElementById("layer");
 
@@ -473,8 +473,9 @@ async function addItem(d,u){if(db){await colFor(u).doc(uid()).set(d)}else{const 
 async function patchItem(key,p){const it=S.items.get(key);if(!it)return;if(db){await colFor(it._u).doc(it._id).update(p)}else{const a=lsAll();if(a[it._id]){Object.assign(a[it._id],p);lsSet(LS,a);loadLocal()}}}
 async function delItem(key){const it=S.items.get(key);if(!it)return;if(db){await colFor(it._u).doc(it._id).delete()}else{const a=lsAll();delete a[it._id];lsSet(LS,a);loadLocal()}}
 const gasCol=u=>db.collection("turnos/"+u+"/gastos");
-async function addGasto(d,u){if(db){await gasCol(u).doc(uid()).set(d)}else{const a=lsGet(LSG,{});a[uid()]=d;lsSet(LSG,a);loadLocal()}}
-async function delGasto(key){const it=S.gastos.get(key);if(!it)return;if(db){await gasCol(it._u).doc(it._id).delete()}else{const a=lsGet(LSG,{});delete a[it._id];lsSet(LSG,a);loadLocal()}}
+const privCol=u=>db.collection("turnos/"+u+"/privado");
+async function addGasto(d,u){if(db){await (d.tipo==="personal"?privCol(S.me):gasCol(u)).doc(uid()).set(d)}else{const a=lsGet(LSG,{});a[uid()]=d;lsSet(LSG,a);loadLocal()}}
+async function delGasto(key){const it=S.gastos.get(key)||S.priv.get(key)||S.oldG.get(key);if(!it)return;if(db){await (it.priv?privCol(it._u):gasCol(it._u)).doc(it._id).delete()}else{const a=lsGet(LSG,{});delete a[it._id];lsSet(LSG,a);loadLocal()}}
 const egCol=()=>db.collection("empresa/datos/gastos");
 async function addEGasto(d){if(db){await egCol().doc(uid()).set(d)}else{const a=lsGet(LSE,{});a[uid()]=d;lsSet(LSE,a);loadLocal()}}
 async function delEGasto(id){if(db){await egCol().doc(id).delete()}else{const a=lsGet(LSE,{});delete a[id];lsSet(LSE,a);loadLocal()}}
@@ -503,7 +504,9 @@ function subscribeUser(u){
     for(const k of[...S.items.keys()])if(k.startsWith(u+"|"))S.items.delete(k);
     for(const d of snap.docs)S.items.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});
     setSync(snap.metadata.hasPendingWrites?"Guardando…":"Sincronizado");render();scheduleRank(u)},()=>setSync("Sin conexión")));
-  if(u===S.me)gasCol(u).where("dia",">=",from).limit(1000).onSnapshot(snap=>{
+  if(u===S.me)privCol(u).where("dia",">=",from).limit(1000).onSnapshot(snap=>{
+    S.priv=new Map(snap.docs.map(d=>[u+"|p:"+d.id,{...d.data(),_u:u,_id:d.id,priv:true}]));render()},()=>{});
+  gasCol(u).where("dia",">=",from).limit(1000).onSnapshot(snap=>{
     for(const k of[...S.gastos.keys()])if(k.startsWith(u+"|"))S.gastos.delete(k);
     for(const d of snap.docs)S.gastos.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
   db.collection("turnos/"+u+"/cambios").limit(200).onSnapshot(snap=>{
@@ -541,7 +544,8 @@ const oldLoaded=new Set();
 async function loadMonth(from,to){if(oldLoaded.has(from)||!db)return;oldLoaded.add(from);
   const us=S.owner?[...new Set([S.me,...S.people.keys()])]:[S.me];
   for(const u of us){try{const q=await colFor(u).where("dia",">=",from).where("dia","<=",to).get();for(const d of q.docs)S.old.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});
-    if(u!==S.me)continue;const g=await gasCol(u).where("dia",">=",from).where("dia","<=",to).get();for(const d of g.docs)S.oldG.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id})}catch(e){}}
+    const g=await gasCol(u).where("dia",">=",from).where("dia","<=",to).get();for(const d of g.docs)S.oldG.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});
+    if(u===S.me){const pv=await privCol(u).where("dia",">=",from).where("dia","<=",to).get();for(const d of pv.docs)S.oldG.set(u+"|p:"+d.id,{...d.data(),_u:u,_id:d.id,priv:true})}}catch(e){}}
   if(S.owner){try{const q=await egCol().where("dia",">=",from).where("dia","<=",to).get();for(const d of q.docs)S.oldE.set(d.id,{...d.data(),_id:d.id})}catch(e){}}
   render(true)}
 function logout(){closeSheet();if(auth)auth.signOut().then(()=>location.reload());else location.reload()}
@@ -610,7 +614,7 @@ async function boot(fs,u){
   db=fs;const me=u.uid;isRealOwner=mail===OWNER_EMAIL;
   try{const r=await db.doc("config/roles").get();roles={socios:(r.exists&&r.data().socios)||[]}}catch(e){}
   S.me=me;S.owner=isRealOwner||roles.socios.includes(me);S.canWrite=true;
-  S.mode="db";S.filter=S.owner?"all":me;S.items=new Map();S.gastos=new Map();S.egastos=new Map();S.pagos=new Map();
+  S.mode="db";S.filter=S.owner?"all":me;S.items=new Map();S.gastos=new Map();S.priv=new Map();S.egastos=new Map();S.pagos=new Map();
   let p=null;try{p=await db.doc("turnos/"+me).get()}catch(e){}
   if(p&&p.exists)S.people.set(me,p.data());
   else if(regName){try{await saveName(regName)}catch(e){}}
@@ -659,8 +663,8 @@ const cuentaTxt=(prod,val)=>prod?`Producto ${gs(prod)} + Delivery ${gs(val)} = T
 const listDay=k=>visible().filter(([,d])=>d.dia===k).sort((a,b)=>(b[1].criadoEm||0)-(a[1].criadoEm||0));
 const listRange=(a,b)=>visible().filter(([,d])=>d.dia>=a&&d.dia<=b);
 const ownView=()=>S.mode!=="db"||!S.owner||S.filter===S.me;
-const myGt=(a,b)=>ownView()?gStats(gastosRange(a,b)).total:undefined;
-const visGastos=()=>[...new Map([...S.oldG,...S.gastos]).entries()].filter(([,d])=>S.filter==="all"||d._u===S.filter);
+const myGt=(a,b)=>gStats(gastosRange(a,b)).total;
+const visGastos=()=>[...new Map([...S.oldG,...S.gastos,...S.priv]).entries()].filter(([,d])=>(S.filter==="all"||d._u===S.filter)&&(!(d.priv||d.tipo==="personal")||(d._u===S.me&&ownView())));
 const gastosRange=(a,b)=>visGastos().filter(([,d])=>d.dia>=a&&d.dia<=b).sort((x,y)=>(y[1].criadoEm||0)-(x[1].criadoEm||0));
 function gStats(list){const g={total:0,n:list.length,tipo:{}};for(const[,d]of list){g.total+=d.valor;g.tipo[d.tipo]=(g.tipo[d.tipo]||0)+d.valor}return g}
 const showEmp=()=>S.owner&&(S.mode!=="db"||S.filter==="all");
@@ -779,11 +783,11 @@ function viewDiaShell(){
   <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
   <section class="sec camino-sec" id="camino-list" hidden></section>
   <section class="sec" id="dia-list"></section>
-  ${ownView()?`<section class="sec" aria-label="Mis gastos personales">
-    <div class="sec-h"><h2>Mis gastos personales</h2><button type="button" class="small add-g" data-opengasto>+ Gasto</button></div>
-    <p class="hint" style="margin:0">Solo vos los ves.</p>
+  <section class="sec" aria-label="Gastos">
+    <div class="sec-h"><h2>${ownView()?"Mis gastos":showEmp()?"Gastos de los deliverys":"Gastos de "+esc(personName(S.filter))}</h2>${ownView()?`<button type="button" class="small add-g" data-opengasto>+ Gasto</button>`:""}</div>
+    ${ownView()&&S.mode==="db"?`<p class="hint" style="margin:0">Los gastos <b>🔒 Personal</b> solo los ves vos. Nafta, comida y mantenimiento los ve también la empresa.</p>`:""}
     <div id="gastos-list"></div>
-  </section>`:""}
+  </section>
   ${showEmp()?`<section class="sec emp-sec" aria-label="Gastos de la empresa">
     <div class="sec-h"><h2>Gastos de la empresa</h2><button type="button" class="small add-e" data-openegasto>+ Gasto empresa</button></div>
     <div id="egastos-list"></div></section>`:""}
@@ -883,10 +887,10 @@ function viewDiaList(list){
     ${list.length?`<div class="list">${list.map(([k,d])=>rowHtml(k,d)).join("")}</div>`:`<div class="empty">No hay entregas registradas ${isToday?"hoy":"este día"}. Tocá el botón <b>+ Entrega</b> para registrar la primera.</div>`}`}
 
 function viewGastosList(){
-  const l=gastosRange(S.dia,S.dia);if(!l.length)return `<p class="hint" style="margin:0">Sin gastos este día.</p>`;
+  const l=gastosRange(S.dia,S.dia);if(!l.length)return `<p class="hint" style="margin:0">Sin gastos este día.</p>`;const canDel=ownView();
   const showWho=S.mode==="db"&&S.owner&&S.filter==="all";
   return `<div class="list">${l.map(([k,d])=>`<div class="g-item"><div class="who"><b>${GT[d.tipo]||"Otro"}</b><small>${[showWho&&esc(personName(d._u)),d.obs&&esc(d.obs),d.criadoEm&&hhmm(d.criadoEm)].filter(Boolean).join(" · ")}</small></div>
-    <div class="r"><b class="num c-due">− ${gs(d.valor)}</b>${lockReason(d.dia)?"":`<button type="button" class="linkbtn small-link" data-gdel="${esc(k)}">${gDelArm===k?"¿eliminar?":"quitar"}</button>`}</div></div>`).join("")}
+    <div class="r"><b class="num c-due">− ${gs(d.valor)}</b>${lockReason(d.dia)||!canDel?"":`<button type="button" class="linkbtn small-link" data-gdel="${esc(k)}">${gDelArm===k?"¿eliminar?":"quitar"}</button>`}</div></div>`).join("")}
     <div class="g-total"><span>Total gastos</span><b class="num">${gs(gStats(l).total)}</b></div></div>`}
 let gDelArm=null;
 function refreshG(){const b=document.getElementById("gsave");if(!b)return;b.disabled=!G.val;
@@ -898,7 +902,7 @@ function gastosBlock(from,to){
   const tipos=Object.entries(g.tipo).sort((a,b)=>b[1]-a[1]);const max=Math.max(...tipos.map(t=>t[1]));
   let per="";if(S.mode==="db"&&S.owner&&S.filter==="all"){const m=new Map();for(const[,d]of l)m.set(d._u,(m.get(d._u)||0)+d.valor);
     if(m.size>1)per=[...m.entries()].sort((a,b)=>b[1]-a[1]).map(([u,v])=>`<div class="g-item"><div class="who"><b>${esc(personName(u))}</b></div><div class="r"><b class="num">${gs(v)}</b></div></div>`).join("")}
-  return `<section class="sec"><div class="sec-h"><h2>Mis gastos personales</h2><span class="num">${gs(g.total)}</span></div><div class="list">
+  return `<section class="sec"><div class="sec-h"><h2>${ownView()?"Mis gastos":"Gastos de los deliverys"}</h2><span class="num">${gs(g.total)}</span></div><div class="list">
     ${tipos.map(([t,v])=>`<div class="rk-row"><span class="rk-pos"></span><div class="rk-main"><div class="rk-name"><b>${GT[t]||"Otro"}</b></div><span class="rk-bar"><i class="gbar" style="width:${(v/max*100).toFixed(1)}%"></i></span></div><span class="rk-n num">${gs(v)}</span></div>`).join("")}
     ${per?`<div class="group-h"><span>Por delivery</span><span></span></div>${per}`:""}</div></section>`}
 function viewAnotados(){
@@ -970,7 +974,7 @@ function viewSemana(){
     <div class="legend"><span><i class="dot d-cash"></i>Efectivo</span><span><i class="dot d-transfer"></i>Transferencia</span><span><i class="dot d-due"></i>Anotado</span></div>
     <div class="week">${bars}</div></section>
   ${showEmp()?egastosBlock(days[6],t):""}
-  ${ownView()?gastosBlock(days[6],t):""}
+  ${gastosBlock(days[6],t)}
   ${clientesBlock(wl)}`;
 }
 function viewMes(){
@@ -992,7 +996,7 @@ function viewMes(){
     <div class="sum-actions"><button type="button" class="linkbtn" data-excel>Descargar en Excel</button><button type="button" class="linkbtn" data-copymes>Copiar resumen del mes</button></div></section>
   ${S.mode==="db"&&S.owner&&mesOff===0?pendBlock(r.from,r.to):""}
   ${showEmp()?egastosBlock(r.from,r.to):""}
-  ${ownView()?gastosBlock(r.from,r.to):""}
+  ${gastosBlock(r.from,r.to)}
   ${clientesBlock(ml)}`;
 }
 async function excel(){
@@ -1007,7 +1011,7 @@ async function excel(){
     rows.push(["Comisiones",T.com]);rows.push(["Gastos de la empresa",eg]);rows.push(["Ganancia",T.com-eg]);
     if(el.length){rows.push([]);rows.push(["Gastos de la empresa"]);rows.push(["Fecha","Hora","Tipo","Monto","Detalle"]);
       for(const d of el)rows.push([ddmm(d.dia)+"/"+d.dia.slice(0,4),d.criadoEm?hhmm(d.criadoEm):"",EGT[d.tipo]||"Otro",d.valor,d.obs||""])}}
-  const gl=gastosRange(r.from,r.to).reverse();if(gl.length){rows.push([]);rows.push(["Mis gastos personales"]);rows.push(["Fecha","Hora","Delivery","Tipo","Monto","Detalle"]);
+  const gl=gastosRange(r.from,r.to).reverse();if(gl.length){rows.push([]);rows.push([ownView()?"Mis gastos":"Gastos de los deliverys"]);rows.push(["Fecha","Hora","Delivery","Tipo","Monto","Detalle"]);
     for(const[,d]of gl)rows.push([ddmm(d.dia)+"/"+d.dia.slice(0,4),d.criadoEm?hhmm(d.criadoEm):"",personName(d._u),GT[d.tipo]||"Otro",d.valor,d.obs||""])}
   const csv="\ufeff"+rows.map(r=>r.map(q).join(";")).join("\r\n");
   const filename=`tu-delivery-${r.label.replace(" ","-")}.csv`;
