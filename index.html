@@ -427,6 +427,26 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .ub-btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:11px 12px;font:600 14px var(--body);cursor:pointer;white-space:nowrap}
 .map-btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:9px 14px;font:600 14px var(--body);cursor:pointer}
 .cam-act{flex-wrap:wrap}
+.lista-sh{display:grid;gap:10px}
+.li-list{display:grid;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.li-row{display:grid;grid-template-columns:auto minmax(0,1fr) 108px auto;gap:8px;align-items:center;padding:8px 10px;border-top:1px solid var(--line)}
+.li-row:first-child{border-top:0}
+.li-t{font-size:15px;overflow-wrap:anywhere}
+.li-row.ok .li-t{color:var(--cash)}
+.li-row.no .li-t{color:var(--muted);text-decoration:line-through}
+.li-ck,.li-no{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font:700 17px var(--body);cursor:pointer;color:var(--muted)}
+.li-row.ok .li-ck{background:var(--cash);border-color:var(--cash);color:#fff}
+.li-row.no .li-no{background:var(--due);border-color:var(--due);color:#fff}
+.li-p{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px;font:16px var(--body);background:var(--bg);color:var(--ink);text-align:right}
+.li-row.no .li-p{visibility:hidden}
+.li-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.li-add input{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:16px var(--body);background:var(--bg);color:var(--ink);min-width:0}
+.li-tot{display:grid;gap:4px;padding:12px 14px;border-radius:12px;background:var(--transfer-bg)}
+.li-tot div{display:flex;justify-content:space-between;gap:10px}
+.li-tot .big2{font-size:19px;font-weight:800}
+.wa-big{display:block;text-align:center;text-decoration:none;background:#25D366;color:#fff;border-radius:12px;padding:13px 16px;font:700 15px var(--body)}
+.list-btn{border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:10px;padding:9px 14px;font:700 14px var(--body);cursor:pointer}
+.field textarea{border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:16px var(--body);background:var(--bg);color:var(--ink);width:100%;resize:vertical}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -512,7 +532,7 @@ const norm=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[̀-�
 const WINDOW=31;
 const LS="caixa_entregas_v1",LSC="caixa_config_v2",LSP="caixa_pagos_v1";
 
-let ubicTxt="",sinCliOk=false,builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
+let listaTxt="",LL=null,ubicTxt="",sinCliOk=false,builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
 const subs=new Map(),rank=new Map(),rankTimers=new Map();
 const S={tab:"dia",dia:today(),val:0,prod:0,cant:1,metodo:"efectivo",cliente:"",obs:"",items:new Map(),old:new Map(),oldG:new Map(),oldE:new Map(),gastos:new Map(),priv:new Map(),egastos:new Map(),people:new Map(),pagos:new Map(),
   mode:"wait",err:"",cfg:{pct:30,por:{}},me:"local",owner:true,filter:"all",askName:false,canWrite:null};
@@ -1036,6 +1056,45 @@ function mapQ(){return (S.cliente||"").trim()||(S.obs||"").trim()}
 function updMapLink(){const a=document.getElementById("maplink");if(a)a.href=mapUrl(mapQ(),ubicTxt)}
 document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("#maplink");if(!a)return;updMapLink();
   if(!mapQ()&&!linkIn(ubicTxt)){e.preventDefault();toast("Escribí primero el nombre del comercio o cliente");const c=document.getElementById("cli");if(c)c.focus()}},true);
+/* lista de compras: el cliente manda la lista, el delivery la marca en el mercado */
+function parseLista(t){let lines=String(t||"").split(/\r?\n/);if(lines.filter(x=>x.trim()).length===1)lines=lines[0].split(/[,;]/);
+  return lines.map(x=>x.replace(/^\s*([-•*·✓✔]|\d+[.)-])\s*/,"").trim()).filter(Boolean).slice(0,80).map(t=>({t,ok:null,p:0}))}
+function listaSum(){return LL?LL.items.filter(x=>x.ok!==false).reduce((a,x)=>a+(x.p||0),0):0}
+function listaProd(){const sm=listaSum();return LL.tique||sm||0}
+function listaWa(){const d=S.items.get(LL.key)||{};const pr=listaProd(),dv=d.valor||0;
+  const ln=LL.items.map(x=>x.ok===false?`✗ ${x.t} (no había)`:x.ok?`✓ ${x.t}${x.p?" — "+gs(x.p):""}`:`• ${x.t}`).join("\n");
+  return "https://wa.me/?text="+encodeURIComponent(`*Tú Delivery · Tu pedido*${d.cliente?" · "+d.cliente:""}\n\n${ln}\n\nProductos: ${gs(pr)}\nDelivery: ${gs(dv)}\n*Total a pagar: ${gs(pr+dv)}*`)}
+function listaRows(){return LL.items.map((x,i)=>`<div class="li-row ${x.ok===true?"ok":x.ok===false?"no":""}"><button type="button" class="li-ck" data-lok="${i}" aria-label="Comprado">✓</button><span class="li-t">${esc(x.t)}</span>
+  <input class="li-p" data-lp="${i}" inputmode="numeric" autocomplete="off" placeholder="₲ precio" value="${x.p?fmtInput(x.p):""}"><button type="button" class="li-no" data-lno="${i}" aria-label="No había">✗</button></div>`).join("")}
+function listaTot(){const d=S.items.get(LL.key)||{};const sm=listaSum(),pr=listaProd(),dv=d.valor||0;const n=LL.items.filter(x=>x.ok===true).length,nn=LL.items.filter(x=>x.ok===false).length,pe=LL.items.length-n-nn;
+  const t=document.getElementById("li-tot");if(t)t.innerHTML=`<div><span>${n} comprados · ${nn} no había · ${pe} pendientes</span></div>
+    <div><span>Productos${LL.tique?" (tique)":sm?" (suma)":""}</span><b class="num">${gs(pr)}</b></div><div><span>Delivery</span><b class="num">${gs(dv)}</b></div>
+    <div class="big2"><span>Cobrar al cliente</span><b class="num">${gs(pr+dv)}</b></div>`;
+  const a=document.getElementById("li-wa");if(a)a.href=listaWa()}
+function openLista(key){const d=S.items.get(key);if(!d)return;edit=null;
+  LL={key,items:JSON.parse(JSON.stringify(d.lista||[])),tique:d.listaTique||0};
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet lista-sh" role="dialog" aria-label="Lista de compras">
+    ${sheetHead("🛒 "+esc(d.cliente||"Lista de compras"))}
+    <p class="hint" style="margin:0">Tocá <b>✓</b> cuando lo pongas en el carrito o <b>✗</b> si no había. El precio es opcional: el app suma solo.</p>
+    <div class="li-list" id="li-list">${listaRows()}</div>
+    <div class="li-add"><input id="li-new" autocomplete="off" placeholder="Agregar producto"><button type="button" class="small" data-ladd>+ Agregar</button></div>
+    <div class="field"><label for="li-tique">Total del tique (opcional, si no pusiste precios)</label><div class="money small-money"><span>₲</span><input id="li-tique" inputmode="numeric" autocomplete="off" placeholder="Ej.: 85.000" value="${LL.tique?fmtInput(LL.tique):""}"></div></div>
+    <div class="li-tot" id="li-tot"></div>
+    <a class="wa-big" id="li-wa" href="#" target="_blank" rel="noopener">📲 Enviar la cuenta al cliente</a>
+    <button type="button" class="primary" data-lsave>Guardar lista</button></div></div>`;listaTot()}
+async function saveLista(){if(!LL)return;const key=LL.key;const it=S.items.get(key);if(!it)return;
+  const items=LL.items.map(x=>({t:x.t,ok:x.ok===undefined?null:x.ok,p:x.p||0}));const pr=listaProd();
+  const p={lista:items,listaTique:LL.tique||0};if(pr)p.producto=pr;
+  Object.assign(it,p);LL=null;closeSheet();render();
+  try{const w=await sendW(patchItem(key,p));toast(w==="wait"?"Lista guardada en el celular":"Lista guardada"+(pr?" · productos "+gs(pr):""))}catch(e){toast("No se guardó.")}}
+layer.addEventListener("input",e=>{if(!LL)return;const el=e.target;
+  if(el.dataset&&el.dataset.lp!==undefined){const i=Number(el.dataset.lp);const v=parseVal(el.value);el.value=fmtInput(v);LL.items[i].p=v;if(v&&LL.items[i].ok!==true){LL.items[i].ok=true;el.closest(".li-row").className="li-row ok"}listaTot()}
+  if(el.id==="li-tique"){LL.tique=parseVal(el.value);el.value=fmtInput(LL.tique);listaTot()}});
+layer.addEventListener("click",e=>{if(!LL)return;const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.dataset.lok!==undefined||t.dataset.lno!==undefined){const i=Number(t.dataset.lok??t.dataset.lno);const v=t.dataset.lok!==undefined;const x=LL.items[i];x.ok=x.ok===v?null:v;
+    t.closest(".li-row").className="li-row "+(x.ok===true?"ok":x.ok===false?"no":"");listaTot()}
+  else if(t.hasAttribute("data-ladd")){const inp=document.getElementById("li-new");const v=inp.value.trim();if(!v)return;LL.items.push({t:v,ok:null,p:0});document.getElementById("li-list").innerHTML=listaRows();inp.value="";listaTot()}
+  else if(t.hasAttribute("data-lsave"))saveLista()});
 /* meta del día: cantidad de entregas por delivery que define el dueño */
 function viewMeta(list){
   if(S.mode!=="db"||S.dia!==today())return"";
@@ -1090,7 +1149,7 @@ function viewCamino(cl){
   ${cl.map(([k,d])=>`<div class="cam-row"><div class="cam-info">
       <div class="who"><b>${esc(d.cliente)||"Sin cliente"}</b><small>${[showWho&&esc(personName(d._u)),d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
       <div class="amt"><small>Cobrar</small><b class="num">${gs((d.producto||0)+d.valor)}</b></div></div>
-    <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button><a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${linkIn(d.ubic)?"Ubicación":"Mapa"}</a><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
+    <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>x.ok!==null&&x.ok!==undefined).length}/${d.lista.length}</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${linkIn(d.ubic)?"Ubicación":"Mapa"}</a><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
 function fijosBlock(list){
   const m=new Map();for(const[,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0});const r=m.get(k);if(d.diario)r.diario+=d.valor;else r.n+=(d.cant||1)}
   if(!m.size)return"";const can=!lockReason(S.dia);
@@ -1373,7 +1432,7 @@ function viewRanking(){
 }
 
 /* ---------- sheets ---------- */
-function closeSheet(){edit=null;layer.innerHTML=""}
+function closeSheet(){edit=null;LL=null;layer.innerHTML=""}
 function openEdit(key){const d=S.items.get(key);if(!d)return;edit={key,valor:d.valor,cant:d.cant||1,producto:d.producto||0,metodo:d.metodo,cliente:d.cliente||"",obs:d.obs||"",armed:false};drawSheet()}
 const needsApproval=()=>S.mode==="db"&&!S.owner;
 const pendingCambio=key=>{const it=S.items.get(key);if(!it)return null;for(const c of cambios.values())if(c._u===it._u&&c.entregaId===it._id&&c.estado==="pendiente")return c;return null};
@@ -1418,7 +1477,7 @@ function openName(){edit=null;const cur=S.people.get(S.me);layer.innerHTML=`<div
   <div class="field"><label for="n-val">Tu nombre</label><input id="n-val" autocomplete="name" value="${esc(cur?cur.nome:"")}" placeholder="Ej.: Juan"></div>
   <button class="primary" data-nsave>Guardar</button></div></div>`;setTimeout(()=>{const n=document.getElementById("n-val");if(n)n.focus()},50)}
 function sheetHead(title){return `<div class="sheet-h"><h3>${title}</h3><button type="button" class="x" data-cancel aria-label="Cerrar">✕</button></div>`}
-function openEntry(cm){edit=null;sinCliOk=false;if(!S.cliente)ubicTxt="";const isToday=S.dia===today();
+function openEntry(cm){edit=null;sinCliOk=false;if(!S.cliente){ubicTxt="";listaTxt=""}const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
   const cliente=`<div class="field"><label for="cli">${cm?"Pedido / cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
@@ -1430,9 +1489,11 @@ function openEntry(cm){edit=null;sinCliOk=false;if(!S.cliente)ubicTxt="";const i
   const val=`<div class="field"><label for="val">${cm?"Valor del delivery":"Monto del delivery (tocá un atajo o escribí el precio)"}</label>
     <div class="money"><span>₲</span><input id="val" inputmode="numeric" autocomplete="off" placeholder="Escribí el monto" value="${fmtInput(S.val)}"></div></div>`;
   const obs=`<div class="field"><label for="obs">${cm?"Dirección o detalle (opcional)":"Observación (opcional)"}</label><input id="obs" autocomplete="off" placeholder="Ej.: Barrio San Blas" value="${esc(S.obs)}"></div>`;
+  const listaF=`<div class="field"><label for="lista">🛒 Lista de compras (opcional)</label><textarea id="lista" rows="3" placeholder="Pegá la lista que mandó el cliente. Un producto por línea.">${esc(listaTxt)}</textarea>
+    <small class="hint" style="margin:0">En el mercado abrís la lista desde “En camino” y vas marcando cada producto.</small></div>`;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet entry-sheet" role="dialog" aria-label="${cm?"Anotar pedido":"Nueva entrega"}">
     ${sheetHead((cm?"Anotar pedido":"Nueva entrega")+(isToday?"":" · "+ddmm(S.dia))+forWho)}
-    ${cm?cliente+prod+presets+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
+    ${cm?cliente+listaF+prod+presets+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
        :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
     <p class="err" id="err" ${S.err?"":"hidden"}>${esc(S.err)}</p>
     ${cm?`<button type="button" class="primary" id="savecamino" ${S.val?"":"disabled"}>Guardar pedido</button>`
@@ -1473,6 +1534,7 @@ document.addEventListener("input",e=>{const id=e.target.id;
   if(id==="gval"){G.val=parseVal(e.target.value);e.target.value=fmtInput(G.val);refreshG()}
   if(id==="gobs")G.obs=e.target.value;
   if(id==="ubic"){ubicTxt=e.target.value;updMapLink()}
+  if(id==="lista")listaTxt=e.target.value;
   if(id==="cli"){S.cliente=e.target.value;sinCliOk=false;if(S.err&&S.err.startsWith("¿Sin nombre")){S.err="";refreshForm()}drawSug()}if(id==="obs")S.obs=e.target.value});
 document.addEventListener("focusin",e=>{if(e.target.id==="cli"){cliFocus=true;drawSug()}});
 document.addEventListener("focusout",e=>{if(e.target.id==="cli")setTimeout(()=>{cliFocus=false;drawSug()},200)});
@@ -1494,8 +1556,8 @@ async function save(camino){
   sinCliOk=false;
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
-  if(S.prod)d.producto=S.prod;if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(fx&&S.cant>1)d.cant=S.cant;
-  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";S.err="";closeSheet();
+  if(S.prod)d.producto=S.prod;if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li}if(fx&&S.cant>1)d.cant=S.cant;
+  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";S.err="";closeSheet();
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
   try{const w=await sendW(addItem(d,writeTarget()));if(w==="wait"){toast("Guardado en el celular · se envía al volver la señal")}else toast(d.metodo==="fijo"&&!camino?`Registrado${d.cant>1?" "+d.cant+" entregas":""} · cliente fijo (${d.cliente})`:`Registrado: ${gs(d.valor)} · ${label}`)}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast(e&&e.code==="quota_exceeded"?"Almacenamiento lleno":"No se guardó. Probá de nuevo.")}
@@ -1540,6 +1602,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.pay){const[u,dia]=t.dataset.pay.split("|");doPay(u,dia)}
   else if(t.hasAttribute("data-cerrar"))openCierre();
   else if(t.hasAttribute("data-meta"))openMeta();
+  else if(t.dataset.lista)openLista(t.dataset.lista);
   else if(t.dataset.cobrar!==undefined||t.dataset.descobrar!==undefined){const un=t.dataset.descobrar!==undefined;const nm=un?t.dataset.descobrar:t.dataset.cobrar;
     if(!un&&!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Confirmar?";setTimeout(()=>{t.classList.remove("armed");t.textContent="✓ Cobrado"},3000);return}
     const keys=anotList().filter(([,d])=>(d.cliente||"Sin cliente").trim()===nm&&(un?!!d.cobradoEm:!d.cobradoEm)).map(([k])=>k);
