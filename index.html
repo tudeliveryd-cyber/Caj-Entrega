@@ -574,7 +574,7 @@ LG.addEventListener("submit",async e=>{e.preventDefault();
   catch(err){drawLogin(authMsg(err));const ml=document.getElementById("lg-mail");if(ml)ml.value=m}});
 function showVerify(u){hideLogin();blockScreen("Verificá tu e-mail",`Te mandamos un e-mail a <b>${esc(u.email)}</b>. Abrilo, tocá el enlace y después tocá “Ya verifiqué”.<br><br>
   <button type="button" class="primary" id="vf-ok">Ya verifiqué</button> <button type="button" class="linkbtn" id="vf-again">Reenviar e-mail</button>`);
-  document.getElementById("vf-ok").onclick=async()=>{await u.reload();if(auth.currentUser.emailVerified)location.reload();else toast("Todavía no está verificado")};
+  document.getElementById("vf-ok").onclick=async()=>{await u.reload();if(auth.currentUser.emailVerified){try{await auth.currentUser.getIdToken(true)}catch(e){}location.reload()}else toast("Todavía no está verificado")};
   document.getElementById("vf-again").onclick=async()=>{try{await u.sendEmailVerification();toast("E-mail reenviado")}catch(e){toast("Esperá un poco y probá de nuevo")}}}
 /* ---------- arranque ---------- */
 {const c=lsGet(LSC,null);if(c&&c.pct)S.cfg={pct:c.pct,por:c.por||{}}}
@@ -590,6 +590,8 @@ loadLocal();setSync("Conectando…");
 async function boot(fs,u){
   const mail=(u.email||"").toLowerCase();
   if(mail===OWNER_EMAIL&&!u.emailVerified){showVerify(u);return}
+  /* el permiso de dueño depende del e-mail verificado: renovar el token para que el servidor lo vea */
+  if(mail===OWNER_EMAIL){try{await u.getIdToken(true)}catch(e){}}
   db=fs;const me=u.uid;isRealOwner=mail===OWNER_EMAIL;
   try{const r=await db.doc("config/roles").get();roles={socios:(r.exists&&r.data().socios)||[]}}catch(e){}
   S.me=me;S.owner=isRealOwner||roles.socios.includes(me);S.canWrite=true;
