@@ -608,7 +608,7 @@ async function sendW(p){p.catch(e=>{if(e&&(e.code==="invalid_argument"||e.code==
 function subscribeUser(u){
   if(subs.has(u))return;if(u===S.me||S.owner)subChat(u);
   const from=addDays(today(),-WINDOW);
-  subs.set(u,colFor(u).where("dia",">=",from).limit(1000).onSnapshot(snap=>{
+  subs.set(u,colFor(u).where("dia",">=",from).limit(1000).onSnapshot({includeMetadataChanges:true},snap=>{
     for(const k of[...S.items.keys()])if(k.startsWith(u+"|"))S.items.delete(k);
     for(const d of snap.docs)S.items.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});
     if(u===S.me)setSync(snap.metadata.hasPendingWrites?"Guardando…":snap.metadata.fromCache?"Cargando…":"Sincronizado");render();scheduleRank(u)},e=>{lastErr=(e&&(e.code||e.message))||"error";if(u===S.me)setSync("Sin conexión")}));
@@ -718,7 +718,7 @@ function startDemo(modo){
     const snap=()=>{const docs=run();return{docs,size:docs.length,empty:!docs.length,metadata:{hasPendingWrites:false,fromCache:false}}};
     return{where(f,op,v){return query(path,[...filters,[f,op,v]])},limit(){return this},orderBy(){return this},
       get(){return Promise.resolve(snap())},
-      onSnapshot(cb){const l={run:()=>cb(snap())};cols.push(l);setTimeout(l.run,0);return()=>{const i=cols.indexOf(l);if(i>=0)cols.splice(i,1)}},
+      onSnapshot(a,c){const cb=typeof a==="function"?a:c;const l={run:()=>cb(snap())};cols.push(l);setTimeout(l.run,0);return()=>{const i=cols.indexOf(l);if(i>=0)cols.splice(i,1)}},
       doc(id){return docRef(path+"/"+(id||uid()))},add(d){const r=docRef(path+"/"+uid());return r.set(d).then(()=>r)}}}
   function docRef(path){return{id:path.split("/").pop(),path,
     get(){return Promise.resolve(snapDoc(path))},
