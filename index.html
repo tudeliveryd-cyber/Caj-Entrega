@@ -503,6 +503,20 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .pend-chip{margin-top:2px}
 .pend-chip.on{background:var(--due);color:#fff;border-color:var(--due)}
 .pend-big{width:100%;border-style:dashed}
+.vp-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.vp-btn{display:flex;align-items:center;gap:8px;min-width:0;border:1px solid var(--accent);background:var(--surface);color:var(--ink);border-radius:14px;padding:12px 14px;font:16px var(--body);cursor:pointer;text-align:left}
+.vp-btn b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vp-l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.vp-arr{color:var(--accent);font-size:18px}
+.vp-team{border:1px dashed var(--line);background:var(--surface);color:var(--muted);border-radius:14px;padding:0 14px;font:600 14px var(--body);cursor:pointer;white-space:nowrap}
+.vp-list{display:grid;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);max-height:60vh;overflow-y:auto}
+.vp-row{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px 14px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);text-align:left;font:15px var(--body);cursor:pointer}
+.vp-row:first-child{border-top:0}
+.vp-row.on{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.vp-row .who{display:grid;gap:2px;min-width:0}.vp-row small{color:var(--muted)}
+.vp-dot{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.vp-dot.work{background:#2e9e5b}.vp-dot.done{background:#2e9e5b;opacity:.5}.vp-dot.late{background:#e08a1e}.vp-dot.off{background:#d64545}.vp-dot.emp{background:var(--accent)}
+.vp-ck{color:var(--accent);font-weight:800;font-size:18px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -966,12 +980,18 @@ function whoBar(){
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
   if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b></span><span class="wb-act"><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
   const ids=activos();
-  return `<div class="filter" role="group" aria-label="Ver entregas de">
-    <button type="button" data-filter="all" aria-pressed="${S.filter==="all"}">Empresa</button>
-    ${ids.map(u=>`<button type="button" data-filter="${esc(u)}" aria-pressed="${S.filter===u}">${esc(personName(u))}${u===S.me?" (vos)":""}</button>`).join("")}
-    <button type="button" class="team-btn" data-equipo>Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button>
-  </div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas o anotar pedidos, tocá tu nombre.</p>`:""}`;
+  const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
+  return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
+    <button type="button" class="vp-team" data-equipo>👥 Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
 }
+function openViewPick(){edit=null;const ids=activos();const t=today();
+  const nOf=u=>stats(allItems().filter(([,d])=>d._u===u&&d.dia===t&&!isCamino(d))).n;const tot=stats(allItems().filter(([,d])=>d.dia===t&&!isCamino(d))).n;
+  const row=(u,name,sub,dot)=>`<button type="button" class="vp-row ${S.filter===u?"on":""}" data-vpick="${esc(u)}"><span class="vp-dot ${dot}"></span><span class="who"><b>${name}</b><small>${sub}</small></span>${S.filter===u?'<span class="vp-ck">✓</span>':""}</button>`;
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Ver">${sheetHead("¿Qué querés ver?")}
+    <div class="vp-list">${row("all","🏢 Empresa","Todos juntos · "+plural(tot,"entrega")+" hoy","emp")}
+    ${ids.map(u=>{let dot="",sub=plural(nOf(u),"entrega")+" hoy";if(u!==S.me){try{const e=estadoDe(u);dot=e.cls==="cz-work"?"work":e.cls==="cz-ok"?"done":e.cls==="cz-late"?"late":"off";sub+=" · "+e.st.replace(/<[^>]+>/g,"")}catch(x){}}
+      return row(u,esc(personName(u))+(u===S.me?" (vos)":""),sub,dot)}).join("")}</div>
+    <button type="button" class="ghost" data-equipo>👥 Equipo · horarios, teléfonos, aprobar</button></div></div>`}
 function paint(){
   try{checkAutoInicio()}catch(e){}
   {const f=document.getElementById("fab");if(f)f.hidden=(S.mode==="db"&&showEmp())||S.tab==="chat"}
@@ -1899,6 +1919,7 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-empezar")){const i={dia:today(),em:Date.now()};const cur=S.people.get(S.me)||{};S.people.set(S.me,{...cur,inicio:i});render(true);
     try{const w=await sendW(db.doc("turnos/"+S.me).set({inicio:i},{merge:true}));toast(w==="wait"?"Inicio guardado · se envía al volver la señal":"¡Buen trabajo hoy! 💪")}catch(err){toast("No se guardó.")}}
   else if(t.hasAttribute("data-meta"))openMeta();
+  else if(t.hasAttribute("data-viewpick"))openViewPick();
   else if(t.hasAttribute("data-pend")){S.pend=!S.pend;refreshForm()}
   else if(t.hasAttribute("data-gopend")){S.tab="fiado";render(true);setTimeout(()=>{const x=document.getElementById("pend-sec");if(x)x.scrollIntoView({behavior:"smooth"})},80)}
   else if(t.dataset.precord){const p=pends.get(t.dataset.precord);if(p)copy(recordTxt(p))}
@@ -1963,6 +1984,8 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.aprobar){try{await aprobar(t.dataset.aprobar);toast("Delivery aprobado");setTimeout(openEquipo,400)}catch(err){toast("No se guardó.")}return}
   if(t.dataset.socio){try{await setSocio(t.dataset.socio,t.dataset.on==="1");toast(t.dataset.on==="1"?"Ahora es socio":"Ya no es socio");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-logout")){logout();return}
+  if(t.dataset.vpick){S.filter=t.dataset.vpick;closeSheet();render(true);window.scrollTo(0,0);return}
+  if(t.hasAttribute("data-equipo")){openEquipo();return}
   if(t.hasAttribute("data-install")){doInstall();return}
   if(t.hasAttribute("data-locok")){try{localStorage.setItem(LSL,"si")}catch(e){}closeSheet();locTick(true);render(true);toast("📍 Ubicación activada durante el turno");return}
   if(t.hasAttribute("data-locno")){try{localStorage.setItem(LSL,"no")}catch(e){}closeSheet();render(true);return}
