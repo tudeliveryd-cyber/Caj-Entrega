@@ -494,6 +494,15 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .inst>b:first-child{color:var(--due);font-size:15px}
 .inst>span{display:block}.inst .primary{margin-top:4px}
 .ios-share{display:inline-grid;place-items:center;width:22px;height:22px;border:2px solid currentColor;border-radius:5px;font-size:13px;line-height:1;vertical-align:-4px}
+.pend-banner{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;border:1px solid var(--due);background:var(--due-bg);color:var(--ink);border-radius:14px;padding:12px 14px;font:15px var(--body);cursor:pointer;text-align:left}
+.pend-banner b.num{color:var(--due)}
+.pend-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}
+.pend-row:first-child{border-top:0}
+.pend-row .who{display:grid;gap:2px;min-width:0}
+.pend-act{grid-column:1/-1;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.pend-chip{margin-top:2px}
+.pend-chip.on{background:var(--due);color:#fff;border-color:var(--due)}
+.pend-big{width:100%;border-style:dashed}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -583,7 +592,7 @@ const LS="caixa_entregas_v1",LSC="caixa_config_v2",LSP="caixa_pagos_v1";
 let chatSel=null,chatDraft="",chatG=[],chatSeen=null,listaTxt="",LL=null,ubicTxt="",sinCliOk=false,builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
 const subs=new Map(),rank=new Map(),rankTimers=new Map();
 const S={tab:"dia",dia:today(),val:0,prod:0,cant:1,metodo:"efectivo",cliente:"",obs:"",items:new Map(),old:new Map(),oldG:new Map(),oldE:new Map(),gastos:new Map(),priv:new Map(),egastos:new Map(),people:new Map(),pagos:new Map(),
-  mode:"wait",err:"",cfg:{pct:30,por:{}},me:"local",owner:true,filter:"all",askName:false,canWrite:null};
+  pend:false,mode:"wait",err:"",cfg:{pct:30,por:{}},me:"local",owner:true,filter:"all",askName:false,canWrite:null};
 const main=document.getElementById("main"),layer=document.getElementById("layer");
 
 /* ---------- storage ---------- */
@@ -597,7 +606,7 @@ function loadLocal(){const all=lsAll();S.items=new Map();const from=addDays(toda
   S.pagos=new Map(Object.entries(lsGet(LSP,{})));render()}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const colFor=u=>db.collection("turnos/"+u+"/entregas");
-async function addItem(d,u){if(db){await colFor(u).doc(uid()).set(d)}else{const a=lsAll();a[uid()]=d;lsSet(LS,a);loadLocal()}}
+async function addItem(d,u,id){id=id||uid();if(db){await colFor(u).doc(id).set(d)}else{const a=lsAll();a[id]=d;lsSet(LS,a);loadLocal()}}
 async function patchItem(key,p){const it=S.items.get(key);if(!it)return;if(db){await colFor(it._u).doc(it._id).update(p)}else{const a=lsAll();if(a[it._id]){Object.assign(a[it._id],p);lsSet(LS,a);loadLocal()}}}
 async function delItem(key){const it=S.items.get(key);if(!it)return;if(db){await colFor(it._u).doc(it._id).delete()}else{const a=lsAll();delete a[it._id];lsSet(LS,a);loadLocal()}}
 const gasCol=u=>db.collection("turnos/"+u+"/gastos");
@@ -645,6 +654,9 @@ function subscribeUser(u){
   gasCol(u).where("dia",">=",from).limit(1000).onSnapshot(snap=>{
     for(const k of[...S.gastos.keys()])if(k.startsWith(u+"|"))S.gastos.delete(k);
     for(const d of snap.docs)S.gastos.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
+  db.collection("turnos/"+u+"/pendientes").where("abierto","==",true).limit(300).onSnapshot(snap=>{
+    for(const k of[...pends.keys()])if(k.startsWith(u+"|"))pends.delete(k);
+    for(const d of snap.docs)pends.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
   db.collection("turnos/"+u+"/cambios").limit(200).onSnapshot(snap=>{
     for(const k of[...cambios.keys()])if(k.startsWith(u+"|"))cambios.delete(k);
     for(const d of snap.docs)cambios.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
@@ -782,6 +794,8 @@ function startDemo(modo){
   put("ranking/_chat",{msgs:[{de:"dueno",texto:"Buen día equipo. Hoy hay mucho movimiento en el centro: ¡vamos con todo!",em:at(t,8,0)}]});
   put("turnos/demo/chat/c1",{de:"dueno",texto:"Carlos, cuando pases por Super 6 avisame que hay un pedido para retirar.",em:at(t,10,30)});
   put("turnos/demo/chat/c2",{de:"demo",texto:"Dale, en 10 minutos estoy ahí.",em:at(t,10,32)});
+  put(E+"e7",{valor:15000,producto:40000,metodo:"transferencia",cliente:"Doña Marta",obs:"",dia:t,criadoEm:at(t,8,30)});
+  put("turnos/demo/pendientes/e7",{cliente:"Doña Marta",monto:55000,dia:t,criadoEm:at(t,8,30),abierto:true});
   put("liq/demo/dias/"+y,{dia:y,monto:9600,sentido:"paga",total:53000,pagadoEm:at(y,20,0)});
   };
   seedBase();
@@ -970,6 +984,7 @@ function paint(){
     const list=listDay(S.dia);
     document.getElementById("dia-sum").innerHTML=viewSummary(list);
     document.getElementById("dia-list").innerHTML=viewDiaList(list);
+    {const pb=document.getElementById("pend-box");if(pb)pb.innerHTML=pendBanner()}
     {const cl=caminoList();const el=document.getElementById("camino-list");const ev=showEmp()&&S.mode==="db";el.hidden=!cl.length||ev;el.innerHTML=cl.length&&!ev?viewCamino(cl):""}
     {const mb=document.getElementById("meta-box");if(mb){const h=viewMeta(list);mb.hidden=!h;mb.innerHTML=h}}
     {const cb=document.getElementById("cierre-box");if(cb){const h=viewCierre(list);cb.hidden=!h;cb.innerHTML=h}}
@@ -988,6 +1003,7 @@ function noteTxt(){
   return S.owner?"Ves las entregas de todos los deliverys. Cada delivery ve solo las suyas.":"Solo vos y el dueño de Tú Delivery ven tus entregas.";
 }
 function refreshForm(){
+  {const pw=document.getElementById("pend-wrap");if(pw){pw.hidden=S.metodo!=="transferencia"||S.mode!=="db";const c=pw.querySelector("[data-pend]");if(c)c.classList.toggle("on",S.pend)}}
   const sv=document.getElementById("save");if(sv){const fx=S.metodo==="fijo";sv.disabled=(!S.val&&!fx)||saving;sv.textContent=fx?(S.cant>1?"Registrar "+S.cant+" entregas · cliente fijo":"Registrar entrega · cliente fijo"):"Registrar "+(S.val?gs(S.val):"entrega")}
   const sc=document.getElementById("savecamino");if(sc)sc.disabled=!S.val||saving;
   {const fx=S.metodo==="fijo";const mb=document.getElementById("money-block");
@@ -1044,6 +1060,7 @@ function viewDiaShell(){
   ${lockReason(S.dia)||(showEmp()&&S.mode==="db")?"":`<button type="button" class="anotar" data-anotar><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg><span><b>Anotar pedido</b><small>Producto + delivery = cuánto cobrar</small></span></button>`}
   ${S.dia!==today()?`<button type="button" class="linkbtn today-link" data-hoy>Volver a hoy</button>`:""}
   <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
+  <div id="pend-box"></div>
   <section class="sec camino-sec" id="camino-list" hidden></section>
   <section class="sec" id="meta-box" hidden></section>
   <section class="sec" id="cierre-box" hidden></section>
@@ -1135,7 +1152,7 @@ function rowHtml(key,d,showDate){const t=d.criadoEm?new Date(d.criadoEm):null;co
   const sub=[showWho&&("Delivery: "+esc(groupName(groupKey(d)))),d.producto&&("Prod. "+gs(d.producto)+" · cobrado "+gs(d.producto+d.valor)),d.obs&&esc(d.obs)].filter(Boolean).join(" · ");
   return `<button class="row" data-edit="${esc(key)}"><span class="time num">${showDate?ddmm(d.dia):(t?pad(t.getHours())+":"+pad(t.getMinutes()):"")}</span>
     <span class="who"><b>${esc(d.cliente)||"Sin cliente"}</b>${sub?`<small>${sub}</small>`:""}</span>
-    <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?((d.cant||1)>1?"× "+d.cant:"—"):gs(d.valor)}</b><span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span>${pcb?`<span class="pill p-due">${pcb.tipo==="borrar"?"Pide borrar":"Cambio pedido"}</span>`:""}</span></button>`}
+    <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?((d.cant||1)>1?"× "+d.cant:"—"):gs(d.valor)}</b><span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span>${pends.has(d._u+"|"+d._id)?`<span class="pill p-due">⏳ Por cobrar</span>`:""}${pcb?`<span class="pill p-due">${pcb.tipo==="borrar"?"Pide borrar":"Cambio pedido"}</span>`:""}</span></button>`}
 /* ubicación: link que mandó el cliente, o búsqueda en Google Maps por nombre del comercio */
 const CIUDAD="Santa Rita, Paraguay";
 function linkIn(t){const m=String(t||"").match(/https?:\/\/\S+/);return m?m[0]:""}
@@ -1187,6 +1204,21 @@ async function sendChat(){const ta=document.getElementById("chat-txt");if(!ta)re
   try{if(k==="todos"){chatG=[...chatG,m].slice(-60);render();await sendW(db.doc("ranking/_chat").set({msgs:chatG}))}
     else{const id=uid();chats.set(k+"|"+id,{...m,_u:k,_id:id});render();await sendW(db.collection("turnos/"+k+"/chat").doc(id).set(m))}}
   catch(e){toast("No se envió. Probá de nuevo.");ta.value=v}}
+/* transferencias pendientes: el cliente dijo "te transfiero" (turnos/<uid>/pendientes/<idEntrega>) */
+var pends=new Map();
+const pendList=()=>[...pends.values()].filter(p=>p.abierto&&(S.mode!=="db"||(S.owner?(S.filter==="all"||p._u===S.filter):p._u===S.me))).sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
+async function addPend(u,id,d){if(!db)return;const p={cliente:d.cliente||"",monto:(d.valor||0)+(d.producto||0),dia:d.dia,criadoEm:Date.now(),abierto:true};
+  pends.set(u+"|"+id,{...p,_u:u,_id:id});await sendW(db.collection("turnos/"+u+"/pendientes").doc(id).set(p))}
+const diasTxt=ms=>{const n=Math.floor((Date.now()-ms)/864e5);return n<=0?"hoy":n===1?"hace 1 día":"hace "+n+" días"};
+const recordTxt=p=>`Hola${p.cliente?" "+p.cliente:""}! 👋 Te recuerdo la transferencia de ${gs(p.monto)} del pedido del ${ddmm(p.dia)}. ¡Muchas gracias! — Tú Delivery`;
+function pendBanner(){const l=pendList();if(!l.length)return"";const t=l.reduce((a,p)=>a+p.monto,0);
+  return `<button type="button" class="pend-banner" data-gopend><span>⏳ <b>${plural(l.length,"transferencia")} por cobrar</b></span><b class="num">${gs(t)} ›</b></button>`}
+function pendSection(){const l=pendList();if(!l.length)return"";const t=l.reduce((a,p)=>a+p.monto,0);const showWho=S.mode==="db"&&S.owner&&S.filter==="all";
+  return `<section class="sec" id="pend-sec"><div class="sec-h"><h2>⏳ Transferencias por cobrar</h2><span class="num c-due">${gs(t)}</span></div><div class="list">
+    ${l.map(p=>{const old=Date.now()-p.criadoEm>2*864e5;return `<div class="pend-row"><div class="who"><b>${esc(p.cliente||"Sin cliente")}</b><small>${ddmm(p.dia)} · <span class="${old?"cz-warn":""}">${diasTxt(p.criadoEm)}</span>${showWho?" · "+esc(personName(p._u)):""}</small></div>
+      <b class="num c-due">${gs(p.monto)}</b>
+      <div class="pend-act"><button type="button" class="small pay" data-precib="${esc(p._u)}|${esc(p._id)}">✓ Recibida</button><button type="button" class="linkbtn small-link" data-precord="${esc(p._u)}|${esc(p._id)}">Copiar recordatorio</button></div></div>`}).join("")}
+  </div><p class="hint" style="margin:0">Cuando te llegue la transferencia, tocá <b>✓ Recibida</b>.</p></section>`}
 /* lista de compras: el cliente manda la lista, el delivery la marca en el mercado */
 function isNota(t){const w=t.trim().split(/\s+/).length;
   return /[:?]\s*$/.test(t)||/por favor|porfa|gracias|obrigad|\bmand[ae]r?\b|\bfoto\b|^\s*(oi|ol[aá]|hola|bom dia|boa tarde|boa noite|buen[oa]s)\b/i.test(t)||(w>=7&&!/^\s*\d/.test(t))}
@@ -1459,7 +1491,7 @@ function viewAnotados(){
   const gr=[...by.entries()].sort((a,b)=>canCob()?(sumP(b[1])-sumP(a[1])||sumT(b[1])-sumT(a[1])):sumT(b[1])-sumT(a[1]));
   const head=([name,arr])=>{if(!canCob())return `<div class="group-h"><span>${esc(name)} · ${arr.length}</span><span class="num">${gs(sumT(arr))}</span></div>`;
     const p=sumP(arr);return `<div class="cob-h"><span class="nm">${esc(name)} · ${arr.length}</span><span class="r">${p?`<span class="c-due num">Debe ${gs(p)}</span><button type="button" class="small pay" data-cobrar="${esc(name)}">✓ Cobrado</button>`:`<span class="paid">Cobrado ✓</span><button type="button" class="linkbtn small-link" data-descobrar="${esc(name)}">deshacer</button>`}</span></div>`};
-  return `
+  return `${pendSection()}
   <div class="seg" role="group" aria-label="Período">${[[1,"Hoy"],[7,"7 días"],[30,"30 días"]].map(([n,l])=>`<button type="button" data-range="${n}" aria-pressed="${anotRange===n}">${l}</button>`).join("")}</div>
   <div class="due-total"><div><div class="lbl">Anotado en la cuenta de la empresa</div><div class="big num">${gs(total)}</div>${canCob()&&list.length?`<div class="due-split"><span class="c-due">Por cobrar <b class="num">${gs(porCobrar)}</b></span><span class="c-cash">Cobrado <b class="num">${gs(total-porCobrar)}</b></span></div>`:""}</div>
     <div class="muted-r">${plural(list.length,"entrega")}<br>${plural(by.size,"cliente")}</div></div>
@@ -1721,6 +1753,7 @@ function openCamino(key){const d=S.items.get(key);if(!d)return;edit=null;
       <button type="button" class="linkbtn" data-copyc="${esc(key)}">Copiar cuenta para WhatsApp</button></div>
     <p class="hint" style="margin:0"><b>¿Cómo te pagó el cliente?</b> Al tocar, la entrega queda finalizada, sale de “En camino” y se suma a las entregas del día.</p>
     <div class="methods">${Object.keys(M).map(k=>`<button type="button" class="method m-${M[k].c}" data-entregado="${esc(key)}" data-how="${k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("")}</div>
+    ${S.mode==="db"?`<button type="button" class="method m-due pend-big" data-entregado="${esc(key)}" data-how="transferencia" data-pendc="1">⏳ Me transfiere después<small>queda en “por cobrar” hasta que llegue</small></button>`:""}
     <button class="danger" data-cdel="${esc(key)}">Quitar de la lista sin registrar</button>
   </div></div>`}
 function openPct(){edit=null;const ids=S.mode==="db"?activos():[];
@@ -1734,7 +1767,7 @@ function openName(){edit=null;const cur=S.people.get(S.me);layer.innerHTML=`<div
   <div class="field"><label for="n-val">Tu nombre</label><input id="n-val" autocomplete="name" value="${esc(cur?cur.nome:"")}" placeholder="Ej.: Juan"></div>
   <button class="primary" data-nsave>Guardar</button></div></div>`;setTimeout(()=>{const n=document.getElementById("n-val");if(n)n.focus()},50)}
 function sheetHead(title){return `<div class="sheet-h"><h3>${title}</h3><button type="button" class="x" data-cancel aria-label="Cerrar">✕</button></div>`}
-function openEntry(cm){edit=null;sinCliOk=false;if(!S.cliente){ubicTxt="";listaTxt=""}const isToday=S.dia===today();
+function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;if(!S.cliente){ubicTxt="";listaTxt=""}const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
   const cliente=`<div class="field"><label for="cli">${cm?"Pedido / cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
@@ -1751,7 +1784,7 @@ function openEntry(cm){edit=null;sinCliOk=false;if(!S.cliente){ubicTxt="";listaT
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet entry-sheet" role="dialog" aria-label="${cm?"Anotar pedido":"Nueva entrega"}">
     ${sheetHead((cm?"Anotar pedido":"Nueva entrega")+(isToday?"":" · "+ddmm(S.dia))+forWho)}
     ${cm?cliente+listaF+prod+presets+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
-       :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
+       :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="pend-wrap" hidden><button type="button" class="chip pend-chip" data-pend>⏳ El cliente me transfiere después</button></div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
     <p class="err" id="err" ${S.err?"":"hidden"}>${esc(S.err)}</p>
     ${cm?`<button type="button" class="primary" id="savecamino" ${S.val?"":"disabled"}>Guardar pedido</button>`
        :`<button type="button" class="primary" id="save" ${S.val?"":"disabled"}>Registrar ${S.val?gs(S.val):"entrega"}</button>
@@ -1810,15 +1843,18 @@ async function save(camino){
   if(!S.val&&!fx){S.err="Escribí el monto de la entrega.";refreshForm();return}
   if(fx&&!S.cliente.trim()){S.err="Poné el nombre del cliente fijo (ej.: el restaurante).";refreshForm();return}
   if(!camino&&S.metodo==="anotado"&&!S.cliente.trim()){S.err="Para anotar, poné el nombre del cliente.";refreshForm();return}
+  const pendNow=!camino&&S.metodo==="transferencia"&&S.pend&&S.mode==="db";
+  if(pendNow&&!S.cliente.trim()){S.err="Para saber a quién cobrar, poné el nombre del cliente.";refreshForm();return}
   if(!fx&&!S.cliente.trim()&&!sinCliOk){sinCliOk=true;S.err="¿Sin nombre de cliente? Así no aparece en Mejores clientes. Escribilo arriba, o tocá Registrar de nuevo para guardar igual.";refreshForm();toast("Falta el cliente · tocá Registrar otra vez para guardar igual");const c=document.getElementById("cli");if(c)c.focus();return}
   sinCliOk=false;
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
   if(S.prod)d.producto=S.prod;if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li}if(fx&&S.cant>1)d.cant=S.cant;
-  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";S.err="";closeSheet();
+  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";S.err="";S.pend=false;closeSheet();
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
-  try{const w=await sendW(addItem(d,writeTarget()));if(w==="wait"){toast("Guardado en el celular · se envía al volver la señal")}else toast(d.metodo==="fijo"&&!camino?`Registrado${d.cant>1?" "+d.cant+" entregas":""} · cliente fijo (${d.cliente})`:`Registrado: ${gs(d.valor)} · ${label}`)}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast(e&&e.code==="quota_exceeded"?"Almacenamiento lleno":"No se guardó. Probá de nuevo.")}
+  const nid=uid(),wt=writeTarget();if(pendNow)addPend(wt,nid,d).catch(()=>{});
+  try{const w=await sendW(addItem(d,wt,nid));if(w==="wait"){toast("Guardado en el celular · se envía al volver la señal")}else if(pendNow)toast("Registrado · ⏳ transferencia por cobrar");else toast(d.metodo==="fijo"&&!camino?`Registrado${d.cant>1?" "+d.cant+" entregas":""} · cliente fijo (${d.cliente})`:`Registrado: ${gs(d.valor)} · ${label}`)}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast(e&&e.code==="quota_exceeded"?"Almacenamiento lleno":"No se guardó. Probá de nuevo.")}
   saving=false;refreshForm();render();
 }
 async function doPay(u,dia){const list=[...S.items.entries()].filter(([,d])=>!isCamino(d)&&d._u===u&&d.dia===dia&&!isLegacy(d));
@@ -1862,6 +1898,11 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-empezar")){const i={dia:today(),em:Date.now()};const cur=S.people.get(S.me)||{};S.people.set(S.me,{...cur,inicio:i});render(true);
     try{const w=await sendW(db.doc("turnos/"+S.me).set({inicio:i},{merge:true}));toast(w==="wait"?"Inicio guardado · se envía al volver la señal":"¡Buen trabajo hoy! 💪")}catch(err){toast("No se guardó.")}}
   else if(t.hasAttribute("data-meta"))openMeta();
+  else if(t.hasAttribute("data-pend")){S.pend=!S.pend;refreshForm()}
+  else if(t.hasAttribute("data-gopend")){S.tab="fiado";render(true);setTimeout(()=>{const x=document.getElementById("pend-sec");if(x)x.scrollIntoView({behavior:"smooth"})},80)}
+  else if(t.dataset.precord){const p=pends.get(t.dataset.precord);if(p)copy(recordTxt(p))}
+  else if(t.dataset.precib){const k=t.dataset.precib;const p=pends.get(k);if(!p)return;if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Llegó? Tocá de nuevo";setTimeout(()=>{t.classList.remove("armed");t.textContent="✓ Recibida"},3000);return}
+    const[u,id]=k.split("|");pends.delete(k);render(true);try{await sendW(db.collection("turnos/"+u+"/pendientes").doc(id).set({abierto:false,recibidoEm:Date.now(),por:S.me},{merge:true}));toast("✓ Transferencia recibida · "+gs(p.monto))}catch(err){toast("No se guardó.")}}
   else if(t.hasAttribute("data-mapaequipo"))openMapaEquipo();
   else if(t.hasAttribute("data-locask")){try{localStorage.removeItem(LSL)}catch(e){}openLocAsk()}
   else if(t.dataset.chat){chatSel=t.dataset.chat;render(true)}
@@ -1979,7 +2020,8 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.entregado){const k=t.dataset.entregado,how=t.dataset.how,d=S.items.get(k);if(!d)return;
     if(how==="anotado"&&!(d.cliente||"").trim()){toast("Para anotar, el pedido necesita nombre de cliente");return}
     const r=S.mode==="db"&&!S.owner&&pagoOf(S.me,today())?"Hoy ya fue liquidado. Pedile al dueño que lo registre.":"";if(r){lockedMsg(r);return}
-    closeSheet();try{await patchItem(k,{estado:"ok",metodo:how,dia:today(),criadoEm:Date.now()});toast("Entrega finalizada · "+M[how].n)}catch(err){toast("No se guardó.")}return}
+    if(t.dataset.pendc&&!(d.cliente||"").trim()){toast("Para cobrar después, el pedido necesita nombre de cliente");return}
+    closeSheet();try{if(t.dataset.pendc)addPend(d._u,d._id,{...d,dia:today()}).catch(()=>{});await patchItem(k,{estado:"ok",metodo:how,dia:today(),criadoEm:Date.now()});toast(t.dataset.pendc?"Entregado · ⏳ transferencia por cobrar":"Entrega finalizada · "+M[how].n)}catch(err){toast("No se guardó.")}return}
   if(t.dataset.cdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo para quitarlo";return}
     const k=t.dataset.cdel;closeSheet();try{await delItem(k);toast("Quitado de la lista")}catch(err){toast("No se eliminó.")}return}
   if(t.hasAttribute("data-nsave")){const n=document.getElementById("n-val").value.trim();if(!n){toast("Escribí tu nombre");return}closeSheet();try{await saveName(n);toast("Nombre guardado")}catch(err){noPerm()}return}
