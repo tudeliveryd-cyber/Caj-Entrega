@@ -488,7 +488,9 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .loc-a{color:var(--transfer)!important;text-decoration:none;margin-left:6px}
 .leaflet-tooltip{font:700 12px var(--body)}
 .inst{display:grid;gap:6px;text-align:left;background:var(--due-bg);color:var(--ink);border:1px solid var(--due);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.4;margin:6px 0}
-.inst b:first-child{color:var(--due);font-size:15px}
+.inst>b:first-child{color:var(--due);font-size:15px}
+.inst>span{display:block}.inst .primary{margin-top:4px}
+.ios-share{display:inline-grid;place-items:center;width:22px;height:22px;border:2px solid currentColor;border-radius:5px;font-size:13px;line-height:1;vertical-align:-4px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -710,7 +712,7 @@ function authMsg(e){const c=(e&&e.code)||"";
   if(/network/.test(c))return"Sin conexión. Probá de nuevo.";
   if(/too-many-requests/.test(c))return"Muchos intentos. Esperá unos minutos.";
   return"No se pudo entrar. Probá de nuevo."}
-LG.addEventListener("click",async e=>{const t=e.target.closest("button");if(!t)return;
+LG.addEventListener("click",async e=>{const t=e.target.closest("button");if(!t)return;if(t.hasAttribute("data-install")){doInstall();return}
   if(t.dataset.lgmode){lgMode=t.dataset.lgmode;drawLogin();return}
   if(t.hasAttribute("data-forgot")){const m=document.getElementById("lg-mail").value.trim();if(!m){drawLogin("Escribí tu e-mail y tocá de nuevo “Olvidé mi contraseña”.");return}
     try{await auth.sendPasswordResetEmail(m);toast("Te mandamos un e-mail para cambiar la contraseña")}catch(err){drawLogin(authMsg(err))}}});
@@ -840,10 +842,22 @@ async function boot(fs,u){bootStage="cuenta";
 function isStandalone(){try{return window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true}catch(e){return false}}
 function isIOS(){return /iPhone|iPad|iPod/i.test(navigator.userAgent)}
 function inApp(){return /FBAN|FBAV|Instagram|WhatsApp|Line\/|; wv\)/i.test(navigator.userAgent)}
+var instPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();instPrompt=e;refreshInst()});
+window.addEventListener("appinstalled",()=>{instPrompt=null;refreshInst();try{toast("✅ App instalada. Abrila desde el ícono Tú")}catch(x){}});
+function refreshInst(){document.querySelectorAll(".inst").forEach(el=>{const h=installHint();if(!h)el.remove();else el.outerHTML=h})}
+async function doInstall(){if(!instPrompt)return;const p=instPrompt;instPrompt=null;try{p.prompt();const r=await p.userChoice;if(r&&r.outcome!=="accepted")instPrompt=p}catch(e){}refreshInst()}
 function installHint(){if(isStandalone()||document.body.classList.contains("demo"))return"";
-  const pasos=inApp()?`Estás dentro de otra app (WhatsApp, Instagram…). Tocá <b>⋯</b> y elegí <b>“Abrir en ${isIOS()?"Safari":"Chrome"}”</b>. Después:`:"";
-  const ins=isIOS()?`En <b>Safari</b> tocá <b>Compartir</b> (el cuadrado con la flecha ↑) → <b>“Agregar a inicio”</b>.`:`En <b>Chrome</b> tocá <b>⋮</b> → <b>“Instalar app”</b> o <b>“Agregar a la pantalla principal”</b>.`;
-  return `<div class="inst"><b>📲 Instalá la app para no tener que entrar cada vez</b><span>${pasos} ${ins} Después abrila siempre desde el ícono <b>Tú</b> en tu pantalla.</span></div>`}
+  if(instPrompt)return `<div class="inst"><b>📲 Instalá la app</b><span>Así entrás una sola vez y queda guardada en tu pantalla, como cualquier app.</span><button type="button" class="primary" data-install>📲 Instalar app</button></div>`;
+  if(isIOS())return `<div class="inst"><b>📲 Instalá la app para no tener que entrar cada vez</b>
+    ${inApp()?`<span>1. Estás dentro de otra app. Tocá <b>⋯</b> y elegí <b>“Abrir en Safari”</b>.</span>`:""}
+    <span>${inApp()?"2":"1"}. Abajo en Safari tocá <b>Compartir</b> <span class="ios-share">⬆︎</span> (el cuadrado con la flecha).</span>
+    <span>${inApp()?"3":"2"}. Bajá y tocá <b>“Agregar a inicio”</b> → <b>Agregar</b>.</span>
+    <span>Listo: abrila siempre desde el ícono <b>Tú</b>.</span></div>`;
+  return `<div class="inst"><b>📲 Instalá la app para no tener que entrar cada vez</b>
+    ${inApp()?`<span>1. Estás dentro de otra app. Tocá <b>⋮</b> y elegí <b>“Abrir en Chrome”</b>.</span>`:""}
+    <span>${inApp()?"2":"1"}. En Chrome tocá <b>⋮</b> (arriba a la derecha) → <b>“Instalar app”</b> o <b>“Agregar a la pantalla principal”</b>.</span>
+    <span>Listo: abrila siempre desde el ícono <b>Tú</b>.</span></div>`}
 function startData(me){
   if(!isStandalone()&&!document.body.classList.contains("demo")){try{if(!sessionStorage.getItem("instHint")){sessionStorage.setItem("instHint","1");setTimeout(()=>{if(layer.innerHTML.trim())return;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Instalar">${sheetHead("📲 Instalá la app")}${installHint()}<button type="button" class="primary" data-cancel>Entendido</button></div></div>`},1500)}}catch(e){}}
   try{const pend=lsAll();const ids=Object.entries(pend);if(ids.length){Promise.all(ids.map(([id,d])=>colFor(me).doc(id).set(d))).then(()=>lsSet(LS,{})).catch(()=>{})}}catch(e){}
@@ -1897,6 +1911,7 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.aprobar){try{await aprobar(t.dataset.aprobar);toast("Delivery aprobado");setTimeout(openEquipo,400)}catch(err){toast("No se guardó.")}return}
   if(t.dataset.socio){try{await setSocio(t.dataset.socio,t.dataset.on==="1");toast(t.dataset.on==="1"?"Ahora es socio":"Ya no es socio");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-logout")){logout();return}
+  if(t.hasAttribute("data-install")){doInstall();return}
   if(t.hasAttribute("data-locok")){try{localStorage.setItem(LSL,"si")}catch(e){}closeSheet();locTick(true);render(true);toast("📍 Ubicación activada durante el turno");return}
   if(t.hasAttribute("data-locno")){try{localStorage.setItem(LSL,"no")}catch(e){}closeSheet();render(true);return}
   if(t.dataset.tel){const u=t.dataset.tel;const cur=(S.people.get(u)||{}).tel||"";
