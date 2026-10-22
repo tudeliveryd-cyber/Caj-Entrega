@@ -533,6 +533,11 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .cl-mm{font-size:13px;color:var(--muted)}.cl-tip{font-size:15px;font-weight:600;line-height:1.35}
 .lote-chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .lote-info{margin-top:8px;font-size:14px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 10%,transparent);line-height:1.35}
+.method[aria-pressed="true"].m-paid{border-color:#2e9e5b;background:color-mix(in srgb,#2e9e5b 14%,var(--surface));color:#2e9e5b}
+.p-paid{background:color-mix(in srgb,#2e9e5b 16%,var(--surface));color:#2e9e5b}
+.paid-note{font-size:14px;padding:10px 14px;border-top:1px solid var(--line);color:var(--ink)}
+.pt-wrap{margin-top:-4px}.pt-chip{font-size:13px}
+.pt-chip.on{background:#2e9e5b;border-color:#2e9e5b;color:#fff}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -586,11 +591,12 @@ img{max-width:100%}[hidden]{display:none!important}
 <script>
 (function(){
 const PRESETS=[10000,13000,15000,17000,18000,20000,25000,30000,35000];
-const M={efectivo:{n:"Efectivo",sub:"queda con el delivery",c:"cash"},transferencia:{n:"Transferencia",sub:"al delivery",c:"transfer"},anotado:{n:"Anotado",sub:"cuenta de la empresa",c:"due"},fijo:{n:"Cliente fijo",sub:"paga diario, sin %",c:"fijo"}};
+const M={efectivo:{n:"Efectivo",sub:"queda con el delivery",c:"cash"},transferencia:{n:"Transferencia",sub:"al delivery",c:"transfer"},anotado:{n:"Anotado",sub:"cuenta de la empresa",c:"due"},pagado:{n:"Pedido pago",sub:"ya pagó a la empresa",c:"paid"},fijo:{n:"Cliente fijo",sub:"paga diario, sin %",c:"fijo"}};
 const ICON={
  efectivo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>',
  transferencia:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>',
  anotado:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h10l4 4v14H5z"/><path d="M9 12h6M9 16h4"/></svg>',
+ pagado:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/></svg>',
  fijo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V9l8-6 8 6v12z"/><path d="M9 21v-6h6v6"/></svg>'};
 const GT={gasolina:"Nafta",almuerzo:"Almuerzo",cena:"Cena",mantenimiento:"Mantenimiento",otro:"Otro",personal:"🔒 Personal"};
 const GPRESETS=[5000,10000,15000,20000,30000];
@@ -622,7 +628,7 @@ const LS="caixa_entregas_v1",LSC="caixa_config_v2",LSP="caixa_pagos_v1";
 let chatSel=null,chatDraft="",chatG=[],chatSeen=null,listaTxt="",LL=null,ubicTxt="",sinCliOk=false,builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
 const subs=new Map(),rank=new Map(),rankTimers=new Map();
 const S={tab:"dia",dia:today(),val:0,prod:0,cant:1,metodo:"efectivo",cliente:"",obs:"",items:new Map(),old:new Map(),oldG:new Map(),oldE:new Map(),gastos:new Map(),priv:new Map(),egastos:new Map(),people:new Map(),pagos:new Map(),
-  lote:false,pend:false,mode:"wait",err:"",cfg:{pct:30,por:{}},me:"local",owner:true,filter:"all",askName:false,canWrite:null};
+  pagoTipo:"",lote:false,pend:false,mode:"wait",err:"",cfg:{pct:30,por:{}},me:"local",owner:true,filter:"all",askName:false,canWrite:null};
 const main=document.getElementById("main"),layer=document.getElementById("layer");
 
 /* ---------- storage ---------- */
@@ -936,19 +942,22 @@ const groupKey=d=>isLegacy(d)?"n:"+d.entregador.trim():d._u;
 const groupName=k=>k.startsWith("n:")?k.slice(2):personName(k);
 const pctOf=u=>(S.cfg.por&&S.cfg.por[u])||S.cfg.pct;
 function stats(list){
-  const s={n:0,total:0,efectivo:0,transferencia:0,anotado:0,fijo:0,ne:0,nt:0,na:0,nf:0,com:0,pcts:new Set()};
+  const s={n:0,total:0,efectivo:0,transferencia:0,anotado:0,pagado:0,fijo:0,ne:0,nt:0,na:0,np:0,nf:0,com:0,pcts:new Set()};
   for(const[,d]of list){s.total+=d.valor;
     if(d.metodo==="fijo"){s.fijo+=d.valor;if(!d.diario){const c=d.cant||1;s.nf+=c;s.n+=c}continue}
-    const cq=d.cant||1;s.n+=cq;s[d.metodo]+=d.valor;s[d.metodo==="efectivo"?"ne":d.metodo==="transferencia"?"nt":"na"]+=cq;
+    const cq=d.cant||1;s.n+=cq;s[d.metodo]+=d.valor;s[{efectivo:"ne",transferencia:"nt",anotado:"na",pagado:"np"}[d.metodo]||"na"]+=cq;
     const p=pctOf(d._u);s.pcts.add(p);s.com+=d.valor*p/100}
-  s.com=Math.round(s.com);s.fica=s.total-s.com;s.saldo=s.com-s.anotado;
+  s.com=Math.round(s.com);s.fica=s.total-s.com;s.enEmp=s.anotado+s.pagado;s.saldo=s.com-s.anotado-s.pagado;
   s.pct=s.pcts.size===1?[...s.pcts][0]:(s.pcts.size?null:pctOf(S.filter==="all"?S.me:S.filter));return s}
 function groups(list){const m=new Map();for(const e of list){const k=groupKey(e[1]);if(!m.has(k))m.set(k,[]);m.get(k).push(e)}
   return[...m.entries()].map(([k,l])=>({k,name:groupName(k),list:l,s:stats(l)})).sort((a,b)=>b.s.total-a.s.total)}
 const isCamino=d=>d.estado==="camino";
 const visible=()=>[...new Map([...S.old,...S.items]).entries()].filter(([,d])=>!isCamino(d)&&(S.filter==="all"||d._u===S.filter));
 const caminoList=()=>[...S.items.entries()].filter(([,d])=>isCamino(d)&&(S.filter==="all"||d._u===S.filter)).sort((a,b)=>(a[1].criadoEm||0)-(b[1].criadoEm||0));
-const cuentaTxt=(prod,val)=>prod?`Producto ${gs(prod)} + Delivery ${gs(val)} = Total ${gs(prod+val)}`:`Delivery ${gs(val)}`;
+/* pagoTipo: "todo" = el cliente ya pagó todo a la empresa (no se cobra nada) · "prod" = producto ya pagado (se cobra solo el delivery) */
+const prodCobra=d=>d.metodo==="pagado"||d.pagoTipo?0:(d.producto||0);
+const cobrarDe=d=>d.metodo==="pagado"||d.pagoTipo==="todo"?0:prodCobra(d)+(d.valor||0);
+const cuentaTxt=(prod,val,pt)=>pt==="todo"?`Pedido ya pagado ✅ · no hay nada que cobrar`:pt==="prod"?`Producto ya pagado ✅ · Delivery ${gs(val)} = Total a pagar ${gs(val)}`:prod?`Producto ${gs(prod)} + Delivery ${gs(val)} = Total ${gs(prod+val)}`:`Delivery ${gs(val)}`;
 const listDay=k=>visible().filter(([,d])=>d.dia===k).sort((a,b)=>(b[1].criadoEm||0)-(a[1].criadoEm||0));
 const listRange=(a,b)=>visible().filter(([,d])=>d.dia>=a&&d.dia<=b);
 const ownView=()=>S.mode!=="db"||!S.owner||S.filter===S.me;
@@ -963,7 +972,7 @@ function empresaBlock(s,eg,label){const gan=s.com-eg;return `<div class="empresa
   <div class="ac-row"><span>Comisiones de los deliverys</span><b class="num">${gs(s.com)}</b></div>
   <div class="ac-row"><span>Gastos de la empresa</span><b class="num c-due">− ${gs(eg)}</b></div>
   <div class="ac-res"><span>${gan<0?"Pérdida de la empresa":"Ganancia de la empresa"}</span><b class="num ${gan<0?"c-due":"c-cash"}">${gan<0?"− ":""}${gs(Math.abs(gan))}</b></div>
-  <div class="ac-foot">En la cuenta de la empresa (anotado): ${gs(s.anotado)} · con los deliverys (efectivo y transferencia): ${gs(s.efectivo+s.transferencia)}</div></div>`}
+  <div class="ac-foot">En la cuenta de la empresa (anotado${s.pagado?" y pedidos pagos":""}): ${gs(s.anotado+s.pagado)} · con los deliverys (efectivo y transferencia): ${gs(s.efectivo+s.transferencia)}</div></div>`}
 function egastosBlock(from,to){
   const l=egRange(from,to);const g=egStats(l);
   const tipos=Object.entries(g.tipo).sort((a,b)=>b[1]-a[1]);const max=Math.max(1,...tipos.map(t=>t[1]));
@@ -1062,7 +1071,10 @@ function refreshForm(){
     {const fq=document.getElementById("fijo-cant");if(fq)fq.hidden=!(fx||S.lote);const ci=document.getElementById("cant");if(ci&&document.activeElement!==ci)ci.value=S.cant}
     const fc=document.getElementById("fijo-chips");if(fc){const names=[...new Set([...S.items.values()].filter(d=>d.metodo==="fijo"&&d.cliente).map(d=>d.cliente.trim()))].slice(0,6);
       fc.hidden=!fx||!names.length;fc.innerHTML=names.map(n=>`<button type="button" class="chip ${norm(n)===norm(S.cliente)?"on":""}" data-fijocli="${esc(n)}">${esc(n)}</button>`).join("")}}}
-  const cb=document.getElementById("cobrar");if(cb){cb.hidden=!S.prod;if(!S.prod){cb.innerHTML=""}cb.innerHTML=S.prod?`<div><span>Cobrar al cliente</span><b class="num">${gs(S.prod+S.val)}</b></div><small>Producto ${gs(S.prod)} + delivery ${gs(S.val)}</small><button type="button" class="linkbtn" data-copycuenta>Copiar cuenta para WhatsApp</button>`:""}
+  document.querySelectorAll("[data-pt]").forEach(c=>c.classList.toggle("on",c.dataset.pt===S.pagoTipo));
+  const cb=document.getElementById("cobrar");if(cb){const sh=S.prod||S.pagoTipo;cb.hidden=!sh;const cob=cobrarDe({producto:S.prod,valor:S.val,pagoTipo:S.pagoTipo});
+    cb.innerHTML=!sh?"":S.pagoTipo==="todo"?`<div><span>Cobrar al cliente</span><b class="num">₲ 0</b></div><small>✅ Pedido ya pagado a la empresa: no cobres nada, solo entregá.</small>`
+      :`<div><span>Cobrar al cliente</span><b class="num">${gs(cob)}</b></div><small>${S.pagoTipo==="prod"?"🛍️ Producto ya pagado · cobrá solo el delivery "+gs(S.val):"Producto "+gs(S.prod)+" + delivery "+gs(S.val)}</small><button type="button" class="linkbtn" data-copycuenta>Copiar cuenta para WhatsApp</button>`}
   updMapLink();
   const set=(id,v)=>{const el=document.getElementById(id);if(el&&document.activeElement!==el)el.value=v};
   set("val",fmtInput(S.val));set("prod",fmtInput(S.prod));set("cli",S.cliente);set("obs",S.obs);
@@ -1170,7 +1182,7 @@ function payControl(u,dia,s,compact){
 /* mensaje de liquidación para mandar al delivery por WhatsApp (sin mostrar el %) */
 const allItems=()=>[...new Map([...S.old,...S.items]).entries()];
 function liqLines(s){const r=saldoTxt(s);const fx=s.nf||s.fijo?`\nClientes fijos: ${plural(s.nf,"entrega")}${s.fijo?" · diario "+gs(s.fijo)+" (todo tuyo)":""}`:"";
-  return `Entregas: ${s.n} · Total cobrado: ${gs(s.total)}\nEfectivo ${gs(s.efectivo)} · Transferencia ${gs(s.transferencia)} · Anotado ${gs(s.anotado)}${fx}\nComisión Tú Delivery: ${gs(s.com)}\nMenos anotado (ya está en la cuenta de la empresa): − ${gs(s.anotado)}\n*${s.saldo>0?"Tenés que pagar a la empresa":s.saldo<0?"La empresa te paga":"Liquidación en cero"}${s.saldo?": "+gs(r.v):""}*`}
+  return `Entregas: ${s.n} · Total cobrado: ${gs(s.total)}\nEfectivo ${gs(s.efectivo)} · Transferencia ${gs(s.transferencia)} · Anotado ${gs(s.anotado)}${s.pagado?" · Pedido pago "+gs(s.pagado):""}${fx}\nComisión Tú Delivery: ${gs(s.com)}\nMenos anotado${s.pagado?" y pedidos pagos":""} (ya está en la cuenta de la empresa): − ${gs(s.anotado+s.pagado)}\n*${s.saldo>0?"Tenés que pagar a la empresa":s.saldo<0?"La empresa te paga":"Liquidación en cero"}${s.saldo?": "+gs(r.v):""}*`}
 function telWa(u){let t=String((S.people.get(u)||{}).tel||"").replace(/\D/g,"");if(!t)return"";if(t.startsWith("595"))return t;if(t.startsWith("0"))t=t.slice(1);return "595"+t}
 function waOpen(txt,u){const n=u?telWa(u):"";return "https://wa.me/"+n+"?text="+encodeURIComponent(txt)}
 function waDia(u,dia){const l=allItems().filter(([,d])=>d._u===u&&d.dia===dia&&!isCamino(d)&&!isLegacy(d));const s=stats(l);const st=pagoState(u,dia,s);
@@ -1186,6 +1198,7 @@ function acertoBlock(s,label,pay,gt){
     <div class="ac-h">${label}</div>
     <div class="ac-row"><span>Comisión Tú Delivery${pctLabel(s)}</span><b class="num">${gs(s.com)}</b></div>
     <div class="ac-row"><span>Anotado, ya en la cuenta de la empresa</span><b class="num c-due">− ${gs(s.anotado)}</b></div>
+    ${s.pagado?`<div class="ac-row"><span>Pedido pago, ya en la cuenta de la empresa</span><b class="num c-due">− ${gs(s.pagado)}</b></div>`:""}
     <div class="ac-res"><span>${r.t}</span><b class="num ${r.c}">${gs(r.v)}</b></div>
     ${pay?`<div class="ac-pay">${pay}</div>`:""}
     <div class="ac-foot">Delivery queda con ${gs(s.fica)} · tiene en mano ${gs(s.efectivo+s.transferencia+s.fijo)}${s.fijo?" (incluye diario de clientes fijos)":" entre efectivo y transferencia"}</div>
@@ -1214,8 +1227,9 @@ function viewSummary(list){
       <div><div class="k c-transfer"><span class="dot d-transfer"></span>Transfer.</div>${showEmp()?'<div class="hold">a los deliverys</div>':""}<div class="v num">${gs(s.transferencia)}</div><div class="n">${plural(s.nt,"entrega")}</div></div>
       <div><div class="k c-due"><span class="dot d-due"></span>Anotado</div>${showEmp()?'<div class="hold">en la cuenta de la empresa</div>':""}<div class="v num">${gs(s.anotado)}</div><div class="n">${plural(s.na,"entrega")}</div></div>
     </div>
+    ${s.pagado?`<div class="paid-note">✅ <b>Pedidos pagos</b> (ya pagaron a la empresa): ${gs(s.pagado)} · ${plural(s.np,"entrega")}</div>`:""}
     ${fijosBlock(list)}
-    ${(()=>{const pr=list.reduce((a,[,d])=>a+(d.producto||0),0);return pr?`<div class="prod-note">Además se cobró ${gs(pr)} de productos para los comercios. No entra en la comisión.</div>`:""})()}
+    ${(()=>{const pr=list.reduce((a,[,d])=>a+prodCobra(d),0);return pr?`<div class="prod-note">Además se cobró ${gs(pr)} de productos para los comercios. No entra en la comisión.</div>`:""})()}
     ${showEmp()?empresaBlock(s,egStats(egRange(S.dia,S.dia)).total,"Resultado de la empresa hoy"):""}
     ${acertoBlock(s,acertoLabel("Liquidación del día",gr),single?payControl(single,S.dia,s,false):"",myGt(S.dia,S.dia))}
     ${driverTable(gr,S.dia)}
@@ -1223,7 +1237,7 @@ function viewSummary(list){
 }
 function rowHtml(key,d,showDate){const t=d.criadoEm?new Date(d.criadoEm):null;const pcb=pendingCambio(key);
   const showWho=S.mode!=="db"||(S.owner&&S.filter==="all");
-  const sub=[showWho&&("Delivery: "+esc(groupName(groupKey(d)))),d.producto&&("Prod. "+gs(d.producto)+" · cobrado "+gs(d.producto+d.valor)),d.obs&&esc(d.obs)].filter(Boolean).join(" · ");
+  const sub=[showWho&&("Delivery: "+esc(groupName(groupKey(d)))),d.pagoTipo==="prod"?"🛍️ producto ya pagado":d.metodo==="pagado"?"✅ pedido pago":d.producto&&("Prod. "+gs(d.producto)+" · cobrado "+gs(d.producto+d.valor)),d.obs&&esc(d.obs)].filter(Boolean).join(" · ");
   return `<button class="row" data-edit="${esc(key)}"><span class="time num">${showDate?ddmm(d.dia):(t?pad(t.getHours())+":"+pad(t.getMinutes()):"")}</span>
     <span class="who"><b>${esc(d.cliente)||"Sin cliente"}</b>${sub?`<small>${sub}</small>`:""}</span>
     <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?((d.cant||1)>1?"× "+d.cant:"—"):gs(d.valor)}</b>${d.metodo!=="fijo"&&(d.cant||1)>1?`<span class="pill p-fijo">× ${d.cant} entregas</span>`:""}<span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span>${pends.has(d._u+"|"+d._id)?`<span class="pill p-due">⏳ Por cobrar</span>`:""}${pcb?`<span class="pill p-due">${pcb.tipo==="borrar"?"Pide borrar":"Cambio pedido"}</span>`:""}</span></button>`}
@@ -1315,7 +1329,7 @@ function openMovNew(u,tipo){edit=null;layer.innerHTML=`<div class="scrim" data-c
 /* transferencias pendientes: el cliente dijo "te transfiero" (turnos/<uid>/pendientes/<idEntrega>) */
 var pends=new Map();
 const pendList=()=>[...pends.values()].filter(p=>p.abierto&&(S.mode!=="db"||(S.owner?(S.filter==="all"||p._u===S.filter):p._u===S.me))).sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
-async function addPend(u,id,d){if(!db)return;const p={cliente:d.cliente||"",monto:(d.valor||0)+(d.producto||0),dia:d.dia,criadoEm:Date.now(),abierto:true};
+async function addPend(u,id,d){if(!db)return;const p={cliente:d.cliente||"",monto:cobrarDe({...d,metodo:"transferencia"})||d.valor||0,dia:d.dia,criadoEm:Date.now(),abierto:true};
   pends.set(u+"|"+id,{...p,_u:u,_id:id});await sendW(db.collection("turnos/"+u+"/pendientes").doc(id).set(p))}
 const diasTxt=ms=>{const n=Math.floor((Date.now()-ms)/864e5);return n<=0?"hoy":n===1?"hace 1 día":"hace "+n+" días"};
 const recordTxt=p=>`Hola${p.cliente?" "+p.cliente:""}! 👋 Te recuerdo la transferencia de ${gs(p.monto)} del pedido del ${ddmm(p.dia)}. ¡Muchas gracias! — Tú Delivery`;
@@ -1543,8 +1557,8 @@ function viewCamino(cl){
   const showWho=S.mode==="db"&&S.owner&&S.filter==="all";
   return `<div class="sec-h"><h2>En camino</h2><span>${plural(cl.length,"pedido")}</span></div><div class="list">
   ${cl.map(([k,d])=>`<div class="cam-row"><div class="cam-info">
-      <div class="who"><b>${esc(d.cliente)||"Sin cliente"}</b><small>${[showWho&&esc(personName(d._u)),d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
-      <div class="amt"><small>Cobrar</small><b class="num">${gs((d.producto||0)+d.valor)}</b></div></div>
+      <div class="who"><b>${esc(d.cliente)||"Sin cliente"}</b><small>${[showWho&&esc(personName(d._u)),d.pagoTipo==="todo"?"✅ Pedido pago · no cobrar":d.pagoTipo==="prod"?"🛍️ Producto ya pagado · solo delivery":d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
+      <div class="amt"><small>Cobrar</small><b class="num">${gs(cobrarDe(d))}</b></div></div>
     <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>!x.nota&&x.ok!==null&&x.ok!==undefined).length}/${d.lista.filter(x=>!x.nota).length}</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${linkIn(d.ubic)?"Ubicación":"Mapa"}</a><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
 function fijosBlock(list){
   const m=new Map();for(const[,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0});const r=m.get(k);if(d.diario)r.diario+=d.valor;else r.n+=(d.cant||1)}
@@ -1857,11 +1871,11 @@ async function resolverCambio(k,ok){const c=cambios.get(k);if(!c)return;
 function openCamino(key){const d=S.items.get(key);if(!d)return;edit=null;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Pedido en camino">
     ${sheetHead("Finalizar entrega · "+(esc(d.cliente)||"Sin cliente"))}
-    <div class="cobrar"><div><span>Cobrar al cliente</span><b class="num">${gs((d.producto||0)+d.valor)}</b></div>${d.producto?`<small>Producto ${gs(d.producto)} + delivery ${gs(d.valor)}</small>`:`<small>Delivery ${gs(d.valor)}</small>`}
+    <div class="cobrar"><div><span>Cobrar al cliente</span><b class="num">${gs(cobrarDe(d))}</b></div>${d.pagoTipo==="todo"?`<small>✅ Pedido ya pagado a la empresa: no cobres nada.</small>`:d.pagoTipo==="prod"?`<small>🛍️ Producto ya pagado · cobrá solo el delivery ${gs(d.valor)}</small>`:d.producto?`<small>Producto ${gs(d.producto)} + delivery ${gs(d.valor)}</small>`:`<small>Delivery ${gs(d.valor)}</small>`}
       <button type="button" class="linkbtn" data-copyc="${esc(key)}">Copiar cuenta para WhatsApp</button></div>
     <p class="hint" style="margin:0"><b>¿Cómo te pagó el cliente?</b> Al tocar, la entrega queda finalizada, sale de “En camino” y se suma a las entregas del día.</p>
-    <div class="methods">${Object.keys(M).map(k=>`<button type="button" class="method m-${M[k].c}" data-entregado="${esc(key)}" data-how="${k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("")}</div>
-    ${S.mode==="db"?`<button type="button" class="method m-due pend-big" data-entregado="${esc(key)}" data-how="transferencia" data-pendc="1">⏳ Me transfiere después<small>queda en “por cobrar” hasta que llegue</small></button>`:""}
+    <div class="methods">${(d.pagoTipo==="todo"?["pagado"]:Object.keys(M)).map(k=>`<button type="button" class="method m-${M[k].c}" data-entregado="${esc(key)}" data-how="${k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("")}</div>
+    ${S.mode==="db"&&d.pagoTipo!=="todo"?`<button type="button" class="method m-due pend-big" data-entregado="${esc(key)}" data-how="transferencia" data-pendc="1">⏳ Me transfiere después<small>queda en “por cobrar” hasta que llegue</small></button>`:""}
     <button class="danger" data-cdel="${esc(key)}">Quitar de la lista sin registrar</button>
   </div></div>`}
 function openPct(){edit=null;const ids=S.mode==="db"?activos():[];
@@ -1875,7 +1889,7 @@ function openName(){edit=null;const cur=S.people.get(S.me);layer.innerHTML=`<div
   <div class="field"><label for="n-val">Tu nombre</label><input id="n-val" autocomplete="name" value="${esc(cur?cur.nome:"")}" placeholder="Ej.: Juan"></div>
   <button class="primary" data-nsave>Guardar</button></div></div>`;setTimeout(()=>{const n=document.getElementById("n-val");if(n)n.focus()},50)}
 function sheetHead(title){return `<div class="sheet-h"><h3>${title}</h3><button type="button" class="x" data-cancel aria-label="Cerrar">✕</button></div>`}
-function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;S.lote=false;if(!S.cliente){ubicTxt="";listaTxt=""}const isToday=S.dia===today();
+function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pagoTipo="";if(!S.cliente){ubicTxt="";listaTxt=""}const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
   const cliente=`<div class="field"><label for="cli">${cm?"Pedido / cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
@@ -1883,7 +1897,8 @@ function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;S.lote=false;if(!S.
     <div class="field"><label for="ubic">Ubicación (opcional)</label><div class="ub-row"><input id="ubic" autocomplete="off" placeholder="Pegá la ubicación del WhatsApp" value="${esc(ubicTxt)}"><a class="ub-btn" id="maplink" href="#" target="_blank" rel="noopener">📍 Buscar</a></div>
       <small class="hint" style="margin:0">Tocá <b>📍 Buscar</b> para ver el comercio en el mapa, o pegá acá la ubicación que te mandó el cliente.</small></div>`;
   const prod=`<div class="field"><label for="prod">${cm?"Valor del producto (lo que pagaste o dice el tique)":"Valor del producto (opcional, para saber cuánto cobrar)"}</label>
-    <div class="money ${cm?"":"small-money"}"><span>₲</span><input id="prod" inputmode="numeric" autocomplete="off" placeholder="Ej.: 30.000" value="${fmtInput(S.prod)}"></div></div>`;
+    <div class="money ${cm?"":"small-money"}"><span>₲</span><input id="prod" inputmode="numeric" autocomplete="off" placeholder="Ej.: 30.000" value="${fmtInput(S.prod)}"></div></div>
+    <div class="chips pt-wrap">${cm?`<button type="button" class="chip pt-chip" data-pt="todo">✅ Pedido pago · no cobrar nada</button>`:""}<button type="button" class="chip pt-chip" data-pt="prod">🛍️ Producto ya pagado · cobrar solo el delivery</button></div>`;
   const val=`<div class="field"><label for="val">${cm?"Valor del delivery":"Monto del delivery (tocá un atajo o escribí el precio)"}</label>
     <div class="money"><span>₲</span><input id="val" inputmode="numeric" autocomplete="off" placeholder="Escribí el monto" value="${fmtInput(S.val)}"></div></div>`;
   const obs=`<div class="field"><label for="obs">${cm?"Dirección o detalle (opcional)":"Observación (opcional)"}</label><input id="obs" autocomplete="off" placeholder="Ej.: Barrio San Blas" value="${esc(S.obs)}"></div>`;
@@ -1916,7 +1931,7 @@ function noPerm(){edit=null;layer.innerHTML=`<div class="scrim" data-close><div 
 /* ---------- copy ---------- */
 function toast(m){clearTimeout(tt);let el=document.querySelector(".toast");if(!el){el=document.createElement("div");el.className="toast";document.body.appendChild(el)}el.textContent=m;tt=setTimeout(()=>el.remove(),2200)}
 async function copy(txt){try{await navigator.clipboard.writeText(txt);toast("Copiado")}catch(e){layer.innerHTML=`<div class="scrim" data-close><div class="sheet"><h3>Copiá el texto</h3><textarea id="cp" style="width:100%;min-height:220px;font:14px var(--body);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px">${esc(txt)}</textarea><button class="ghost" data-cancel>Cerrar</button></div></div>`;const c=document.getElementById("cp");c.focus();c.select()}}
-function acertoTxt(s){const r=saldoTxt(s);const fx=s.nf||s.fijo?`\nClientes fijos: ${plural(s.nf,"entrega")} · diario ${gs(s.fijo)} (sin %)`:"";if(hideMoney())return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}${fx}`;return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}\nComisión${pctLabel(s)}: ${gs(s.com)}\nMenos anotado: ${gs(s.anotado)}\n${r.t}: ${gs(r.v)}${fx}`}
+function acertoTxt(s){const r=saldoTxt(s);const fx=s.nf||s.fijo?`\nClientes fijos: ${plural(s.nf,"entrega")} · diario ${gs(s.fijo)} (sin %)`:"";if(hideMoney())return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}${fx}`;return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}\nComisión${pctLabel(s)}: ${gs(s.com)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}\nMenos anotado${s.pagado?" y pedidos pagos":""}: ${gs(s.anotado+s.pagado)}\n${r.t}: ${gs(r.v)}${fx}`}
 function resumo(title,list){const gr=groups(list);let t="Tú Delivery · "+(hideMoney()?title.replace("Liquidación","Resumen"):title);
   if(gr.length===1)t+=" · "+gr[0].name;t+="\n"+acertoTxt(stats(list));
   if(gr.length>1)for(const g of gr)t+="\n\n"+g.name+"\n"+acertoTxt(g.s);return t}
@@ -1957,8 +1972,8 @@ async function save(camino){
   sinCliOk=false;
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
-  if(S.prod)d.producto=S.prod;if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&!camino&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true}
-  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";S.err="";S.pend=false;S.lote=false;closeSheet();
+  if(S.prod)d.producto=S.prod;if(S.pagoTipo&&d.metodo!=="pagado")d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&!camino&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true}
+  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";S.err="";S.pend=false;S.lote=false;S.pagoTipo="";closeSheet();
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
   const nid=uid(),wt=writeTarget();if(pendNow)addPend(wt,nid,d).catch(()=>{});
@@ -1992,9 +2007,10 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.fijocli){S.cliente=t.dataset.fijocli;S.err="";const c=document.getElementById("cli");if(c)c.value=S.cliente;refreshForm()}
   else if(t.dataset.diario){const r=lockReason(S.dia);if(r){lockedMsg(r);return}openDiario(t.dataset.diario)}
   else if(t.hasAttribute("data-anotar")){if(S.mode==="db"&&!S.owner&&S.canWrite===false){noPerm();return}openEntry(true);setTimeout(()=>{const c=document.getElementById("cli");if(c)c.focus()},60)}
-  else if(t.hasAttribute("data-copycuenta"))copy(cuentaTxt(S.prod,S.val));
+  else if(t.hasAttribute("data-copycuenta"))copy(cuentaTxt(S.prod,S.val,S.pagoTipo));
+  else if(t.dataset.pt){S.pagoTipo=S.pagoTipo===t.dataset.pt?"":t.dataset.pt;refreshForm()}
   else if(t.dataset.camino)openCamino(t.dataset.camino);
-  else if(t.dataset.copyc2){const d=S.items.get(t.dataset.copyc2);if(d)copy(cuentaTxt(d.producto||0,d.valor))}
+  else if(t.dataset.copyc2){const d=S.items.get(t.dataset.copyc2);if(d)copy(cuentaTxt(d.producto||0,d.valor,d.pagoTipo))}
   else if(t.id==="fab"){if(S.tab!=="dia"){S.tab="dia";render(true);window.scrollTo(0,0)}if(S.mode==="db"&&!S.owner&&S.canWrite===false){noPerm();return}const r=lockReason(S.dia);if(r){lockedMsg(r);return}openEntry()}
   else if(t.hasAttribute("data-opengasto")){if(S.mode==="db"&&!S.owner&&S.canWrite===false){noPerm();return}{const r=lockReason(S.dia);if(r){lockedMsg(r);return}}if(G.emp||!GT[G.tipo]){G.emp=false;G.tipo="gasolina"}openGasto()}
   else if(t.hasAttribute("data-openegasto")){if(!G.emp||!EGT[G.tipo]){G.emp=true;G.tipo="premio"}openGasto()}
@@ -2144,7 +2160,7 @@ layer.addEventListener("click",async e=>{
     const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(20,0,0,0));
     const d={valor:v,metodo:"fijo",diario:true,via,cliente:t.dataset.dsave,obs:"Diario",dia:S.dia,criadoEm:when.getTime()};
     closeSheet();try{const w=await sendW(addItem(d,writeTarget()));if(w==="wait"){toast("Guardado en el celular · se envía al volver la señal")}else toast("Diario guardado: "+gs(v))}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast("No se guardó.")}return}
-  if(t.dataset.copyc){const d=S.items.get(t.dataset.copyc);if(d)copy(cuentaTxt(d.producto||0,d.valor));return}
+  if(t.dataset.copyc){const d=S.items.get(t.dataset.copyc);if(d)copy(cuentaTxt(d.producto||0,d.valor,d.pagoTipo));return}
   if(t.dataset.entregado){const k=t.dataset.entregado,how=t.dataset.how,d=S.items.get(k);if(!d)return;
     if(how==="anotado"&&!(d.cliente||"").trim()){toast("Para anotar, el pedido necesita nombre de cliente");return}
     const r=S.mode==="db"&&!S.owner&&pagoOf(S.me,today())?"Hoy ya fue liquidado. Pedile al dueño que lo registre.":"";if(r){lockedMsg(r);return}
