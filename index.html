@@ -1313,7 +1313,7 @@ function welcome(t,sub){const el=document.createElement("div");el.className="wel
   el.addEventListener("click",()=>el.remove());document.body.appendChild(el);setTimeout(()=>el.remove(),9000)}
 /* presencia: cada delivery avisa cuándo tiene la app abierta (turnos/<uid>.visto) */
 var lastHB=0;
-function heartbeat(force){try{if(S.mode!=="db"||!db||!S.me||document.hidden||S.owner)return;const p=S.people.get(S.me);if(!p||!p.aprobado||p.baja)return;
+function heartbeat(force){try{if(S.mode!=="db"||!db||!S.me||document.hidden||isRealOwner)return;const p=S.people.get(S.me);if(!p||!(p.aprobado||S.owner)||p.baja)return;
   if(!force&&Date.now()-lastHB<150000)return;lastHB=Date.now();sendW(db.doc("turnos/"+S.me).set({visto:lastHB},{merge:true})).catch(()=>{})}catch(e){}}
 setInterval(()=>heartbeat(false),60000);
 setInterval(()=>{try{if(S.owner&&S.mode==="db"&&(S.tab==="dia"))render()}catch(e){}},60000);
