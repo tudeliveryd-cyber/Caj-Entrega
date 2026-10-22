@@ -541,6 +541,7 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .method.m-none[aria-pressed="true"]{border-color:var(--muted);background:var(--bg)}
 .cm-met .method{padding-top:8px;padding-bottom:8px}
 .solodel-hint{grid-column:1/-1;margin:0!important}
+.cam-prod.on{border-color:#2e9e5b!important;color:#2e9e5b!important;background:color-mix(in srgb,#2e9e5b 12%,var(--surface))!important}
 .big-fin{font-size:17px!important;padding:16px!important}
 .net-banner.upd{background:#2e9e5b}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
@@ -674,7 +675,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="67";
+const APPV="68";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1888,6 +1889,7 @@ function openCamino(key){const d=S.items.get(key);if(!d)return;edit=null;
     ${sheetHead("Finalizar entrega · "+(esc(d.cliente)||"Sin cliente"))}
     <div class="cobrar"><div><span>Cobrar al cliente</span><b class="num">${gs(cobrarDe(d))}</b></div>${d.pagoTipo==="todo"?`<small>✅ Pedido ya pagado a la empresa: no cobres nada.</small>`:d.pagoTipo==="prod"?`<small>Producto ya pagado · cobrá solo el delivery ${gs(d.valor)}</small>`:d.producto?`<small>Producto ${gs(d.producto)} + delivery ${gs(d.valor)}</small>`:`<small>Delivery ${gs(d.valor)}</small>`}
       <button type="button" class="linkbtn" data-copyc="${esc(key)}">Copiar cuenta para WhatsApp</button></div>
+    ${d.pagoTipo!=="todo"?`<button type="button" class="ghost cam-prod ${d.pagoTipo==="prod"?"on":""}" data-camprod="${esc(key)}">${d.pagoTipo==="prod"?"✓ Producto ya pagado · cobrar solo el delivery (tocá para quitar)":"¿El producto ya estaba pago? Cobrar solo el delivery"}</button>`:""}
     ${d.metPlan&&d.pagoTipo!=="todo"?`<button type="button" class="primary big-fin" data-entregado="${esc(key)}" data-how="${d.metPlan}">✓ Entregado · ${M[d.metPlan].n}</button><p class="hint" style="margin:0">¿Pagó de otra forma? Elegí abajo:</p>`:`<p class="hint" style="margin:0"><b>¿Cómo te pagó el cliente?</b> Al tocar, la entrega queda finalizada, sale de “En camino” y se suma a las entregas del día.</p>`}
     <div class="methods">${(d.pagoTipo==="todo"?["pagado"]:Object.keys(M)).map(k=>`<button type="button" class="method m-${M[k].c}" data-entregado="${esc(key)}" data-how="${k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("")}</div>
     ${S.mode==="db"&&d.pagoTipo!=="todo"?`<button type="button" class="method m-due pend-big" data-entregado="${esc(key)}" data-how="transferencia" data-pendc="1">⏳ Me transfiere después<small>queda en “por cobrar” hasta que llegue</small></button>`:""}
@@ -2176,6 +2178,8 @@ layer.addEventListener("click",async e=>{
     const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(20,0,0,0));
     const d={valor:v,metodo:"fijo",diario:true,via,cliente:t.dataset.dsave,obs:"Diario",dia:S.dia,criadoEm:when.getTime()};
     closeSheet();try{const w=await sendW(addItem(d,writeTarget()));if(w==="wait"){toast("Guardado en el celular · se envía al volver la señal")}else toast("Diario guardado: "+gs(v))}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast("No se guardó.")}return}
+  if(t.dataset.camprod){const k=t.dataset.camprod;const d=S.items.get(k);if(!d)return;const v=d.pagoTipo==="prod"?null:"prod";d.pagoTipo=v;openCamino(k);render();
+    try{await sendW(patchItem(k,{pagoTipo:v}));toast(v?"Cobrar solo el delivery: "+gs(d.valor):"Vuelve a cobrar producto + delivery")}catch(err){toast("No se guardó.")}return}
   if(t.dataset.copyc){const d=S.items.get(t.dataset.copyc);if(d)copy(cuentaTxt(d.producto||0,d.valor,d.pagoTipo));return}
   if(t.dataset.entregado){const k=t.dataset.entregado,how=t.dataset.how,d=S.items.get(k);if(!d)return;
     if(how==="anotado"&&!(d.cliente||"").trim()){toast("Para anotar, el pedido necesita nombre de cliente");return}
