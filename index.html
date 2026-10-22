@@ -467,6 +467,9 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .chat-in button{border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font:700 15px var(--body);padding:0 16px;cursor:pointer}
 .chat-note{font-size:13px;color:var(--muted);text-align:center}
 .cz-late{background:var(--due-bg);color:var(--due)}
+.cz-off{background:rgba(220,38,38,.14);color:#c62828}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .cz-off{color:#ff6b6b;background:rgba(255,80,80,.16)}}
+:root[data-theme="dark"] .cz-off{color:#ff6b6b;background:rgba(255,80,80,.16)}
 .hor-line{font-size:14px;color:var(--muted)}
 .hor-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .hor-grid input{border:1px solid var(--line);border-radius:10px;padding:10px;font:16px var(--body);background:var(--bg);color:var(--ink);width:100%;min-width:0}
@@ -1295,23 +1298,23 @@ function estadoDe(u){const l=allItems().filter(([,d])=>d._u===u&&d.dia===today()
   const c=cierreOf(u),i=inicioOf(u),ts=turnosHoy(u),nm=nowMin();let st,cls,ex=[];
   if(Array.isArray(ts))ex.push("🕒 "+horTxt(ts));else if(ts==="libre")ex.push("Día libre");
   const lastEnt=Math.max(0,...l.map(([,d])=>d.criadoEm||0));const vis=(S.people.get(u)||{}).visto||0;
-  const reciente=Date.now()-lastEnt<45*60000||Date.now()-vis<10*60000;
+  const reciente=Date.now()-lastEnt<45*60000;
   const fuera=ts==="libre"||(Array.isArray(ts)&&nm>toMin(ts[ts.length-1][1])+15);let fueraTrab=false;
   if(c){st="🏁 Terminó "+hhmm(c.em);cls="cz-ok";if(c.n!==n)ex.push("cerró con "+c.n)}
   else if(fuera&&(i||n||cam)){const f=i?i.em:Math.min(...l.map(([,d])=>d.criadoEm||Date.now()));ex.push("desde "+hhmm(f));
     if(reciente||cam){st="🟢 Trabajando";cls="cz-work";fueraTrab=true;ex.push(`<span class="cz-warn">${ts==="libre"?"en su día libre":"fuera de horario"}</span>`)}
-    else if(ts==="libre"){st="Libre hoy";cls="cz-none";ex.push("trabajó en su día libre");if(lastEnt)ex.push("última entrega "+hhmm(lastEnt))}
-    else{st="⏰ Fin de horario";cls="cz-none";if(lastEnt)ex.push("última entrega "+hhmm(lastEnt));ex.push(`<span class="cz-warn">no cerró el día</span>`)}}
-  else if(i&&Array.isArray(ts)&&ts.length>1&&!ts.some(t=>toMin(t[0])<=nm&&nm<toMin(t[1]))&&ts.some(t=>toMin(t[0])>nm)){const pr=ts.find(t=>toMin(t[0])>nm);st="⏸️ En pausa";cls="cz-none";ex.push("vuelve "+pr[0])}
+    else if(ts==="libre"){st="Libre hoy";cls="cz-off";ex.push("trabajó en su día libre");if(lastEnt)ex.push("última entrega "+hhmm(lastEnt))}
+    else{st="⏰ Fin de horario";cls="cz-off";if(lastEnt)ex.push("última entrega "+hhmm(lastEnt));ex.push(`<span class="cz-warn">no cerró el día</span>`)}}
+  else if(i&&Array.isArray(ts)&&ts.length>1&&!ts.some(t=>toMin(t[0])<=nm&&nm<toMin(t[1]))&&ts.some(t=>toMin(t[0])>nm)){const pr=ts.find(t=>toMin(t[0])>nm);st="⏸️ En pausa";cls="cz-off";ex.push("vuelve "+pr[0])}
   else if(i){st="🟢 Trabajando";cls="cz-work";ex.push("desde "+hhmm(i.em));
     if(Array.isArray(ts)){const im=msMin(i.em);const t=ts.find(t=>toMin(t[1])>im)||ts[ts.length-1];const late=im-toMin(t[0]);if(late>10)ex.push(`<span class="cz-warn">llegó ${minTxt(late)} tarde</span>`);
       const fin=toMin(ts[ts.length-1][1]);if(nm>fin+30)ex.push(`<span class="cz-warn">pasó su horario</span>`)}}
   else if(n||cam){st="🟢 Trabajando";cls="cz-work";const f=Math.min(...l.map(([,d])=>d.criadoEm||Date.now()));ex.push("desde "+hhmm(f))}
-  else if(ts==="libre"){st="Libre hoy";cls="cz-none"}
+  else if(ts==="libre"){st="Libre hoy";cls="cz-off"}
   else if(Array.isArray(ts)){const en=ts.find(t=>toMin(t[0])<=nm&&nm<toMin(t[1]));const prox=ts.find(t=>toMin(t[0])>nm);
     if(en){st="⚠️ Debería estar";cls="cz-late";const tarde=nm-toMin(en[0]);if(tarde>0)ex.push(`<span class="cz-warn">${minTxt(tarde)} de atraso</span>`)}
-    else if(prox){st="Entra "+prox[0];cls="cz-none"}else{st="No trabajó hoy";cls="cz-none"}}
-  else{st="Sin entregas";cls="cz-none"}
+    else if(prox){st="Entra "+prox[0];cls="cz-off"}else{st="No trabajó hoy";cls="cz-off"}}
+  else{st="Sin entregas";cls="cz-off"}
   ex.push(plural(n,"entrega"));if(cam)ex.push(`<span class="cz-warn">🛵 ${plural(cam,"pedido")} en camino</span>`);else if(cls==="cz-work"&&!fueraTrab)ex.push(`<span class="vis on">✅ libre para pedido</span>`);
   return{st,cls,ex,work:cls==="cz-work",done:!!c}}
 function viewCierre(list){
