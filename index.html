@@ -517,6 +517,15 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .vp-dot{width:10px;height:10px;border-radius:50%;background:var(--line)}
 .vp-dot.work{background:#2e9e5b}.vp-dot.done{background:#2e9e5b;opacity:.5}.vp-dot.late{background:#e08a1e}.vp-dot.off{background:#d64545}.vp-dot.emp{background:var(--accent)}
 .vp-ck{color:var(--accent);font-weight:800;font-size:18px}
+.cta-row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:12px 14px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);text-align:left;font:15px var(--body);cursor:pointer}
+.cta-row:first-child{border-top:0}.cta-row .who{display:grid;gap:2px;min-width:0}.cta-row small{color:var(--muted)}
+.cta-red{color:#d64545}
+.cta-big{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:16px;border-radius:14px;background:var(--bg);border:1px solid var(--line)}
+.cta-big b{font-size:26px}.cta-big.due{background:var(--due-bg);border-color:var(--due)}.cta-big.due b{color:var(--due)}.cta-big.cash{background:var(--cash-bg)}.cta-big.cash b{color:var(--cash)}
+.cta-it{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line);font-size:14px}
+.cta-it b{white-space:nowrap}
+.cta-it:first-child{border-top:0}
+.cta-acts{display:flex;gap:8px;flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -677,6 +686,9 @@ function subscribeUser(u){
   db.collection("turnos/"+u+"/solicitudes").limit(200).onSnapshot(snap=>{
     for(const k of[...sols.keys()])if(k.startsWith(u+"|"))sols.delete(k);
     for(const d of snap.docs)sols.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
+  if(S.owner)db.collection("liq/"+u+"/movs").where("abierto","==",true).limit(300).onSnapshot(snap=>{
+    for(const k of[...movs.keys()])if(k.startsWith(u+"|"))movs.delete(k);
+    for(const d of snap.docs)movs.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
   db.collection("liq/"+u+"/dias").where("dia",">=",from).limit(200).onSnapshot(snap=>{
     for(const k of[...S.pagos.keys()])if(k.startsWith(u+"|"))S.pagos.delete(k);
     for(const d of snap.docs)S.pagos.set(u+"|"+d.id,d.data());render()},()=>{});
@@ -1006,6 +1018,7 @@ function paint(){
     document.getElementById("dia-sum").innerHTML=viewSummary(list);
     document.getElementById("dia-list").innerHTML=viewDiaList(list);
     {const pb=document.getElementById("pend-box");if(pb)pb.innerHTML=pendBanner()}
+    {const cb=document.getElementById("cta-box");if(cb)cb.innerHTML=cuentasBox()}
     {const cl=caminoList();const el=document.getElementById("camino-list");const ev=showEmp()&&S.mode==="db";el.hidden=!cl.length||ev;el.innerHTML=cl.length&&!ev?viewCamino(cl):""}
     {const mb=document.getElementById("meta-box");if(mb){const h=viewMeta(list);mb.hidden=!h;mb.innerHTML=h}}
     {const cb=document.getElementById("cierre-box");if(cb){const h=viewCierre(list);cb.hidden=!h;cb.innerHTML=h}}
@@ -1082,6 +1095,7 @@ function viewDiaShell(){
   ${S.dia!==today()?`<button type="button" class="linkbtn today-link" data-hoy>Volver a hoy</button>`:""}
   <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
   <div id="pend-box"></div>
+  <div id="cta-box"></div>
   <section class="sec camino-sec" id="camino-list" hidden></section>
   <section class="sec" id="meta-box" hidden></section>
   <section class="sec" id="cierre-box" hidden></section>
@@ -1225,6 +1239,40 @@ async function sendChat(){const ta=document.getElementById("chat-txt");if(!ta)re
   try{if(k==="todos"){chatG=[...chatG,m].slice(-60);render();await sendW(db.doc("ranking/_chat").set({msgs:chatG}))}
     else{const id=uid();chats.set(k+"|"+id,{...m,_u:k,_id:id});render();await sendW(db.collection("turnos/"+k+"/chat").doc(id).set(m))}}
   catch(e){toast("No se envió. Probá de nuevo.");ta.value=v}}
+/* cuenta corriente de cada delivery: días sin liquidar + deudas anteriores − pagos parciales (liq/<uid>/movs) */
+var movs=new Map();
+function diasPend(u){const by=new Map();for(const[,d]of S.items){if(d._u!==u||isCamino(d)||isLegacy(d))continue;if(!by.has(d.dia))by.set(d.dia,[]);by.get(d.dia).push([0,d])}
+  const out=[];for(const[dia,l]of by){const st=stats(l);if(!st.saldo)continue;const pg=pagoState(u,dia,st);if(pg&&!pg.changed)continue;out.push({dia,s:st})}return out.sort((a,b)=>a.dia<b.dia?-1:1)}
+function cuentaDe(u){const dias=diasPend(u);const ms=[...movs.values()].filter(m=>m._u===u&&m.abierto).sort((a,b)=>(a.em||0)-(b.em||0));
+  const sd=dias.reduce((a,x)=>a+x.s.saldo,0),deu=ms.filter(m=>m.tipo==="deuda").reduce((a,m)=>a+m.monto,0),abo=ms.filter(m=>m.tipo==="abono").reduce((a,m)=>a+m.monto,0);
+  const old=dias.length?Math.floor((Date.now()-fromKey(dias[0].dia).getTime())/864e5):0;
+  return{dias,ms,sd,deu,abo,saldo:sd+deu-abo,old}}
+function cuentasBox(){if(S.mode!=="db"||!S.owner||!showEmp())return"";const ids=activos().filter(u=>u!==S.me);
+  const rows=ids.map(u=>({u,c:cuentaDe(u)})).filter(r=>r.c.saldo).sort((a,b)=>b.c.saldo-a.c.saldo);if(!rows.length)return"";
+  const debe=rows.filter(r=>r.c.saldo>0).reduce((a,r)=>a+r.c.saldo,0);
+  return `<section class="sec"><div class="sec-h"><h2>💰 Cuentas de los deliverys</h2>${debe?`<span class="num c-due">Deben ${gs(debe)}</span>`:""}</div><div class="list">
+    ${rows.map(({u,c})=>`<button type="button" class="cta-row" data-cuenta="${esc(u)}"><span class="who"><b>${esc(personName(u))}</b><small>${c.saldo>0?"debe a la empresa":"la empresa le debe"}${c.dias.length?" · "+plural(c.dias.length,"día")+" sin liquidar":""}${c.old>2&&c.saldo>0?` · <span class="cz-warn">hace ${c.old} días</span>`:""}${c.deu?" · deuda anterior":""}</small></span>
+      <b class="num ${c.saldo>0?(c.old>2?"cta-red":"c-due"):"c-cash"}">${gs(Math.abs(c.saldo))} ›</b></button>`).join("")}</div></section>`}
+function cuentaWa(u,c){const nm=(personName(u)||"").split(" ")[0];
+  const ln=[...c.dias.map(x=>`• ${ddmm(x.dia)}: ${x.s.saldo>0?"liquidación":"la empresa te debe"} ${gs(Math.abs(x.s.saldo))}`),...c.ms.map(m=>`• ${ddmm(keyOf(new Date(m.em)))}: ${m.tipo==="deuda"?"deuda":"pagaste"} ${m.tipo==="deuda"?"":"− "}${gs(m.monto)}${m.nota?" ("+m.nota+")":""}`)].join("\n");
+  return waOpen(`*Tú Delivery · Tu cuenta*\nHola ${nm} 👋\n\n${ln}\n\n*${c.saldo>0?"Saldo a pagar: "+gs(c.saldo):c.saldo<0?"La empresa te debe: "+gs(-c.saldo):"Cuenta al día ✅"}*`,u)}
+function openCuenta(u){edit=null;const c=cuentaDe(u);
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Cuenta">${sheetHead("💰 Cuenta de "+esc(personName(u)))}
+    <div class="cta-big ${c.saldo>0?"due":c.saldo<0?"cash":""}"><span>${c.saldo>0?"Debe a la empresa":c.saldo<0?"La empresa le debe":"Cuenta al día ✅"}</span><b class="num">${gs(Math.abs(c.saldo))}</b></div>
+    <div class="list">
+      ${c.dias.map(x=>`<div class="cta-it"><span>${ddmm(x.dia)} · liquidación del día</span><b class="num ${x.s.saldo>0?"c-due":"c-cash"}">${x.s.saldo>0?"":"− "}${gs(Math.abs(x.s.saldo))}</b></div>`).join("")}
+      ${c.ms.map(m=>`<div class="cta-it"><span>${ddmm(keyOf(new Date(m.em)))} · ${m.tipo==="deuda"?"Deuda":"Pagó"}${m.nota?" · "+esc(m.nota):""} <button type="button" class="linkbtn small-link" data-movdel="${esc(u)}|${esc(m._id)}">quitar</button></span><b class="num ${m.tipo==="deuda"?"c-due":"c-cash"}">${m.tipo==="deuda"?"":"− "}${gs(m.monto)}</b></div>`).join("")}
+      ${!c.dias.length&&!c.ms.length?`<div class="empty">Sin movimientos pendientes.</div>`:""}
+    </div>
+    <div class="cta-acts"><button type="button" class="small pay" data-movnew="${esc(u)}|abono">+ Registrar pago</button><button type="button" class="small" data-movnew="${esc(u)}|deuda">+ Deuda anterior / préstamo</button></div>
+    <a class="wa-big" href="${esc(cuentaWa(u,c))}" target="_blank" rel="noopener">📲 Enviar estado de cuenta</a>
+    ${c.dias.length||c.ms.length?`<button type="button" class="ghost" data-saldar="${esc(u)}">✓ Saldar todo (queda en cero)</button>`:""}
+    <p class="hint" style="margin:0">Pago parcial: registrá lo que pagó y el saldo baja. “Saldar todo” marca los días como pagados y cierra la cuenta.</p></div></div>`}
+function openMovNew(u,tipo){edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog">${sheetHead((tipo==="abono"?"💵 Registrar pago de ":"📌 Deuda de ")+esc(personName(u)))}
+  <div class="money"><span>₲</span><input id="mv-val" inputmode="numeric" autocomplete="off" placeholder="Monto"></div>
+  <div class="field"><label for="mv-nota">Detalle (opcional)</label><input id="mv-nota" autocomplete="off" placeholder="${tipo==="abono"?"Ej.: pagó en efectivo":"Ej.: deuda de septiembre, préstamo"}"></div>
+  <button type="button" class="primary" data-movsave="${esc(u)}|${tipo}">${tipo==="abono"?"Guardar pago":"Guardar deuda"}</button>
+  <button type="button" class="ghost" data-cuenta="${esc(u)}">Volver</button></div></div>`;setTimeout(()=>{const i=document.getElementById("mv-val");if(i)i.focus()},60)}
 /* transferencias pendientes: el cliente dijo "te transfiero" (turnos/<uid>/pendientes/<idEntrega>) */
 var pends=new Map();
 const pendList=()=>[...pends.values()].filter(p=>p.abierto&&(S.mode!=="db"||(S.owner?(S.filter==="all"||p._u===S.filter):p._u===S.me))).sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
@@ -1668,7 +1716,7 @@ function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].fil
   const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b>${esc(personName(u))}</b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}</b><small>${kind==="pend"?"Esperando aprobación":kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-reactivar="${esc(u)}">Reactivar</button>`
-      :`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">Dar de baja</button>`}</div></div>`};
+      :`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button><button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">Dar de baja</button>`}</div></div>`};
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Equipo">
     ${sheetHead("Equipo")}
     ${pend.length?`<div class="lbl">Nuevos · esperando aprobación</div><div class="list">${pend.map(u=>row(u,"pend")).join("")}</div>`:""}
@@ -1920,6 +1968,7 @@ document.addEventListener("click",async e=>{
     try{const w=await sendW(db.doc("turnos/"+S.me).set({inicio:i},{merge:true}));toast(w==="wait"?"Inicio guardado · se envía al volver la señal":"¡Buen trabajo hoy! 💪")}catch(err){toast("No se guardó.")}}
   else if(t.hasAttribute("data-meta"))openMeta();
   else if(t.hasAttribute("data-viewpick"))openViewPick();
+  else if(t.dataset.cuenta)openCuenta(t.dataset.cuenta);
   else if(t.hasAttribute("data-pend")){S.pend=!S.pend;refreshForm()}
   else if(t.hasAttribute("data-gopend")){S.tab="fiado";render(true);setTimeout(()=>{const x=document.getElementById("pend-sec");if(x)x.scrollIntoView({behavior:"smooth"})},80)}
   else if(t.dataset.precord){const p=pends.get(t.dataset.precord);if(p)copy(recordTxt(p))}
@@ -1984,6 +2033,17 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.aprobar){try{await aprobar(t.dataset.aprobar);toast("Delivery aprobado");setTimeout(openEquipo,400)}catch(err){toast("No se guardó.")}return}
   if(t.dataset.socio){try{await setSocio(t.dataset.socio,t.dataset.on==="1");toast(t.dataset.on==="1"?"Ahora es socio":"Ya no es socio");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-logout")){logout();return}
+  if(t.dataset.cuenta){openCuenta(t.dataset.cuenta);return}
+  if(t.dataset.movnew){const[u,tp]=t.dataset.movnew.split("|");openMovNew(u,tp);return}
+  if(t.dataset.movsave){const[u,tp]=t.dataset.movsave.split("|");const v=parseVal(document.getElementById("mv-val").value);if(!v){toast("Escribí el monto");return}
+    const m={tipo:tp,monto:v,nota:document.getElementById("mv-nota").value.trim(),em:Date.now(),abierto:true,por:S.me};const id=uid();movs.set(u+"|"+id,{...m,_u:u,_id:id});openCuenta(u);
+    try{await sendW(db.collection("liq/"+u+"/movs").doc(id).set(m));toast(tp==="abono"?"Pago registrado · "+gs(v):"Deuda registrada · "+gs(v))}catch(err){movs.delete(u+"|"+id);toast("No se guardó.");openCuenta(u)}return}
+  if(t.dataset.movdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿quitar?";return}const[u,id]=t.dataset.movdel.split("|");movs.delete(u+"|"+id);openCuenta(u);
+    try{await sendW(db.collection("liq/"+u+"/movs").doc(id).delete());toast("Quitado")}catch(err){toast("No se guardó.")}return}
+  if(t.dataset.saldar){const u=t.dataset.saldar;if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Seguro? Tocá de nuevo para dejar en cero";return}
+    const c=cuentaDe(u);closeSheet();try{for(const x of c.dias)await setPago(u,x.dia,x.s);
+      for(const m of c.ms){movs.delete(u+"|"+m._id);await sendW(db.collection("liq/"+u+"/movs").doc(m._id).set({abierto:false,cerradoEm:Date.now()},{merge:true}))}
+      render(true);toast("Cuenta de "+personName(u)+" en cero ✅")}catch(err){toast("No se guardó.")}return}
   if(t.dataset.vpick){S.filter=t.dataset.vpick;closeSheet();render(true);window.scrollTo(0,0);return}
   if(t.hasAttribute("data-equipo")){openEquipo();return}
   if(t.hasAttribute("data-install")){doInstall();return}
