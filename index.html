@@ -1286,7 +1286,7 @@ function viewCierre(list){
   if(S.mode!=="db"||S.dia!==today())return"";
   if(showEmp()){const ids=activos().filter(u=>u!==S.me||allItems().some(([,d])=>d._u===u&&d.dia===today()));if(!ids.length)return"";
     const rows=ids.map(u=>{const e=estadoDe(u);return{...e,html:`<div class="cz-row"><div class="who"><b>${esc(personName(u))}</b> ${u===S.me?"":vistoTxt(u)}${locLink(u)}<small>${e.ex.join(" · ")}</small></div><span class="cz-st ${e.cls}">${e.st}</span></div>`}});
-    return `<div class="sec-h"><h2>Equipo hoy</h2><span>${rows.filter(r=>r.work).length} trabajando · ${rows.filter(r=>r.done).length} terminaron</span></div>${ids.some(locOf)?`<button type="button" class="map-btn" data-mapaequipo style="justify-self:start">🗺️ Mapa del equipo</button>`:""}<div class="list">${rows.map(r=>r.html).join("")}</div>
+    return `<div class="sec-h"><h2>Equipo hoy</h2><span>${rows.filter(r=>r.work).length} trabajando · ${rows.filter(r=>r.done).length} terminaron</span></div>${false?`<button type="button" class="map-btn" data-mapaequipo style="justify-self:start">🗺️ Mapa del equipo</button>`:""}<div class="list">${rows.map(r=>r.html).join("")}</div>
       <p class="hint" style="margin:0">El horario de cada uno se pone en <b>Equipo → 🕒 Horario</b>. Con turno cortado, cerrá el día solo al terminar el último horario.</p>`}
   if(!ownView())return"";
   const c=cierreOf(S.me),i=inicioOf(S.me),ts=turnosHoy(S.me);const n=stats(list).n;
@@ -1300,7 +1300,6 @@ function viewCierre(list){
     return""}
   const desde=i?i.em:Math.min(...allItems().filter(([,d])=>d._u===S.me&&d.dia===today()).map(([,d])=>d.criadoEm||Date.now()));
   return `<div class="cierre"><div class="cz-h"><b>🟢 Trabajando</b><span class="cz-st cz-work">desde ${hhmm(desde)}</span></div>${hor}
-    ${S.owner?"":locOk()==="si"?`<div class="hor-line">📍 La empresa ve tu ubicación solo durante el turno (con la app abierta).</div>`:`<button type="button" class="linkbtn small-link" data-locask style="justify-self:start">📍 Compartir ubicación durante el turno</button>`}
     <button type="button" class="cierre-btn" data-cerrar>🏁 Cerrar mi día</button></div>`}
 /* inicio automático: al abrir la app cerca del horario (desde 45 min antes) o al registrar la primera entrega */
 var autoIniBusy=false;
@@ -1320,7 +1319,7 @@ var lastHB=0;
 const LSL="caixa_loc_ok";
 const locOk=()=>{try{return localStorage.getItem(LSL)||""}catch(e){return""}};
 var lastLoc=0,locAsked=false;
-function locTick(force){try{if(S.mode!=="db"||!db||!S.me||S.owner||document.hidden||!navigator.geolocation)return;if(!inicioOf(S.me)||cierreOf(S.me))return;
+function locTick(force){return;try{if(S.mode!=="db"||!db||!S.me||S.owner||document.hidden||!navigator.geolocation)return;if(!inicioOf(S.me)||cierreOf(S.me))return;
   const ok=locOk();if(ok==="no")return;if(ok!=="si"){if(!locAsked&&!layer.innerHTML.trim()){locAsked=true;openLocAsk()}return}
   if(!force&&Date.now()-lastLoc<110000)return;lastLoc=Date.now();
   navigator.geolocation.getCurrentPosition(pos=>{const c=pos.coords;const loc={lat:+c.latitude.toFixed(6),lng:+c.longitude.toFixed(6),acc:Math.round(c.accuracy||0),em:Date.now()};
@@ -1334,7 +1333,7 @@ function openLocAsk(){edit=null;layer.innerHTML=`<div class="scrim"><div class="
   <button type="button" class="ghost" data-locno>Ahora no</button></div></div>`}
 function locOf(u){const p=S.people.get(u)||{};const l=p.loc;if(!l||!l.em||keyOf(new Date(l.em))!==today())return null;const c=p.cierre;if(c&&c.dia===today()&&c.em>=l.em)return null;return l}
 const agoTxt=ms=>{const m=Math.round((Date.now()-ms)/60000);return m<1?"ahora":m<60?"hace "+m+" min":"hace "+minTxt(m)};
-function locLink(u){const l=locOf(u);if(!l)return"";return ` <a class="vis loc-a" href="https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}" target="_blank" rel="noopener">📍 ${agoTxt(l.em)}</a>`}
+function locLink(u){return"";const l=locOf(u);if(!l)return"";return ` <a class="vis loc-a" href="https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}" target="_blank" rel="noopener">📍 ${agoTxt(l.em)}</a>`}
 function loadLeaflet(){return new Promise((ok,ko)=>{if(window.L)return ok();const c=document.createElement("link");c.rel="stylesheet";c.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";document.head.appendChild(c);
   const sc=document.createElement("script");sc.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";sc.onload=()=>ok();sc.onerror=ko;document.head.appendChild(sc)})}
 async function openMapaEquipo(){edit=null;const ids=activos().filter(u=>locOf(u));
