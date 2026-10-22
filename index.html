@@ -542,6 +542,12 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .cm-met .method{padding-top:8px;padding-bottom:8px}
 .solodel-hint{grid-column:1/-1;margin:0!important}
 .cam-prod.on{border-color:#2e9e5b!important;color:#2e9e5b!important;background:color-mix(in srgb,#2e9e5b 12%,var(--surface))!important}
+.fold>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.fold>summary::-webkit-details-marker{display:none}
+.fold-more{font-size:13px;color:var(--muted);white-space:nowrap}
+.fold[open] .fold-more{opacity:.6}
+details.sec.fold{display:grid;gap:10px}
+.msg-dia.fold>summary{margin:0}.msg-dia.fold p{margin:8px 0 0}
 .big-fin{font-size:17px!important;padding:16px!important}
 .net-banner.upd{background:#2e9e5b}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
@@ -675,7 +681,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="68";
+const APPV="69";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1058,7 +1064,7 @@ function paint(){
     {const mb=document.getElementById("meta-box");if(mb){const h=viewMeta(list);mb.hidden=!h;mb.innerHTML=h}}
     {const cb=document.getElementById("cierre-box");if(cb){const h=viewCierre(list);cb.hidden=!h;cb.innerHTML=h}}
     document.getElementById("mode-note").textContent=noteTxt()+" · versión "+APPV;
-    {const gl=document.getElementById("gastos-list");if(gl)gl.innerHTML=viewGastosList()}
+    {const gl=document.getElementById("gastos-list");if(gl)gl.innerHTML=viewGastosList();const gt=document.getElementById("g-tot");if(gt)gt.textContent=gs(gStats(gastosRange(S.dia,S.dia)).total);const et=document.getElementById("eg-tot");if(et)et.textContent=gs(egStats(egRange(S.dia,S.dia)).total)}
     const egl=document.getElementById("egastos-list");if(egl)egl.innerHTML=viewEGastosList();
     drawSug();
   }else if(S.tab==="rank"){builtKey=key;main.innerHTML=viewRanking()}
@@ -1141,8 +1147,8 @@ function viewMsg(){
   const nm=S.mode==="db"?(personName(S.me)||"").split(" ")[0]:"";
   const hs=String(S.me||"").split("").reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7);
   const txt=MSGS[(dayIndex(today())+hs)%MSGS.length];
-  return aviso+`<div class="msg-dia"><div class="msg-h">☀️ ${saludo}${nm&&nm!=="Vos"?", "+esc(nm):""}!</div><p>${esc(txt)}</p>
-    ${S.mode==="db"&&S.owner&&!aviso?`<button type="button" class="linkbtn small-link" data-msg>📢 Publicar un aviso para todos</button>`:""}</div>`}
+  return aviso+`<details class="msg-dia fold"><summary><span class="msg-h">☀️ ${saludo}${nm&&nm!=="Vos"?", "+esc(nm):""}!</span><span class="fold-more">mensaje del día ›</span></summary><p>${esc(txt)}</p>
+    ${S.mode==="db"&&S.owner&&!aviso?`<button type="button" class="linkbtn small-link" data-msg>📢 Publicar un aviso para todos</button>`:""}</details>`}
 function openMsg(){edit=null;const cur=msgDia&&msgDia.texto||"";
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Aviso para el equipo">
     ${sheetHead("📢 Aviso para el equipo")}
@@ -1160,21 +1166,22 @@ function viewDiaShell(){
     <button data-day="1" aria-label="Día siguiente" ${isToday?"disabled":""}>›</button></div>
   ${lockReason(S.dia)||(showEmp()&&S.mode==="db")?"":`<button type="button" class="anotar" data-anotar><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg><span><b>Anotar pedido</b><small>Producto + delivery = cuánto cobrar</small></span></button>`}
   ${S.dia!==today()?`<button type="button" class="linkbtn today-link" data-hoy>Volver a hoy</button>`:""}
-  <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
+  <section class="sec camino-sec" id="camino-list" hidden></section>
   <div id="pend-box"></div>
   <div id="cta-box"></div>
-  <section class="sec camino-sec" id="camino-list" hidden></section>
+  ${showEmp()?`<section class="sec" id="cierre-box" hidden></section>`:""}
+  <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
   <section class="sec" id="meta-box" hidden></section>
-  <section class="sec" id="cierre-box" hidden></section>
+  ${showEmp()?"":`<section class="sec" id="cierre-box" hidden></section>`}
   <section class="sec" id="dia-list"></section>
-  <section class="sec" aria-label="Gastos">
-    <div class="sec-h"><h2>${ownView()?"Mis gastos":showEmp()?"Gastos de los deliverys":"Gastos de "+esc(personName(S.filter))}</h2>${ownView()?`<button type="button" class="small add-g" data-opengasto>+ Gasto</button>`:""}</div>
+  <details class="sec fold" aria-label="Gastos"><summary class="sec-h"><h2>${ownView()?"Mis gastos":showEmp()?"Gastos de los deliverys":"Gastos de "+esc(personName(S.filter))}</h2><span class="fold-more"><b class="num" id="g-tot"></b> ›</span></summary>
+    ${ownView()?`<button type="button" class="small add-g" data-opengasto style="justify-self:start">+ Agregar gasto</button>`:""}
     ${ownView()&&S.mode==="db"?`<p class="hint" style="margin:0">Los gastos <b>🔒 Personal</b> solo los ves vos. Nafta, comida y mantenimiento los ve también la empresa.</p>`:""}
     <div id="gastos-list"></div>
-  </section>
-  ${showEmp()?`<section class="sec emp-sec" aria-label="Gastos de la empresa">
-    <div class="sec-h"><h2>Gastos de la empresa</h2><button type="button" class="small add-e" data-openegasto>+ Gasto empresa</button></div>
-    <div id="egastos-list"></div></section>`:""}
+  </details>
+  ${showEmp()?`<details class="sec emp-sec fold" aria-label="Gastos de la empresa"><summary class="sec-h"><h2>Gastos de la empresa</h2><span class="fold-more"><b class="num" id="eg-tot"></b> ›</span></summary>
+    <button type="button" class="small add-e" data-openegasto style="justify-self:start">+ Gasto empresa</button>
+    <div id="egastos-list"></div></details>`:""}
   <p class="note" id="mode-note"></p>`;
 }
 
@@ -1734,10 +1741,12 @@ async function excel(){
   const r=monthRange(mesOff);const ml=listRange(r.from,r.to).sort((a,b)=>(a[1].criadoEm||0)-(b[1].criadoEm||0));
   const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
   const hm=hideMoney();
-  const rows=[["Fecha","Hora","Delivery","Cliente","Monto","Forma de pago","Observación"].concat(hm?[]:["Comisión %","Comisión"])];
-  for(const[,d]of ml){const p=pctOf(d._u);rows.push([ddmm(d.dia)+"/"+d.dia.slice(0,4),d.criadoEm?hhmm(d.criadoEm):"",groupName(groupKey(d)),d.cliente||"",d.valor,M[d.metodo].n,d.obs||""].concat(hm?[]:[p,Math.round(d.valor*p/100)]))}
-  if(!hm){rows.push([]);rows.push(["Resumen por delivery"]);rows.push(["Delivery","Entregas","Total","Efectivo","Transferencia","Anotado","Comisión","Resultado"]);
-  for(const g of groups(ml)){const t=saldoTxt(g.s);rows.push([g.name,g.s.n,g.s.total,g.s.efectivo,g.s.transferencia,g.s.anotado,g.s.com,t.t+" "+t.v])}}
+  const detPago=d=>[d.metodo==="fijo"?(d.diario?"Diario del cliente fijo":"Cliente fijo (sin %)"):"",d.pagoTipo==="prod"?"Producto ya pagado · cobró solo el delivery":"",d.metodo==="pagado"?"Pagó todo a la empresa":"",(()=>{const pp=[...pends.values()].find(x=>x._u===d._u&&x._id===d._id);return pp?"Transferencia por cobrar":""})(),d.producto&&!d.pagoTipo&&d.metodo!=="pagado"?"Producto "+d.producto:""].filter(Boolean).join(" · ");
+  const rows=[["Fecha","Hora","Delivery","Cliente","Entregas","Monto","Forma de pago","Detalle de pago","Observación"].concat(hm?[]:["Comisión %","Comisión"])];
+  for(const[,d]of ml){const p=pctOf(d._u);const cq=d.metodo==="fijo"&&d.diario?0:(d.cant||1);rows.push([ddmm(d.dia)+"/"+d.dia.slice(0,4),d.criadoEm?hhmm(d.criadoEm):"",groupName(groupKey(d)),d.cliente||"",cq,d.valor,M[d.metodo].n,detPago(d),d.obs||""].concat(hm?[]:[d.metodo==="fijo"?0:p,d.metodo==="fijo"?0:Math.round(d.valor*p/100)]))}
+  {const T=stats(ml);rows.push([]);rows.push(["Total del mes","","","",T.n,T.total])}
+  if(!hm){rows.push([]);rows.push(["Resumen por delivery"]);rows.push(["Delivery","Entregas","Total","Efectivo","Transferencia","Anotado","Pedido pago","Clientes fijos","Comisión","Resultado"]);
+  for(const g of groups(ml)){const t=saldoTxt(g.s);rows.push([g.name,g.s.n,g.s.total,g.s.efectivo,g.s.transferencia,g.s.anotado,g.s.pagado,g.s.fijo,g.s.com,t.t+" "+t.v])}}
   if(showEmp()){const el=egRange(r.from,r.to).reverse();const T=stats(ml);const eg=egStats(el).total;rows.push([]);rows.push(["Resultado de la empresa"]);
     rows.push(["Comisiones",T.com]);rows.push(["Gastos de la empresa",eg]);rows.push(["Ganancia",T.com-eg]);
     if(el.length){rows.push([]);rows.push(["Gastos de la empresa"]);rows.push(["Fecha","Hora","Tipo","Monto","Detalle"]);
