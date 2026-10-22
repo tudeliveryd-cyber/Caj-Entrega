@@ -485,6 +485,8 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 @keyframes wlin{from{opacity:0}to{opacity:1}}
 .vis{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap}
 .vis.on{color:var(--cash)}.vis i{width:8px;height:8px;border-radius:50%;background:var(--cash);box-shadow:0 0 0 3px var(--cash-bg)}
+.loc-a{color:var(--transfer)!important;text-decoration:none;margin-left:6px}
+.leaflet-tooltip{font:700 12px var(--body)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -1278,13 +1280,13 @@ function estadoDe(u){const l=allItems().filter(([,d])=>d._u===u&&d.dia===today()
     if(en){st="⚠️ Debería estar";cls="cz-late";const tarde=nm-toMin(en[0]);if(tarde>0)ex.push(`<span class="cz-warn">${minTxt(tarde)} de atraso</span>`)}
     else if(prox){st="Entra "+prox[0];cls="cz-none"}else{st="No trabajó hoy";cls="cz-none"}}
   else{st="Sin entregas";cls="cz-none"}
-  ex.push(plural(n,"entrega"));if(cam)ex.push(`<span class="cz-warn">${plural(cam,"pedido")} en camino</span>`);
+  ex.push(plural(n,"entrega"));if(cam)ex.push(`<span class="cz-warn">🛵 ${plural(cam,"pedido")} en camino</span>`);else if(cls==="cz-work")ex.push(`<span class="vis on">✅ libre para pedido</span>`);
   return{st,cls,ex,work:cls==="cz-work",done:!!c}}
 function viewCierre(list){
   if(S.mode!=="db"||S.dia!==today())return"";
   if(showEmp()){const ids=activos().filter(u=>u!==S.me||allItems().some(([,d])=>d._u===u&&d.dia===today()));if(!ids.length)return"";
-    const rows=ids.map(u=>{const e=estadoDe(u);return{...e,html:`<div class="cz-row"><div class="who"><b>${esc(personName(u))}</b> ${u===S.me?"":vistoTxt(u)}<small>${e.ex.join(" · ")}</small></div><span class="cz-st ${e.cls}">${e.st}</span></div>`}});
-    return `<div class="sec-h"><h2>Equipo hoy</h2><span>${rows.filter(r=>r.work).length} trabajando · ${rows.filter(r=>r.done).length} terminaron</span></div><div class="list">${rows.map(r=>r.html).join("")}</div>
+    const rows=ids.map(u=>{const e=estadoDe(u);return{...e,html:`<div class="cz-row"><div class="who"><b>${esc(personName(u))}</b> ${u===S.me?"":vistoTxt(u)}${locLink(u)}<small>${e.ex.join(" · ")}</small></div><span class="cz-st ${e.cls}">${e.st}</span></div>`}});
+    return `<div class="sec-h"><h2>Equipo hoy</h2><span>${rows.filter(r=>r.work).length} trabajando · ${rows.filter(r=>r.done).length} terminaron</span></div>${ids.some(locOf)?`<button type="button" class="map-btn" data-mapaequipo style="justify-self:start">🗺️ Mapa del equipo</button>`:""}<div class="list">${rows.map(r=>r.html).join("")}</div>
       <p class="hint" style="margin:0">El horario de cada uno se pone en <b>Equipo → 🕒 Horario</b>. Con turno cortado, cerrá el día solo al terminar el último horario.</p>`}
   if(!ownView())return"";
   const c=cierreOf(S.me),i=inicioOf(S.me),ts=turnosHoy(S.me);const n=stats(list).n;
@@ -1298,6 +1300,7 @@ function viewCierre(list){
     return""}
   const desde=i?i.em:Math.min(...allItems().filter(([,d])=>d._u===S.me&&d.dia===today()).map(([,d])=>d.criadoEm||Date.now()));
   return `<div class="cierre"><div class="cz-h"><b>🟢 Trabajando</b><span class="cz-st cz-work">desde ${hhmm(desde)}</span></div>${hor}
+    ${S.owner?"":locOk()==="si"?`<div class="hor-line">📍 La empresa ve tu ubicación solo durante el turno (con la app abierta).</div>`:`<button type="button" class="linkbtn small-link" data-locask style="justify-self:start">📍 Compartir ubicación durante el turno</button>`}
     <button type="button" class="cierre-btn" data-cerrar>🏁 Cerrar mi día</button></div>`}
 /* inicio automático: al abrir la app cerca del horario (desde 45 min antes) o al registrar la primera entrega */
 var autoIniBusy=false;
@@ -1308,12 +1311,42 @@ function checkAutoInicio(){if(S.mode!=="db"||!db||S.owner||autoIniBusy||!S.me)re
   autoIniBusy=true;const i={dia:today(),em:Date.now(),auto:true};S.people.set(S.me,{...p,inicio:i});
   const h=new Date().getHours();const nm1=(p.nome||"").split(" ")[0];
   if(cedo)welcome(`${h<12?"☀️ ¡Buen día":h<19?"🌤️ ¡Buenas tardes":"🌙 ¡Buenas noches"}${nm1?", "+esc(nm1):""}!`,`Ya quedó marcado tu inicio (${hhmm(i.em)}). ¡Que tengas un gran día de trabajo! 💪`);
-  sendW(db.doc("turnos/"+S.me).set({inicio:i},{merge:true})).catch(()=>{}).finally(()=>{autoIniBusy=false});render(true)}
+  sendW(db.doc("turnos/"+S.me).set({inicio:i},{merge:true})).catch(()=>{}).finally(()=>{autoIniBusy=false});render(true);setTimeout(()=>locTick(true),1500)}
 function welcome(t,sub){const el=document.createElement("div");el.className="welcome";el.innerHTML=`<div class="wl-box"><div class="wl-t">${t}</div><div class="wl-s">${sub}</div><button type="button" class="primary">¡Vamos!</button></div>`;
   el.addEventListener("click",()=>el.remove());document.body.appendChild(el);setTimeout(()=>el.remove(),9000)}
 /* presencia: cada delivery avisa cuándo tiene la app abierta (turnos/<uid>.visto) */
 var lastHB=0;
-function heartbeat(force){try{if(S.mode!=="db"||!db||!S.me||document.hidden||isRealOwner)return;const p=S.people.get(S.me);if(!p||!(p.aprobado||S.owner)||p.baja)return;
+/* ubicación: solo deliverys (no dueño ni socios), solo en turno (empezó y no cerró), solo con la app abierta y con permiso */
+const LSL="caixa_loc_ok";
+const locOk=()=>{try{return localStorage.getItem(LSL)||""}catch(e){return""}};
+var lastLoc=0,locAsked=false;
+function locTick(force){try{if(S.mode!=="db"||!db||!S.me||S.owner||document.hidden||!navigator.geolocation)return;if(!inicioOf(S.me)||cierreOf(S.me))return;
+  const ok=locOk();if(ok==="no")return;if(ok!=="si"){if(!locAsked&&!layer.innerHTML.trim()){locAsked=true;openLocAsk()}return}
+  if(!force&&Date.now()-lastLoc<110000)return;lastLoc=Date.now();
+  navigator.geolocation.getCurrentPosition(pos=>{const c=pos.coords;const loc={lat:+c.latitude.toFixed(6),lng:+c.longitude.toFixed(6),acc:Math.round(c.accuracy||0),em:Date.now()};
+    sendW(db.doc("turnos/"+S.me).set({loc},{merge:true})).catch(()=>{})},
+    err=>{if(err&&err.code===1){try{localStorage.setItem(LSL,"no")}catch(e){}render(true)}},{enableHighAccuracy:true,timeout:15000,maximumAge:60000})}catch(e){}}
+function openLocAsk(){edit=null;layer.innerHTML=`<div class="scrim"><div class="sheet" role="dialog" aria-label="Ubicación">
+  ${sheetHead("📍 Ubicación durante el turno")}
+  <p style="margin:0;font-size:16px;line-height:1.45">Tú Delivery ve <b>dónde estás solo mientras estás en tu turno</b> y con la app abierta. Así el dueño te pasa los pedidos que quedan más cerca tuyo: menos vueltas y más entregas para vos.</p>
+  <p class="hint" style="margin:0">Cuando cerrás tu día, deja de compartirse. Fuera del turno nadie ve tu ubicación.</p>
+  <button type="button" class="primary" data-locok>Permitir</button>
+  <button type="button" class="ghost" data-locno>Ahora no</button></div></div>`}
+function locOf(u){const p=S.people.get(u)||{};const l=p.loc;if(!l||!l.em||keyOf(new Date(l.em))!==today())return null;const c=p.cierre;if(c&&c.dia===today()&&c.em>=l.em)return null;return l}
+const agoTxt=ms=>{const m=Math.round((Date.now()-ms)/60000);return m<1?"ahora":m<60?"hace "+m+" min":"hace "+minTxt(m)};
+function locLink(u){const l=locOf(u);if(!l)return"";return ` <a class="vis loc-a" href="https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}" target="_blank" rel="noopener">📍 ${agoTxt(l.em)}</a>`}
+function loadLeaflet(){return new Promise((ok,ko)=>{if(window.L)return ok();const c=document.createElement("link");c.rel="stylesheet";c.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";document.head.appendChild(c);
+  const sc=document.createElement("script");sc.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";sc.onload=()=>ok();sc.onerror=ko;document.head.appendChild(sc)})}
+async function openMapaEquipo(){edit=null;const ids=activos().filter(u=>locOf(u));
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Mapa del equipo">${sheetHead("🗺️ Mapa del equipo")}
+    <div id="mapa-eq" style="height:58vh;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--bg)"></div>
+    <div class="list">${ids.map(u=>{const l=locOf(u);return `<div class="cz-row"><div class="who"><b>${esc(personName(u))}</b><small>📍 ${agoTxt(l.em)}${l.acc>150?" · ubicación aproximada":""}</small></div><a class="map-btn" href="https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}" target="_blank" rel="noopener">Abrir</a></div>`}).join("")||`<div class="empty">Nadie compartió ubicación todavía.</div>`}</div></div></div>`;
+  try{await loadLeaflet();const el=document.getElementById("mapa-eq");if(!el||!ids.length)return;const m=L.map(el,{zoomControl:true});
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(m);const pts=[];
+    for(const u of ids){const l=locOf(u);const p=[l.lat,l.lng];pts.push(p);L.marker(p).addTo(m).bindTooltip(esc((personName(u)||"").split(" ")[0])+" · "+agoTxt(l.em),{permanent:true,direction:"top"})}
+    if(pts.length===1)m.setView(pts[0],15);else m.fitBounds(pts,{padding:[40,40]})}
+  catch(e){const el=document.getElementById("mapa-eq");if(el)el.innerHTML='<div class="empty">No se pudo cargar el mapa. Usá “Abrir” para verlo en Google Maps.</div>'}}
+function heartbeat(force){try{locTick(force);if(S.mode!=="db"||!db||!S.me||document.hidden||isRealOwner)return;const p=S.people.get(S.me);if(!p||!(p.aprobado||S.owner)||p.baja)return;
   if(!force&&Date.now()-lastHB<150000)return;lastHB=Date.now();sendW(db.doc("turnos/"+S.me).set({visto:lastHB},{merge:true})).catch(()=>{})}catch(e){}}
 setInterval(()=>heartbeat(false),60000);
 setInterval(()=>{try{if(S.owner&&S.mode==="db"&&(S.tab==="dia"))render()}catch(e){}},60000);
@@ -1795,6 +1828,8 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-empezar")){const i={dia:today(),em:Date.now()};const cur=S.people.get(S.me)||{};S.people.set(S.me,{...cur,inicio:i});render(true);
     try{const w=await sendW(db.doc("turnos/"+S.me).set({inicio:i},{merge:true}));toast(w==="wait"?"Inicio guardado · se envía al volver la señal":"¡Buen trabajo hoy! 💪")}catch(err){toast("No se guardó.")}}
   else if(t.hasAttribute("data-meta"))openMeta();
+  else if(t.hasAttribute("data-mapaequipo"))openMapaEquipo();
+  else if(t.hasAttribute("data-locask")){try{localStorage.removeItem(LSL)}catch(e){}openLocAsk()}
   else if(t.dataset.chat){chatSel=t.dataset.chat;render(true)}
   else if(t.hasAttribute("data-chatsend"))sendChat();
   else if(t.dataset.lista)openLista(t.dataset.lista);
@@ -1852,6 +1887,8 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.aprobar){try{await aprobar(t.dataset.aprobar);toast("Delivery aprobado");setTimeout(openEquipo,400)}catch(err){toast("No se guardó.")}return}
   if(t.dataset.socio){try{await setSocio(t.dataset.socio,t.dataset.on==="1");toast(t.dataset.on==="1"?"Ahora es socio":"Ya no es socio");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-logout")){logout();return}
+  if(t.hasAttribute("data-locok")){try{localStorage.setItem(LSL,"si")}catch(e){}closeSheet();locTick(true);render(true);toast("📍 Ubicación activada durante el turno");return}
+  if(t.hasAttribute("data-locno")){try{localStorage.setItem(LSL,"no")}catch(e){}closeSheet();render(true);return}
   if(t.dataset.tel){const u=t.dataset.tel;const cur=(S.people.get(u)||{}).tel||"";
     layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Teléfono">
       ${sheetHead("📞 Teléfono de "+esc(personName(u)))}
