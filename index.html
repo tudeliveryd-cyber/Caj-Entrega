@@ -466,6 +466,11 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .chat-in textarea{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:16px var(--body);background:var(--bg);color:var(--ink);resize:none;max-height:120px;min-width:0}
 .chat-in button{border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font:700 15px var(--body);padding:0 16px;cursor:pointer}
 .chat-note{font-size:13px;color:var(--muted);text-align:center}
+.cz-late{background:var(--due-bg);color:var(--due)}
+.hor-line{font-size:14px;color:var(--muted)}
+.hor-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hor-grid input{border:1px solid var(--line);border-radius:10px;padding:10px;font:16px var(--body);background:var(--bg);color:var(--ink);width:100%;min-width:0}
+.hor-grid label{font-size:12px;color:var(--muted);display:grid;gap:4px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -820,6 +825,7 @@ function startData(me){
   db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;metaDia=0;const hadG=chatG.length;chatG=[];for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}if(d.id==="_meta"){metaDia=Number(d.data().n)||0;continue}if(d.id==="_chat"){chatG=(d.data().msgs||[]);continue}rank.set(d.id,d.data())}{const sig=JSON.stringify(msgDia)+"|"+metaDia;if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(chatG.length!==hadG){chatNotify();render()}if(S.tab==="rank")render(true)},()=>{});
   if(S.owner){let first=true;db.collection("turnos").limit(200).onSnapshot(snap=>{for(const d of snap.docs){const prev=S.people.get(d.id),nd=d.data();
     if(!first&&d.id!==S.me&&nd.cierre&&nd.cierre.dia===today()&&!(prev&&prev.cierre&&prev.cierre.em===nd.cierre.em))toast("🏁 "+(nd.nome||"Un delivery")+" cerró su día");
+    if(!first&&d.id!==S.me&&nd.inicio&&nd.inicio.dia===today()&&!(prev&&prev.inicio&&prev.inicio.em===nd.inicio.em))toast("▶️ "+(nd.nome||"Un delivery")+" empezó a trabajar");
     S.people.set(d.id,nd);subscribeUser(d.id);scheduleRank(d.id)}first=false;render(true)},()=>{})}
   setSync("Cargando…");bootStage="datos";render(true);
 }
@@ -1199,22 +1205,47 @@ function openMeta(){edit=null;
   setTimeout(()=>{const i=document.getElementById("meta-n");if(i)i.focus()},60)}
 /* cierre del día: el delivery avisa que terminó; el dueño ve quién cerró */
 const cierreOf=u=>{const p=S.people.get(u);return p&&p.cierre&&p.cierre.dia===today()?p.cierre:null};
+/* horario y estado de cada delivery (horario lo define el dueño; "inicio" y "cierre" los marca el delivery) */
+const DIAS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+const toMin=t=>{const[a,b]=String(t||"0:0").split(":").map(Number);return a*60+(b||0)};
+const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
+const msMin=ms=>{const d=new Date(ms);return d.getHours()*60+d.getMinutes()};
+function turnosHoy(u){const h=(S.people.get(u)||{}).horario;if(!h)return null;if((h.libres||[]).includes(new Date().getDay()))return"libre";
+  const ts=[h.t1,h.t2].filter(t=>t&&t[0]&&t[1]);return ts.length?ts:null}
+const minTxt=m=>m>=60?Math.floor(m/60)+" h"+(m%60?" "+(m%60)+" min":""):m+" min";
+const horTxt=ts=>ts.map(t=>t[0]+"–"+t[1]).join(" y ");
+const inicioOf=u=>{const p=S.people.get(u);return p&&p.inicio&&p.inicio.dia===today()?p.inicio:null};
+function estadoDe(u){const l=allItems().filter(([,d])=>d._u===u&&d.dia===today());const n=stats(l.filter(([,d])=>!isCamino(d))).n;const cam=l.filter(([,d])=>isCamino(d)).length;
+  const c=cierreOf(u),i=inicioOf(u),ts=turnosHoy(u),nm=nowMin();let st,cls,ex=[];
+  if(Array.isArray(ts))ex.push("🕒 "+horTxt(ts));else if(ts==="libre")ex.push("Día libre");
+  if(c){st="🏁 Terminó "+hhmm(c.em);cls="cz-ok";if(c.n!==n)ex.push("cerró con "+c.n)}
+  else if(i){st="🟢 Trabajando";cls="cz-work";ex.push("desde "+hhmm(i.em));
+    if(Array.isArray(ts)){const im=msMin(i.em);const t=ts.find(t=>toMin(t[1])>im)||ts[ts.length-1];const late=im-toMin(t[0]);if(late>10)ex.push(`<span class="cz-warn">llegó ${minTxt(late)} tarde</span>`);
+      const fin=toMin(ts[ts.length-1][1]);if(nm>fin+30)ex.push(`<span class="cz-warn">pasó su horario</span>`)}}
+  else if(n||cam){st="🟢 Trabajando";cls="cz-work";ex.push("no tocó Empezar")}
+  else if(ts==="libre"){st="Libre hoy";cls="cz-none"}
+  else if(Array.isArray(ts)){const en=ts.find(t=>toMin(t[0])<=nm&&nm<toMin(t[1]));const prox=ts.find(t=>toMin(t[0])>nm);
+    if(en){st="⚠️ Debería estar";cls="cz-late";const tarde=nm-toMin(en[0]);if(tarde>0)ex.push(`<span class="cz-warn">${minTxt(tarde)} de atraso</span>`)}
+    else if(prox){st="Entra "+prox[0];cls="cz-none"}else{st="No trabajó hoy";cls="cz-none"}}
+  else{st="Sin entregas";cls="cz-none"}
+  ex.push(plural(n,"entrega"));if(cam)ex.push(`<span class="cz-warn">${plural(cam,"pedido")} en camino</span>`);
+  return{st,cls,ex,work:cls==="cz-work",done:!!c}}
 function viewCierre(list){
   if(S.mode!=="db"||S.dia!==today())return"";
   if(showEmp()){const ids=activos().filter(u=>u!==S.me||allItems().some(([,d])=>d._u===u&&d.dia===today()));if(!ids.length)return"";
-    const rows=ids.map(u=>{const l=allItems().filter(([,d])=>d._u===u&&d.dia===today());const n=stats(l.filter(([,d])=>!isCamino(d))).n;const cam=l.filter(([,d])=>isCamino(d)).length;const c=cierreOf(u);
-      const st=c?`<span class="cz-st cz-ok">✓ Cerró ${hhmm(c.em)}</span>`:n||cam?`<span class="cz-st cz-work">Trabajando</span>`:`<span class="cz-st cz-none">Sin entregas</span>`;
-      const extra=[plural(n,"entrega"),c&&c.n!==n&&`cerró con ${c.n}`,cam&&`<span class="cz-warn">${plural(cam,"pedido")} en camino</span>`].filter(Boolean).join(" · ");
-      return{c:!!c,html:`<div class="cz-row"><div class="who"><b>${esc(personName(u))}</b><small>${extra}</small></div>${st}</div>`}});
-    const nc=rows.filter(r=>r.c).length;
-    return `<div class="sec-h"><h2>Cierre del día</h2><span>${nc} de ${rows.length} cerraron</span></div><div class="list">${rows.map(r=>r.html).join("")}</div>`}
+    const rows=ids.map(u=>{const e=estadoDe(u);return{...e,html:`<div class="cz-row"><div class="who"><b>${esc(personName(u))}</b><small>${e.ex.join(" · ")}</small></div><span class="cz-st ${e.cls}">${e.st}</span></div>`}});
+    return `<div class="sec-h"><h2>Equipo hoy</h2><span>${rows.filter(r=>r.work).length} trabajando · ${rows.filter(r=>r.done).length} terminaron</span></div><div class="list">${rows.map(r=>r.html).join("")}</div>
+      <p class="hint" style="margin:0">El horario de cada uno se pone en <b>Equipo → 🕒 Horario</b>.</p>`}
   if(!ownView()||S.owner)return"";
-  const c=cierreOf(S.me);const n=stats(list).n;
-  if(c)return `<div class="cierre"><div class="cz-h"><b>🏁 Día cerrado</b><span class="cz-st cz-ok">✓ ${hhmm(c.em)}</span></div>
+  const c=cierreOf(S.me),i=inicioOf(S.me),ts=turnosHoy(S.me);const n=stats(list).n;
+  const hor=Array.isArray(ts)?`<div class="hor-line">🕒 Tu horario hoy: <b>${horTxt(ts)}</b></div>`:ts==="libre"?`<div class="hor-line">Hoy es tu día libre 😊</div>`:"";
+  if(c)return `<div class="cierre"><div class="cz-h"><b>🏁 Día cerrado</b><span class="cz-st cz-ok">✓ ${hhmm(c.em)}</span></div>${hor}
     <p class="hint" style="margin:0">Cerraste con ${plural(c.n,"entrega")}.${c.n!==n?` Ahora tenés ${n}: tocá abajo para avisar de nuevo.`:" El dueño ya recibió el aviso."}</p>
     ${c.n!==n?`<button type="button" class="cierre-btn" data-cerrar>Actualizar cierre</button>`:""}</div>`;
-  if(!n&&!caminoList().length)return"";
-  return `<div class="cierre"><div class="cz-h"><b>¿Terminaste por hoy?</b></div><button type="button" class="cierre-btn" data-cerrar>🏁 Cerrar mi día</button></div>`}
+  if(!i&&!n)return `<div class="cierre"><div class="cz-h"><b>¿Arrancamos?</b></div>${hor}<button type="button" class="cierre-btn" data-empezar>▶️ Empezar mi día</button>
+    <p class="hint" style="margin:0">Tocá cuando empezás a trabajar: el dueño ve que ya estás en servicio.</p></div>`;
+  return `<div class="cierre"><div class="cz-h"><b>🟢 Trabajando</b>${i?`<span class="cz-st cz-work">desde ${hhmm(i.em)}</span>`:`<button type="button" class="linkbtn small-link" data-empezar>marcar inicio</button>`}</div>${hor}
+    <button type="button" class="cierre-btn" data-cerrar>🏁 Cerrar mi día</button></div>`}
 function openCierre(){edit=null;const list=listDay(today()).filter(([,d])=>d._u===S.me);const s=stats(list);const cam=caminoList().filter(([,d])=>d._u===S.me);const g=gStats(gastosRange(today(),today()));
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Cerrar el día">
     ${sheetHead("🏁 Cerrar mi día")}
@@ -1439,11 +1470,11 @@ function premiosBlock(){
     <p class="hint">La semana va de lunes a domingo y el mes es el mes calendario. Gana quien hace más entregas.</p>`}
 function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].filter(u=>u!==S.me);
   const pend=all.filter(u=>!isAprob(u)&&!isBaja(u)),act=all.filter(u=>isAprob(u)&&!isBaja(u)),inact=all.filter(isBaja);
-  const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")};
+  const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")+(p&&p.horario&&p.horario.t1?" · 🕒 "+esc(horTxt([p.horario.t1,p.horario.t2].filter(t=>t&&t[0]&&t[1]))):"")};
   const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b>${esc(personName(u))}${soc?' <span class="pill p-fijo">Socia/o</span>':""}</b><small>${kind==="pend"?"Esperando aprobación":kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-reactivar="${esc(u)}">Reactivar</button>`
-      :`<button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">Dar de baja</button>`}</div></div>`};
+      :`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">Dar de baja</button>`}</div></div>`};
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Equipo">
     ${sheetHead("Equipo")}
     ${pend.length?`<div class="lbl">Nuevos · esperando aprobación</div><div class="list">${pend.map(u=>row(u,"pend")).join("")}</div>`:""}
@@ -1686,6 +1717,8 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.edit)openEdit(t.dataset.edit);
   else if(t.dataset.pay){const[u,dia]=t.dataset.pay.split("|");doPay(u,dia)}
   else if(t.hasAttribute("data-cerrar"))openCierre();
+  else if(t.hasAttribute("data-empezar")){const i={dia:today(),em:Date.now()};const cur=S.people.get(S.me)||{};S.people.set(S.me,{...cur,inicio:i});render(true);
+    try{const w=await sendW(db.doc("turnos/"+S.me).set({inicio:i},{merge:true}));toast(w==="wait"?"Inicio guardado · se envía al volver la señal":"¡Buen trabajo hoy! 💪")}catch(err){toast("No se guardó.")}}
   else if(t.hasAttribute("data-meta"))openMeta();
   else if(t.dataset.chat){chatSel=t.dataset.chat;render(true)}
   else if(t.hasAttribute("data-chatsend"))sendChat();
@@ -1755,6 +1788,23 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.telsave){const u=t.dataset.telsave;const v=document.getElementById("t-num").value.trim();const cur=S.people.get(u)||{};S.people.set(u,{...cur,tel:v});
     try{await sendW(db.doc("turnos/"+u).set({tel:v},{merge:true}));toast(v?"Teléfono guardado":"Teléfono quitado")}catch(err){toast("No se guardó.")}openEquipo();return}
   if(t.hasAttribute("data-equipo2")){openEquipo();return}
+  if(t.dataset.horario){const u=t.dataset.horario;const h=(S.people.get(u)||{}).horario||{};const t1=h.t1||["",""],t2=h.t2||["",""],lib=h.libres||[];
+    layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Horario">
+      ${sheetHead("🕒 Horario de "+esc(personName(u)))}
+      <p class="hint" style="margin:0">Con el horario, en la vista Empresa ves si está trabajando, si llegó tarde o si ya terminó.</p>
+      <div class="lbl">Turno 1</div><div class="hor-grid"><label>Entrada<input type="time" id="h1a" value="${esc(t1[0])}"></label><label>Salida<input type="time" id="h1b" value="${esc(t1[1])}"></label></div>
+      <div class="lbl">Turno 2 (opcional, ej.: la noche)</div><div class="hor-grid"><label>Entrada<input type="time" id="h2a" value="${esc(t2[0])}"></label><label>Salida<input type="time" id="h2b" value="${esc(t2[1])}"></label></div>
+      <div class="lbl">Días libres</div><div class="chips">${DIAS.map((d,i)=>`<button type="button" class="chip ${lib.includes(i)?"on":""}" data-hlib="${i}">${d}</button>`).join("")}</div>
+      <button type="button" class="primary" data-horsave="${esc(u)}">Guardar horario</button>
+      ${h.t1?`<button type="button" class="danger" data-hordel="${esc(u)}">Quitar horario</button>`:""}
+      <button type="button" class="ghost" data-equipo2>Volver al equipo</button></div></div>`;return}
+  if(t.dataset.hlib){t.classList.toggle("on");return}
+  if(t.dataset.horsave||t.dataset.hordel){const u=t.dataset.horsave||t.dataset.hordel;let h=null;
+    if(t.dataset.horsave){const g=id=>document.getElementById(id).value;const a=g("h1a"),b=g("h1b"),c=g("h2a"),d=g("h2b");
+      if(!a||!b){toast("Poné entrada y salida del turno 1");return}
+      h={t1:[a,b],t2:c&&d?[c,d]:null,libres:[...layer.querySelectorAll("[data-hlib].on")].map(x=>Number(x.dataset.hlib))}}
+    const cur=S.people.get(u)||{};S.people.set(u,{...cur,horario:h});
+    try{await sendW(db.doc("turnos/"+u).set({horario:h},{merge:true}));toast(h?"Horario guardado":"Horario quitado")}catch(err){toast("No se guardó.")}openEquipo();return}
   if(t.hasAttribute("data-metasave")||t.hasAttribute("data-metadel")){const v=t.hasAttribute("data-metadel")?0:Math.min(200,parseVal(document.getElementById("meta-n").value));closeSheet();
     metaDia=v;render(true);
     try{const w=await sendW(v?db.doc("ranking/_meta").set({n:v,criadoEm:Date.now()}):db.doc("ranking/_meta").delete());toast(v?"Meta: "+plural(v,"entrega")+" por día":"Meta quitada")}catch(err){toast("No se guardó.")}return}
