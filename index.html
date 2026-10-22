@@ -1215,27 +1215,32 @@ function openMeta(){edit=null;
 const cierreOf=u=>{const p=S.people.get(u);return p&&p.cierre&&p.cierre.dia===today()?p.cierre:null};
 /* horario y estado de cada delivery (horario lo define el dueño; "inicio" y "cierre" los marca el delivery) */
 const DIAS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
-const DEF_TF=[{id:"t1",n:"☀️ 1º Turno",a:"07:00",b:"18:00"},{id:"t2",n:"🌙 2º Turno",a:"11:00",b:"23:00"},{id:"t3",n:"⭐ 3º Turno",a:"",b:""}];
+const DEF_TF=[{id:"t1",n:"☀️ 1º Turno",a:"07:00",b:"18:00"},{id:"t2",n:"🌙 2º Turno",a:"11:00",b:"23:00"},{id:"t3",n:"🔀 3º Turno",a:"11:00",b:"14:00",a2:"18:30",b2:"23:00"}];
 var TF=DEF_TF.map(x=>({...x}));
 const tfById=id=>TF.find(x=>x.id===id);
 function horFromRefs(refs){const ts=refs.map(tfById).filter(x=>x&&x.a&&x.b).sort((x,y)=>toMin(x.a)-toMin(y.a)).slice(0,2);return{t1:ts[0]?[ts[0].a,ts[0].b]:null,t2:ts[1]?[ts[1].a,ts[1].b]:null}}
 /* semana: sem[dow] = id de turno fijo | "p" (horario propio) | "libre"; res[dow] = horarios ya calculados (para el delivery) */
 const ORD=[1,2,3,4,5,6,0];
+const tfRanges=x=>[[x.a,x.b],[x.a2,x.b2]].filter(r=>r[0]&&r[1]);
+const rgTxt=rs=>rs.map(r=>r[0]+"–"+r[1]).join(" y ");
+const tfTxt=x=>rgTxt(tfRanges(x));
+const pRanges=p=>p?[[p[0],p[1]],[p[2],p[3]]].filter(r=>r[0]&&r[1]):[];
 function resolveSem(sem,p){const res={};for(const d of ORD){const v=sem[d];if(!v)continue;if(v==="libre"){res[d]="libre";continue}
-  if(v==="p"){if(p&&p[0]&&p[1])res[d]=[[p[0],p[1]]];continue}const x=tfById(v);if(x&&x.a&&x.b)res[d]=[[x.a,x.b]]}return res}
-function semLabel(h){const g=new Map();for(const d of ORD){const v=h.sem[d];if(!v)continue;const n=v==="libre"?"Libre":v==="p"?(h.p?h.p[0]+"–"+h.p[1]:"Propio"):((tfById(v)||{}).n||"Turno");if(!g.has(n))g.set(n,[]);g.get(n).push(DIAS[d])}
+  if(v==="p"){const r=pRanges(p);if(r.length)res[d]=r;continue}const x=tfById(v);if(x&&x.a&&x.b)res[d]=tfRanges(x)}return res}
+function semLabel(h){const g=new Map();for(const d of ORD){const v=h.sem[d];if(!v)continue;const n=v==="libre"?"Libre":v==="p"?(h.p?rgTxt(pRanges(h.p)):"Propio"):((tfById(v)||{}).n||"Turno");if(!g.has(n))g.set(n,[]);g.get(n).push(DIAS[d])}
   return[...g.entries()].map(([n,ds])=>n+": "+(ds.length===7?"todos los días":ds.join(" "))).join(" · ")}
 let HS=null;
 function drawHor(){if(!HS)return;const u=HS.u;const opts=[...TF.filter(x=>x.a&&x.b).map(x=>[x.id,x.n.replace(/^\S+\s/,"").replace(/\s*Turno\s*/i,"")+" turno"]),["p","Propio"],["libre","Libre"]];
-  const usaP=ORD.some(dd=>HS.sem[dd]==="p");const pa=document.getElementById("hp-a");if(pa)HS.p=[pa.value,document.getElementById("hp-b").value];
+  const usaP=ORD.some(dd=>HS.sem[dd]==="p");const pa=document.getElementById("hp-a");if(pa)HS.p=["hp-a","hp-b","hp-c","hp-d"].map(id=>document.getElementById(id).value);
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Horario">
     ${sheetHead("🕒 Horario de "+esc(personName(u)))}
     <div class="lbl">Mismo turno todos los días</div>
-    <div class="chips">${TF.filter(x=>x.a&&x.b).map(x=>`<button type="button" class="chip" data-hall="${x.id}">${esc(x.n)} <small>${x.a}–${x.b}</small></button>`).join("")}</div>
+    <div class="chips">${TF.filter(x=>x.a&&x.b).map(x=>`<button type="button" class="chip" data-hall="${x.id}">${esc(x.n)} <small>${tfTxt(x)}</small></button>`).join("")}</div>
     <div class="lbl">O elegí día por día</div>
     <div class="wk-list">${ORD.map(dd=>`<div class="wk-day"><b>${DIAS[dd]}</b><div class="wk-opts">${opts.map(([id,n])=>`<button type="button" class="wk-o ${HS.sem[dd]===id?"on":""} ${id==="libre"?"lib":""}" data-hd="${dd}|${id}">${esc(n)}</button>`).join("")}</div></div>`).join("")}</div>
-    ${usaP?`<div class="lbl">Horario propio (para los días marcados “Propio”)</div><div class="hor-grid"><label>Entrada<input type="time" id="hp-a" value="${esc(HS.p[0]||"")}"></label><label>Salida<input type="time" id="hp-b" value="${esc(HS.p[1]||"")}"></label></div>`:""}
-    <p class="hint" style="margin:0">${TF.filter(x=>x.a&&x.b).map(x=>esc(x.n)+": "+x.a+"–"+x.b).join(" · ")}. El día sin marcar no cuenta.</p>
+    ${usaP?`<div class="lbl">Horario propio (para los días marcados “Propio”)</div><div class="hor-grid"><label>Entrada<input type="time" id="hp-a" value="${esc(HS.p[0]||"")}"></label><label>Salida<input type="time" id="hp-b" value="${esc(HS.p[1]||"")}"></label></div>
+      <div class="lbl">Segundo horario del mismo día (opcional)</div><div class="hor-grid"><label>Entrada<input type="time" id="hp-c" value="${esc(HS.p[2]||"")}"></label><label>Salida<input type="time" id="hp-d" value="${esc(HS.p[3]||"")}"></label></div>`:""}
+    <p class="hint" style="margin:0">${TF.filter(x=>x.a&&x.b).map(x=>esc(x.n)+": "+tfTxt(x)).join(" · ")}. El día sin marcar no cuenta.</p>
     <button type="button" class="primary" data-horsave="${esc(u)}">Guardar horario</button>
     ${(S.people.get(u)||{}).horario?`<button type="button" class="danger" data-hordel="${esc(u)}">Quitar horario</button>`:""}
     <button type="button" class="ghost" data-equipo2>Volver al equipo</button></div></div>`}
@@ -1253,6 +1258,7 @@ function estadoDe(u){const l=allItems().filter(([,d])=>d._u===u&&d.dia===today()
   const c=cierreOf(u),i=inicioOf(u),ts=turnosHoy(u),nm=nowMin();let st,cls,ex=[];
   if(Array.isArray(ts))ex.push("🕒 "+horTxt(ts));else if(ts==="libre")ex.push("Día libre");
   if(c){st="🏁 Terminó "+hhmm(c.em);cls="cz-ok";if(c.n!==n)ex.push("cerró con "+c.n)}
+  else if(i&&Array.isArray(ts)&&ts.length>1&&!ts.some(t=>toMin(t[0])<=nm&&nm<toMin(t[1]))&&ts.some(t=>toMin(t[0])>nm)){const pr=ts.find(t=>toMin(t[0])>nm);st="⏸️ En pausa";cls="cz-none";ex.push("vuelve "+pr[0])}
   else if(i){st="🟢 Trabajando";cls="cz-work";ex.push("desde "+hhmm(i.em));
     if(Array.isArray(ts)){const im=msMin(i.em);const t=ts.find(t=>toMin(t[1])>im)||ts[ts.length-1];const late=im-toMin(t[0]);if(late>10)ex.push(`<span class="cz-warn">llegó ${minTxt(late)} tarde</span>`);
       const fin=toMin(ts[ts.length-1][1]);if(nm>fin+30)ex.push(`<span class="cz-warn">pasó su horario</span>`)}}
@@ -1269,7 +1275,7 @@ function viewCierre(list){
   if(showEmp()){const ids=activos().filter(u=>u!==S.me||allItems().some(([,d])=>d._u===u&&d.dia===today()));if(!ids.length)return"";
     const rows=ids.map(u=>{const e=estadoDe(u);return{...e,html:`<div class="cz-row"><div class="who"><b>${esc(personName(u))}</b><small>${e.ex.join(" · ")}</small></div><span class="cz-st ${e.cls}">${e.st}</span></div>`}});
     return `<div class="sec-h"><h2>Equipo hoy</h2><span>${rows.filter(r=>r.work).length} trabajando · ${rows.filter(r=>r.done).length} terminaron</span></div><div class="list">${rows.map(r=>r.html).join("")}</div>
-      <p class="hint" style="margin:0">El horario de cada uno se pone en <b>Equipo → 🕒 Horario</b>.</p>`}
+      <p class="hint" style="margin:0">El horario de cada uno se pone en <b>Equipo → 🕒 Horario</b>. Con turno cortado, cerrá el día solo al terminar el último horario.</p>`}
   if(!ownView())return"";
   const c=cierreOf(S.me),i=inicioOf(S.me),ts=turnosHoy(S.me);const n=stats(list).n;
   const hor=Array.isArray(ts)?`<div class="hor-line">🕒 Tu horario hoy: <b>${horTxt(ts)}</b></div>`:ts==="libre"?`<div class="hor-line">Hoy es tu día libre 😊</div>`:"";
@@ -1512,7 +1518,7 @@ function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].fil
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Equipo">
     ${sheetHead("Equipo")}
     ${pend.length?`<div class="lbl">Nuevos · esperando aprobación</div><div class="list">${pend.map(u=>row(u,"pend")).join("")}</div>`:""}
-    <button type="button" class="ghost" data-tfedit>🕒 Turnos fijos: ${TF.filter(x=>x.a&&x.b).map(x=>esc(x.n)+" "+x.a+"–"+x.b).join(" · ")}</button>
+    <button type="button" class="ghost" data-tfedit>🕒 Turnos fijos: ${TF.filter(x=>x.a&&x.b).map(x=>esc(x.n)+" "+tfTxt(x)).join(" · ")}</button>
     <div class="lbl">Activos</div>
     <div class="list">${act.length?act.map(u=>row(u,"act")).join(""):`<div class="team-row"><small>Todavía no hay deliverys aprobados. Mandales el link de la app: se registran y aparecen acá para aprobar.</small></div>`}</div>
     ${inact.length?`<div class="lbl">Dados de baja</div><div class="list">${inact.map(u=>row(u,"baja")).join("")}</div>`:""}
@@ -1830,7 +1836,8 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.hall){for(const dd of ORD)if(HS.sem[dd]!=="libre")HS.sem[dd]=t.dataset.hall;drawHor();return}
   if(t.dataset.hd){const[dd,v]=t.dataset.hd.split("|");HS.sem[dd]=HS.sem[dd]===v?"":v;drawHor();return}
   if(t.dataset.horsave||t.dataset.hordel){const u=t.dataset.horsave||t.dataset.hordel;let h=null;
-    if(t.dataset.horsave){const pa=document.getElementById("hp-a"),pb=document.getElementById("hp-b");if(pa)HS.p=[pa.value,pb.value];
+    if(t.dataset.horsave){const pa=document.getElementById("hp-a");if(pa)HS.p=["hp-a","hp-b","hp-c","hp-d"].map(id=>document.getElementById(id).value);
+      if(HS.p&&((HS.p[2]&&!HS.p[3])||(!HS.p[2]&&HS.p[3]))){toast("El segundo horario necesita entrada y salida");return}
       const usaP=ORD.some(dd=>HS.sem[dd]==="p");if(usaP&&!(HS.p[0]&&HS.p[1])){toast("Poné entrada y salida del horario propio");return}
       if(!ORD.some(dd=>HS.sem[dd]&&HS.sem[dd]!=="libre")){toast("Elegí el turno de al menos un día");return}
       const sem={};for(const dd of ORD)if(HS.sem[dd])sem[dd]=HS.sem[dd];h={sem,p:usaP?HS.p:null,res:resolveSem(sem,HS.p)}}
@@ -1839,11 +1846,12 @@ layer.addEventListener("click",async e=>{
   if(t.hasAttribute("data-tfedit")){layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Turnos fijos">
       ${sheetHead("🕒 Turnos fijos")}
       <p class="hint" style="margin:0">Definí los turnos una vez. Al cambiar un horario acá, se actualiza solo para todos los deliverys de ese turno. Dejá vacío el que no uses.</p>
-      ${TF.map(x=>`<div class="lbl">${esc(x.n)}</div><div class="hor-grid"><label>Entrada<input type="time" id="tf-${x.id}-a" value="${esc(x.a||"")}"></label><label>Salida<input type="time" id="tf-${x.id}-b" value="${esc(x.b||"")}"></label></div>`).join("")}
+      ${TF.map(x=>`<div class="lbl">${esc(x.n)}</div><div class="hor-grid"><label>Entrada<input type="time" id="tf-${x.id}-a" value="${esc(x.a||"")}"></label><label>Salida<input type="time" id="tf-${x.id}-b" value="${esc(x.b||"")}"></label></div>
+      <div class="hor-grid"><label>2º horario (opcional)<input type="time" id="tf-${x.id}-a2" value="${esc(x.a2||"")}"></label><label>Salida<input type="time" id="tf-${x.id}-b2" value="${esc(x.b2||"")}"></label></div>`).join("")}
       <button type="button" class="primary" data-tfsave>Guardar turnos</button>
       <button type="button" class="ghost" data-equipo2>Volver al equipo</button></div></div>`;return}
-  if(t.hasAttribute("data-tfsave")){const nl=TF.map(x=>({...x,a:document.getElementById("tf-"+x.id+"-a").value,b:document.getElementById("tf-"+x.id+"-b").value}));
-    if(nl.some(x=>(x.a&&!x.b)||(!x.a&&x.b))){toast("Cada turno necesita entrada y salida");return}
+  if(t.hasAttribute("data-tfsave")){const nl=TF.map(x=>({...x,a:document.getElementById("tf-"+x.id+"-a").value,b:document.getElementById("tf-"+x.id+"-b").value,a2:document.getElementById("tf-"+x.id+"-a2").value,b2:document.getElementById("tf-"+x.id+"-b2").value}));
+    if(nl.some(x=>(x.a&&!x.b)||(!x.a&&x.b)||(x.a2&&!x.b2)||(!x.a2&&x.b2))){toast("Cada turno necesita entrada y salida");return}
     TF=nl;let n=0;
     try{const ps=[sendW(db.doc("config/turnos").set({list:TF}))];
       for(const[u,pp]of S.people){const h=pp&&pp.horario;if(!h||!h.sem)continue;const nh={...h,res:resolveSem(h.sem,h.p)};S.people.set(u,{...pp,horario:nh});n++;ps.push(sendW(db.doc("turnos/"+u).set({horario:nh},{merge:true})))}
