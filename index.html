@@ -681,7 +681,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="69";
+const APPV="70";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -962,9 +962,9 @@ const groupKey=d=>isLegacy(d)?"n:"+d.entregador.trim():d._u;
 const groupName=k=>k.startsWith("n:")?k.slice(2):personName(k);
 const pctOf=u=>(S.cfg.por&&S.cfg.por[u])||S.cfg.pct;
 function stats(list){
-  const s={n:0,total:0,efectivo:0,transferencia:0,anotado:0,pagado:0,fijo:0,ne:0,nt:0,na:0,np:0,nf:0,com:0,pcts:new Set()};
+  const s={n:0,total:0,efectivo:0,transferencia:0,anotado:0,pagado:0,fijo:0,fijoEmp:0,ne:0,nt:0,na:0,np:0,nf:0,com:0,pcts:new Set()};
   for(const[,d]of list){s.total+=d.valor;
-    if(d.metodo==="fijo"){s.fijo+=d.valor;if(!d.diario){const c=d.cant||1;s.nf+=c;s.n+=c}continue}
+    if(d.metodo==="fijo"){s.fijo+=d.valor;if(d.via==="empresa")s.fijoEmp+=d.valor;if(!d.diario){const c=d.cant||1;s.nf+=c;s.n+=c}continue}
     const cq=d.cant||1;s.n+=cq;s[d.metodo]+=d.valor;s[{efectivo:"ne",transferencia:"nt",anotado:"na",pagado:"np"}[d.metodo]||"na"]+=cq;
     const p=pctOf(d._u);s.pcts.add(p);s.com+=d.valor*p/100}
   s.com=Math.round(s.com);s.fica=s.total-s.com;s.enEmp=s.anotado+s.pagado;s.saldo=s.com-s.anotado-s.pagado;
@@ -1224,7 +1224,7 @@ function acertoBlock(s,label,pay,gt){
     ${s.pagado?`<div class="ac-row"><span>Pedido pago, ya en la cuenta de la empresa</span><b class="num c-due">− ${gs(s.pagado)}</b></div>`:""}
     <div class="ac-res"><span>${r.t}</span><b class="num ${r.c}">${gs(r.v)}</b></div>
     ${pay?`<div class="ac-pay">${pay}</div>`:""}
-    <div class="ac-foot">Delivery queda con ${gs(s.fica)} · tiene en mano ${gs(s.efectivo+s.transferencia+s.fijo)}${s.fijo?" (incluye diario de clientes fijos)":" entre efectivo y transferencia"}</div>
+    <div class="ac-foot">Delivery queda con ${gs(s.fica)} · tiene en mano ${gs(s.efectivo+s.transferencia+s.fijo-s.fijoEmp)}${s.fijo?" (incluye diario de clientes fijos)":" entre efectivo y transferencia"}</div>
     ${gt!==undefined?`<div class="ac-net"><span>Gastos ${gs(gt)}</span><span>Le queda limpio <b class="num ${s.fica-gt<0?"c-due":"c-cash"}">${gs(s.fica-gt)}</b></span></div>`:""}
   </div>`}
 function driverTable(gr,dia){
@@ -1584,18 +1584,19 @@ function viewCamino(cl){
       <div class="amt"><small>Cobrar</small><b class="num">${gs(cobrarDe(d))}</b></div></div>
     <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>!x.nota&&x.ok!==null&&x.ok!==undefined).length}/${d.lista.filter(x=>!x.nota).length}</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${linkIn(d.ubic)?"Ubicación":"Mapa"}</a><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
 function fijosBlock(list){
-  const m=new Map();for(const[,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0});const r=m.get(k);if(d.diario)r.diario+=d.valor;else r.n+=(d.cant||1)}
+  const m=new Map();for(const[,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0});const r=m.get(k);if(d.diario){r.diario+=d.valor;if(d.via==="empresa")r.emp=1}else r.n+=(d.cant||1)}
   if(!m.size)return"";const can=!lockReason(S.dia);
   return `<div class="fijos"><div class="ac-h">Clientes fijos · pagan diario, sin %</div>
     ${[...m.values()].map(r=>`<div class="fijo-row"><div class="who"><b>${esc(r.nome)}</b><small>${plural(r.n,"entrega")}${r.diario?" · diario "+gs(r.diario):" · diario sin registrar"}</small></div>
-      ${r.diario?`<span class="paid">Cobrado ${gs(r.diario)}</span>`:can?`<button type="button" class="small pay" data-diario="${esc(r.nome)}">Registrar diario</button>`:`<span class="unpaid">Pendiente</span>`}</div>`).join("")}</div>`}
+      ${r.diario?`<span class="paid">${r.emp?"Cobró la empresa":"Cobrado"} ${gs(r.diario)}</span>`:can?`<button type="button" class="small pay" data-diario="${esc(r.nome)}">Registrar diario</button>`:`<span class="unpaid">Pendiente</span>`}</div>`).join("")}</div>`}
 function openDiario(nome){edit=null;
   const forWho=S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Registrar diario">
     ${sheetHead("Diario · "+esc(nome)+forWho)}
     <p class="hint" style="margin:0">Monto que el cliente fijo pagó por las entregas de hoy. Es todo del delivery: no entra en la comisión.</p>
     <div class="money"><span>₲</span><input id="d-val" inputmode="numeric" autocomplete="off" placeholder="Ej.: 100.000"></div>
-    <div class="methods two">${["efectivo","transferencia"].map(k=>`<button type="button" class="method m-${M[k].c}" data-dvia="${k}" aria-pressed="${k==="efectivo"}">${ICON[k]}${M[k].n}</button>`).join("")}</div>
+    <div class="methods two">${["efectivo","transferencia"].map(k=>`<button type="button" class="method m-${M[k].c}" data-dvia="${k}" aria-pressed="${k==="efectivo"}">${ICON[k]}${M[k].n}<small>${k==="efectivo"?"lo cobró el delivery":"al delivery"}</small></button>`).join("")}
+      ${S.mode==="db"&&S.owner?`<button type="button" class="method m-due dvia-emp" data-dvia="empresa" aria-pressed="false">💼 Lo cobró la empresa<small>se descuenta de lo que el delivery debe</small></button>`:""}</div>
     <button type="button" class="primary" data-dsave="${esc(nome)}">Guardar diario</button></div></div>`;
   setTimeout(()=>{const v=document.getElementById("d-val");if(v)v.focus()},60)}
 function viewDiaList(list){
@@ -2185,8 +2186,10 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.dsave){const v=parseVal(document.getElementById("d-val").value);if(!v){toast("Escribí el monto del diario");return}
     const via=(layer.querySelector('[data-dvia][aria-pressed="true"]')||{dataset:{dvia:"efectivo"}}).dataset.dvia;
     const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(20,0,0,0));
-    const d={valor:v,metodo:"fijo",diario:true,via,cliente:t.dataset.dsave,obs:"Diario",dia:S.dia,criadoEm:when.getTime()};
-    closeSheet();try{const w=await sendW(addItem(d,writeTarget()));if(w==="wait"){toast("Guardado en el celular · se envía al volver la señal")}else toast("Diario guardado: "+gs(v))}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast("No se guardó.")}return}
+    const d={valor:v,metodo:"fijo",diario:true,via,cliente:t.dataset.dsave,obs:via==="empresa"?"Diario · cobró la empresa":"Diario",dia:S.dia,criadoEm:when.getTime()};
+    const wt=writeTarget(),eid=uid();
+    if(via==="empresa"&&db){const m={tipo:"abono",monto:v,nota:"Diario "+t.dataset.dsave+" (cobró la empresa)",em:Date.now(),abierto:true,por:S.me,ref:eid};const mid=uid();movs.set(wt+"|"+mid,{...m,_u:wt,_id:mid});sendW(db.collection("liq/"+wt+"/movs").doc(mid).set(m)).catch(()=>toast("No se guardó el descuento en la cuenta"))}
+    closeSheet();try{const w=await sendW(addItem(d,wt,eid));if(w==="wait"){toast("Guardado en el celular · se envía al volver la señal")}else toast(via==="empresa"?"Diario "+gs(v)+" · descontado de la cuenta de "+personName(wt):"Diario guardado: "+gs(v))}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast("No se guardó.")}return}
   if(t.dataset.camprod){const k=t.dataset.camprod;const d=S.items.get(k);if(!d)return;const v=d.pagoTipo==="prod"?null:"prod";d.pagoTipo=v;openCamino(k);render();
     try{await sendW(patchItem(k,{pagoTipo:v}));toast(v?"Cobrar solo el delivery: "+gs(d.valor):"Vuelve a cobrar producto + delivery")}catch(err){toast("No se guardó.")}return}
   if(t.dataset.copyc){const d=S.items.get(t.dataset.copyc);if(d)copy(cuentaTxt(d.producto||0,d.valor,d.pagoTipo));return}
