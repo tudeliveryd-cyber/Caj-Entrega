@@ -627,7 +627,7 @@ img{max-width:100%}[hidden]{display:none!important}
 <script>
 (function(){
 const PRESETS=[10000,13000,15000,17000,18000,20000,25000,30000,35000];
-const M={efectivo:{n:"Efectivo",sub:"queda con el delivery",c:"cash"},transferencia:{n:"Transferencia",sub:"al delivery",c:"transfer"},anotado:{n:"Anotado",sub:"cuenta de la empresa",c:"due"},pagado:{n:"Pedido pago",sub:"el cliente pagó al comercio",c:"paid"},fijo:{n:"Cliente fijo",sub:"paga diario, sin %",c:"fijo"}};
+const M={efectivo:{n:"Efectivo",sub:"queda con el delivery",c:"cash"},transferencia:{n:"Transferencia",sub:"al delivery",c:"transfer"},anotado:{n:"Anotado",sub:"cuenta de la empresa",c:"due"},pagado:{n:"Pedido pago",sub:"pagó al comercio · el comercio paga a Tú Delivery",c:"paid"},fijo:{n:"Cliente fijo",sub:"paga diario, sin %",c:"fijo"}};
 const ICON={
  efectivo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>',
  transferencia:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>',
@@ -705,7 +705,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="75";
+const APPV="76";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1071,14 +1071,14 @@ function stats(list){
     if(d.metodo==="fijo"){s.fijo+=d.valor;if(d.via==="empresa")s.fijoEmp+=d.valor;if(!d.diario){const c=d.cant||1;s.nf+=c;s.n+=c}continue}
     const cq=d.cant||1;s.n+=cq;s[d.metodo]+=d.valor;s[{efectivo:"ne",transferencia:"nt",anotado:"na",pagado:"np"}[d.metodo]||"na"]+=cq;
     const p=pctOf(d._u);s.pcts.add(p);s.com+=d.valor*p/100}
-  s.com=Math.round(s.com);s.fica=s.total-s.com;s.enEmp=s.anotado;s.saldo=s.com-s.anotado;
+  s.com=Math.round(s.com);s.fica=s.total-s.com;s.enEmp=s.anotado+s.pagado;s.saldo=s.com-s.anotado-s.pagado;
   s.pct=s.pcts.size===1?[...s.pcts][0]:(s.pcts.size?null:pctOf(S.filter==="all"?S.me:S.filter));return s}
 function groups(list){const m=new Map();for(const e of list){const k=groupKey(e[1]);if(!m.has(k))m.set(k,[]);m.get(k).push(e)}
   return[...m.entries()].map(([k,l])=>({k,name:groupName(k),list:l,s:stats(l)})).sort((a,b)=>b.s.total-a.s.total)}
 const isCamino=d=>d.estado==="camino";
 const visible=()=>[...new Map([...S.old,...S.items]).entries()].filter(([,d])=>!isCamino(d)&&(S.filter==="all"||d._u===S.filter));
 const caminoList=()=>[...S.items.entries()].filter(([,d])=>isCamino(d)&&(S.filter==="all"||d._u===S.filter)).sort((a,b)=>(a[1].criadoEm||0)-(b[1].criadoEm||0));
-/* pagoTipo: "todo" = el cliente ya pagó todo al comercio (el comercio paga el delivery al delivery) (no se cobra nada) · "prod" = producto ya pagado (se cobra solo el delivery) */
+/* pagoTipo: "todo" = el cliente ya pagó todo a la empresa (no se cobra nada) · "prod" = producto ya pagado (se cobra solo el delivery) */
 const prodCobra=d=>d.metodo==="pagado"||d.pagoTipo?0:(d.producto||0);
 const cobrarDe=d=>d.metodo==="pagado"||d.pagoTipo==="todo"?0:prodCobra(d)+(d.valor||0);
 const cuentaTxt=(prod,val,pt)=>pt==="todo"?`Pedido ya pagado ✅ · no hay nada que cobrar`:pt==="prod"?`Producto ya pagado ✅ · Delivery ${gs(val)} = Total a pagar ${gs(val)}`:prod?`Producto ${gs(prod)} + Delivery ${gs(val)} = Total ${gs(prod+val)}`:`Delivery ${gs(val)}`;
@@ -1096,7 +1096,7 @@ function empresaBlock(s,eg,label){const gan=s.com-eg;return `<div class="empresa
   <div class="ac-row"><span>Comisiones de los deliverys</span><b class="num">${gs(s.com)}</b></div>
   <div class="ac-row"><span>Gastos de la empresa</span><b class="num c-due">− ${gs(eg)}</b></div>
   <div class="ac-res"><span>${gan<0?"Pérdida de la empresa":"Ganancia de la empresa"}</span><b class="num ${gan<0?"c-due":"c-cash"}">${gan<0?"− ":""}${gs(Math.abs(gan))}</b></div>
-  <div class="ac-foot">En la cuenta de la empresa (anotado): ${gs(s.anotado)} · con los deliverys (efectivo, transferencia${s.pagado?" y pedidos pagos":""}): ${gs(s.efectivo+s.transferencia+s.pagado)}</div></div>`}
+  <div class="ac-foot">En la cuenta de la empresa (anotado${s.pagado?" y pedidos pagos":""}): ${gs(s.anotado+s.pagado)} · con los deliverys (efectivo y transferencia): ${gs(s.efectivo+s.transferencia)}</div></div>`}
 function egastosBlock(from,to){
   const l=egRange(from,to);const g=egStats(l);
   const tipos=Object.entries(g.tipo).sort((a,b)=>b[1]-a[1]);const max=Math.max(1,...tipos.map(t=>t[1]));
@@ -1201,7 +1201,7 @@ function refreshForm(){
   document.querySelectorAll("[data-pt]").forEach(c=>{c.classList.toggle("on",c.dataset.pt===S.pagoTipo);c.hidden=S.cmMet==="pagado"||(S.metodo==="pagado"&&!!document.getElementById("save"))});
   document.querySelectorAll("[data-cmet]").forEach(c=>c.setAttribute("aria-pressed",c.dataset.cmet===S.cmMet));
   const ptE=S.cmMet==="pagado"||(S.metodo==="pagado"&&document.getElementById("save"))?"todo":S.pagoTipo;const cb=document.getElementById("cobrar");if(cb){const sh=S.prod||ptE;cb.hidden=!sh;const cob=cobrarDe({producto:S.prod,valor:S.val,pagoTipo:ptE});
-    cb.innerHTML=!sh?"":ptE==="todo"?`<div><span>Cobrar al cliente</span><b class="num">₲ 0</b></div><small>✅ El cliente ya pagó al comercio: no le cobres nada, solo entregá. El delivery te lo paga el comercio.</small>`
+    cb.innerHTML=!sh?"":ptE==="todo"?`<div><span>Cobrar al cliente</span><b class="num">₲ 0</b></div><small>✅ El cliente ya pagó al comercio: no le cobres nada, solo entregá. El delivery lo paga el comercio a Tú Delivery.</small>`
       :`<div><span>Cobrar al cliente</span><b class="num">${gs(cob)}</b></div><small>${ptE==="prod"?"Producto ya pagado · cobrá solo el delivery "+gs(S.val):"Producto "+gs(S.prod)+" + delivery "+gs(S.val)}</small><button type="button" class="linkbtn" data-copycuenta>Copiar cuenta para WhatsApp</button>`}
   updMapLink();
   const set=(id,v)=>{const el=document.getElementById(id);if(el&&document.activeElement!==el)el.value=v};
@@ -1312,7 +1312,7 @@ function payControl(u,dia,s,compact){
 /* mensaje de liquidación para mandar al delivery por WhatsApp (sin mostrar el %) */
 const allItems=()=>[...new Map([...S.old,...S.items]).entries()];
 function liqLines(s){const r=saldoTxt(s);const fx=s.nf||s.fijo?`\nClientes fijos: ${plural(s.nf,"entrega")}${s.fijo?" · diario "+gs(s.fijo)+" (todo tuyo)":""}`:"";
-  return `Entregas: ${s.n} · Total cobrado: ${gs(s.total)}\nEfectivo ${gs(s.efectivo)} · Transferencia ${gs(s.transferencia)} · Anotado ${gs(s.anotado)}${s.pagado?" · Pedido pago "+gs(s.pagado):""}${fx}\nComisión Tú Delivery: ${gs(s.com)}\nMenos anotado (ya está en la cuenta de la empresa): − ${gs(s.anotado)}\n*${s.saldo>0?"Tenés que pagar a la empresa":s.saldo<0?"La empresa te paga":"Liquidación en cero"}${s.saldo?": "+gs(r.v):""}*`}
+  return `Entregas: ${s.n} · Total cobrado: ${gs(s.total)}\nEfectivo ${gs(s.efectivo)} · Transferencia ${gs(s.transferencia)} · Anotado ${gs(s.anotado)}${s.pagado?" · Pedido pago "+gs(s.pagado):""}${fx}\nComisión Tú Delivery: ${gs(s.com)}\nMenos anotado${s.pagado?" y pedidos pagos":""} (ya está en la cuenta de la empresa): − ${gs(s.anotado+s.pagado)}\n*${s.saldo>0?"Tenés que pagar a la empresa":s.saldo<0?"La empresa te paga":"Liquidación en cero"}${s.saldo?": "+gs(r.v):""}*`}
 function telWa(u){let t=String((S.people.get(u)||{}).tel||"").replace(/\D/g,"");if(!t)return"";if(t.startsWith("595"))return t;if(t.startsWith("0"))t=t.slice(1);return "595"+t}
 function waOpen(txt,u){const n=u?telWa(u):"";return "https://wa.me/"+n+"?text="+encodeURIComponent(txt)}
 function waDia(u,dia){const l=allItems().filter(([,d])=>d._u===u&&d.dia===dia&&!isCamino(d)&&!isLegacy(d));const s=stats(l);const st=pagoState(u,dia,s);
@@ -1328,9 +1328,10 @@ function acertoBlock(s,label,pay,gt){
     <div class="ac-h">${label}</div>
     <div class="ac-row"><span>Comisión Tú Delivery${pctLabel(s)}</span><b class="num">${gs(s.com)}</b></div>
     <div class="ac-row"><span>Anotado, ya en la cuenta de la empresa</span><b class="num c-due">− ${gs(s.anotado)}</b></div>
+    ${s.pagado?`<div class="ac-row"><span>Pedido pago (el comercio paga a Tú Delivery)</span><b class="num c-due">− ${gs(s.pagado)}</b></div>`:""}
     <div class="ac-res"><span>${r.t}</span><b class="num ${r.c}">${gs(r.v)}</b></div>
     ${pay?`<div class="ac-pay">${pay}</div>`:""}
-    <div class="ac-foot">Delivery queda con ${gs(s.fica)} · tiene en mano ${gs(s.efectivo+s.transferencia+s.pagado+s.fijo-s.fijoEmp)}${s.fijo?" (incluye diario de clientes fijos)":s.pagado?" entre efectivo, transferencia y pedidos pagos":" entre efectivo y transferencia"}</div>
+    <div class="ac-foot">Delivery queda con ${gs(s.fica)} · tiene en mano ${gs(s.efectivo+s.transferencia+s.fijo-s.fijoEmp)}${s.fijo?" (incluye diario de clientes fijos)":" entre efectivo y transferencia"}</div>
     ${gt!==undefined?`<div class="ac-net"><span>Gastos ${gs(gt)}</span><span>Le queda limpio <b class="num ${s.fica-gt<0?"c-due":"c-cash"}">${gs(s.fica-gt)}</b></span></div>`:""}
   </div>`}
 function driverTable(gr,dia){
@@ -1356,7 +1357,7 @@ function viewSummary(list){
       <div><div class="k c-transfer"><span class="dot d-transfer"></span>Transfer.</div>${showEmp()?'<div class="hold">a los deliverys</div>':""}<div class="v num">${gs(s.transferencia)}</div><div class="n">${plural(s.nt,"entrega")}</div></div>
       <div><div class="k c-due"><span class="dot d-due"></span>Anotado</div>${showEmp()?'<div class="hold">en la cuenta de la empresa</div>':""}<div class="v num">${gs(s.anotado)}</div><div class="n">${plural(s.na,"entrega")}</div></div>
     </div>
-    ${s.pagado?`<div class="paid-note">✅ <b>Pedidos pagos</b> (el cliente pagó al comercio): ${gs(s.pagado)} · ${plural(s.np,"entrega")}</div>`:""}
+    ${s.pagado?`<div class="paid-note">✅ <b>Pedidos pagos</b> (el comercio paga el delivery a Tú Delivery): ${gs(s.pagado)} · ${plural(s.np,"entrega")}</div>`:""}
     ${fijosBlock(list)}
     ${(()=>{const pr=list.reduce((a,[,d])=>a+prodCobra(d),0);return pr?`<div class="prod-note">Además se cobró ${gs(pr)} de productos para los comercios. No entra en la comisión.</div>`:""})()}
     ${showEmp()?empresaBlock(s,egStats(egRange(S.dia,S.dia)).total,"Resultado de la empresa hoy"):""}
@@ -1848,7 +1849,7 @@ async function excel(){
   const r=monthRange(mesOff);const ml=listRange(r.from,r.to).sort((a,b)=>(a[1].criadoEm||0)-(b[1].criadoEm||0));
   const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
   const hm=hideMoney();
-  const detPago=d=>[d.metodo==="fijo"?(d.diario?"Diario del cliente fijo":"Cliente fijo (sin %)"):"",d.pagoTipo==="prod"?"Producto ya pagado · cobró solo el delivery":"",d.metodo==="pagado"?"Pagó todo al comercio":"",(()=>{const pp=[...pends.values()].find(x=>x._u===d._u&&x._id===d._id);return pp?"Transferencia por cobrar":""})(),d.producto&&!d.pagoTipo&&d.metodo!=="pagado"?"Producto "+d.producto:""].filter(Boolean).join(" · ");
+  const detPago=d=>[d.metodo==="fijo"?(d.diario?"Diario del cliente fijo":"Cliente fijo (sin %)"):"",d.pagoTipo==="prod"?"Producto ya pagado · cobró solo el delivery":"",d.metodo==="pagado"?"Pagó al comercio · el comercio paga a Tú Delivery":"",(()=>{const pp=[...pends.values()].find(x=>x._u===d._u&&x._id===d._id);return pp?"Transferencia por cobrar":""})(),d.producto&&!d.pagoTipo&&d.metodo!=="pagado"?"Producto "+d.producto:""].filter(Boolean).join(" · ");
   const rows=[["Fecha","Hora","Delivery","Cliente","Entregas","Monto","Forma de pago","Detalle de pago","Observación"].concat(hm?[]:["Comisión %","Comisión"])];
   for(const[,d]of ml){const p=pctOf(d._u);const cq=d.metodo==="fijo"&&d.diario?0:(d.cant||1);rows.push([ddmm(d.dia)+"/"+d.dia.slice(0,4),d.criadoEm?hhmm(d.criadoEm):"",groupName(groupKey(d)),d.cliente||"",cq,d.valor,M[d.metodo].n,detPago(d),d.obs||""].concat(hm?[]:[d.metodo==="fijo"?0:p,d.metodo==="fijo"?0:Math.round(d.valor*p/100)]))}
   {const T=stats(ml);rows.push([]);rows.push(["Total del mes","","","",T.n,T.total])}
@@ -2003,7 +2004,7 @@ async function resolverCambio(k,ok){const c=cambios.get(k);if(!c)return;
 function openCamino(key){const d=S.items.get(key);if(!d)return;edit=null;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Pedido en camino">
     ${sheetHead("Finalizar entrega · "+(esc(d.cliente)||"Sin cliente"))}
-    <div class="cobrar"><div><span>Cobrar al cliente</span><b class="num">${gs(cobrarDe(d))}</b></div>${d.pagoTipo==="todo"?`<small>✅ El cliente ya pagó al comercio: no le cobres nada. El delivery te lo paga el comercio.</small>`:d.pagoTipo==="prod"?`<small>Producto ya pagado · cobrá solo el delivery ${gs(d.valor)}</small>`:d.producto?`<small>Producto ${gs(d.producto)} + delivery ${gs(d.valor)}</small>`:`<small>Delivery ${gs(d.valor)}</small>`}
+    <div class="cobrar"><div><span>Cobrar al cliente</span><b class="num">${gs(cobrarDe(d))}</b></div>${d.pagoTipo==="todo"?`<small>✅ El cliente ya pagó al comercio: no le cobres nada. El delivery lo paga el comercio a Tú Delivery.</small>`:d.pagoTipo==="prod"?`<small>Producto ya pagado · cobrá solo el delivery ${gs(d.valor)}</small>`:d.producto?`<small>Producto ${gs(d.producto)} + delivery ${gs(d.valor)}</small>`:`<small>Delivery ${gs(d.valor)}</small>`}
       <button type="button" class="linkbtn" data-copyc="${esc(key)}">Copiar cuenta para WhatsApp</button></div>
     ${d.pagoTipo!=="todo"?`<button type="button" class="ghost cam-prod ${d.pagoTipo==="prod"?"on":""}" data-camprod="${esc(key)}">${d.pagoTipo==="prod"?"✓ Producto ya pagado · cobrar solo el delivery (tocá para quitar)":"¿El producto ya estaba pago? Cobrar solo el delivery"}</button>`:""}
     ${d.metPlan&&d.pagoTipo!=="todo"?`<button type="button" class="primary big-fin" data-entregado="${esc(key)}" data-how="${d.metPlan}">✓ Entregado · ${M[d.metPlan].n}</button><p class="hint" style="margin:0">¿Pagó de otra forma? Elegí abajo:</p>`:`<p class="hint" style="margin:0"><b>¿Cómo te pagó el cliente?</b> Al tocar, la entrega queda finalizada, sale de “En camino” y se suma a las entregas del día.</p>`}
@@ -2063,7 +2064,7 @@ function noPerm(){edit=null;layer.innerHTML=`<div class="scrim" data-close><div 
 /* ---------- copy ---------- */
 function toast(m){clearTimeout(tt);let el=document.querySelector(".toast");if(!el){el=document.createElement("div");el.className="toast";document.body.appendChild(el)}el.textContent=m;tt=setTimeout(()=>el.remove(),2200)}
 async function copy(txt){try{await navigator.clipboard.writeText(txt);toast("Copiado")}catch(e){layer.innerHTML=`<div class="scrim" data-close><div class="sheet"><h3>Copiá el texto</h3><textarea id="cp" style="width:100%;min-height:220px;font:14px var(--body);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px">${esc(txt)}</textarea><button class="ghost" data-cancel>Cerrar</button></div></div>`;const c=document.getElementById("cp");c.focus();c.select()}}
-function acertoTxt(s){const r=saldoTxt(s);const fx=s.nf||s.fijo?`\nClientes fijos: ${plural(s.nf,"entrega")} · diario ${gs(s.fijo)} (sin %)`:"";if(hideMoney())return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}${fx}`;return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}\nComisión${pctLabel(s)}: ${gs(s.com)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}\nMenos anotado: ${gs(s.anotado)}\n${r.t}: ${gs(r.v)}${fx}`}
+function acertoTxt(s){const r=saldoTxt(s);const fx=s.nf||s.fijo?`\nClientes fijos: ${plural(s.nf,"entrega")} · diario ${gs(s.fijo)} (sin %)`:"";if(hideMoney())return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}${fx}`;return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}\nComisión${pctLabel(s)}: ${gs(s.com)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}\nMenos anotado${s.pagado?" y pedidos pagos":""}: ${gs(s.anotado+s.pagado)}\n${r.t}: ${gs(r.v)}${fx}`}
 function resumo(title,list){const gr=groups(list);let t="Tú Delivery · "+(hideMoney()?title.replace("Liquidación","Resumen"):title);
   if(gr.length===1)t+=" · "+gr[0].name;t+="\n"+acertoTxt(stats(list));
   if(gr.length>1)for(const g of gr)t+="\n\n"+g.name+"\n"+acertoTxt(g.s);return t}
