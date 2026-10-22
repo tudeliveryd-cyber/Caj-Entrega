@@ -673,7 +673,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="60";
+const APPV="61";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1083,9 +1083,9 @@ function refreshForm(){
     {const fq=document.getElementById("fijo-cant");if(fq)fq.hidden=!(fx||S.lote);const ci=document.getElementById("cant");if(ci&&document.activeElement!==ci)ci.value=S.cant}
     const fc=document.getElementById("fijo-chips");if(fc){const names=[...new Set([...S.items.values()].filter(d=>d.metodo==="fijo"&&d.cliente).map(d=>d.cliente.trim()))].slice(0,6);
       fc.hidden=!fx||!names.length;fc.innerHTML=names.map(n=>`<button type="button" class="chip ${norm(n)===norm(S.cliente)?"on":""}" data-fijocli="${esc(n)}">${esc(n)}</button>`).join("")}}}
-  document.querySelectorAll("[data-pt]").forEach(c=>{c.classList.toggle("on",c.dataset.pt===S.pagoTipo);c.hidden=S.cmMet==="pagado"});
+  document.querySelectorAll("[data-pt]").forEach(c=>{c.classList.toggle("on",c.dataset.pt===S.pagoTipo);c.hidden=S.cmMet==="pagado"||(S.metodo==="pagado"&&!!document.getElementById("save"))});
   document.querySelectorAll("[data-cmet]").forEach(c=>c.setAttribute("aria-pressed",c.dataset.cmet===S.cmMet));
-  const ptE=S.cmMet==="pagado"?"todo":S.pagoTipo;const cb=document.getElementById("cobrar");if(cb){const sh=S.prod||ptE;cb.hidden=!sh;const cob=cobrarDe({producto:S.prod,valor:S.val,pagoTipo:ptE});
+  const ptE=S.cmMet==="pagado"||(S.metodo==="pagado"&&document.getElementById("save"))?"todo":S.pagoTipo;const cb=document.getElementById("cobrar");if(cb){const sh=S.prod||ptE;cb.hidden=!sh;const cob=cobrarDe({producto:S.prod,valor:S.val,pagoTipo:ptE});
     cb.innerHTML=!sh?"":ptE==="todo"?`<div><span>Cobrar al cliente</span><b class="num">₲ 0</b></div><small>✅ Pedido ya pagado a la empresa: no cobres nada, solo entregá.</small>`
       :`<div><span>Cobrar al cliente</span><b class="num">${gs(cob)}</b></div><small>${ptE==="prod"?"🛍️ Producto ya pagado · cobrá solo el delivery "+gs(S.val):"Producto "+gs(S.prod)+" + delivery "+gs(S.val)}</small><button type="button" class="linkbtn" data-copycuenta>Copiar cuenta para WhatsApp</button>`}
   updMapLink();
