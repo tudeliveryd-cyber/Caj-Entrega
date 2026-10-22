@@ -674,7 +674,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="63";
+const APPV="64";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1084,7 +1084,7 @@ function refreshForm(){
     {const fq=document.getElementById("fijo-cant");if(fq)fq.hidden=!(fx||S.lote);const ci=document.getElementById("cant");if(ci&&document.activeElement!==ci)ci.value=S.cant}
     const fc=document.getElementById("fijo-chips");if(fc){const names=[...new Set([...S.items.values()].filter(d=>d.metodo==="fijo"&&d.cliente).map(d=>d.cliente.trim()))].slice(0,6);
       fc.hidden=!fx||!names.length;fc.innerHTML=names.map(n=>`<button type="button" class="chip ${norm(n)===norm(S.cliente)?"on":""}" data-fijocli="${esc(n)}">${esc(n)}</button>`).join("")}}}
-  document.querySelectorAll("[data-pt]").forEach(c=>{c.classList.toggle("on",c.dataset.pt===S.pagoTipo);c.hidden=S.cmMet==="pagado"||S.cmMet==="prod"||(S.metodo==="pagado"&&!!document.getElementById("save"))});
+  document.querySelectorAll("[data-pt]").forEach(c=>{c.classList.toggle("on",c.dataset.pt===S.pagoTipo);c.hidden=S.cmMet==="pagado"||(S.metodo==="pagado"&&!!document.getElementById("save"))});
   document.querySelectorAll("[data-cmet]").forEach(c=>c.setAttribute("aria-pressed",c.dataset.cmet===S.cmMet));
   const ptE=S.cmMet==="pagado"||(S.metodo==="pagado"&&document.getElementById("save"))?"todo":S.pagoTipo;const cb=document.getElementById("cobrar");if(cb){const sh=S.prod||ptE;cb.hidden=!sh;const cob=cobrarDe({producto:S.prod,valor:S.val,pagoTipo:ptE});
     cb.innerHTML=!sh?"":ptE==="todo"?`<div><span>Cobrar al cliente</span><b class="num">₲ 0</b></div><small>✅ Pedido ya pagado a la empresa: no cobres nada, solo entregá.</small>`
@@ -1920,7 +1920,7 @@ function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pago
     <small class="hint" style="margin:0">En el mercado abrís la lista desde “En camino” y vas marcando cada producto.</small></div>`;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet entry-sheet" role="dialog" aria-label="${cm?"Anotar pedido":"Nueva entrega"}">
     ${sheetHead((cm?"Anotar pedido":"Nueva entrega")+(isToday?"":" · "+ddmm(S.dia))+forWho)}
-    ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${["efectivo","transferencia","anotado","pagado"].map(k=>`<button type="button" class="method m-${M[k].c}" data-cmet="${k}" aria-pressed="${S.cmMet===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("")}<button type="button" class="method m-paid" data-cmet="prod" aria-pressed="${S.cmMet==="prod"}"><span style="font-size:22px">🛍️</span>Solo el delivery<small>producto ya pagado</small></button><button type="button" class="method m-none" data-cmet="" aria-pressed="${!S.cmMet}">🤷 Lo veo al entregar<small>elegís al finalizar</small></button></div>`+cliente+listaF+prod+presets+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
+    ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${["efectivo","transferencia","anotado","pagado"].map(k=>`<button type="button" class="method m-${M[k].c}" data-cmet="${k}" aria-pressed="${S.cmMet===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("")}<button type="button" class="method m-paid" data-solodel aria-pressed="${S.pagoTipo==="prod"}"><span style="font-size:22px">🛍️</span>Solo el delivery<small>producto ya pagado</small></button><button type="button" class="method m-none" data-cmet="" aria-pressed="${!S.cmMet}">🤷 Lo veo al entregar<small>elegís al finalizar</small></button><p class="hint solodel-hint" id="solodel-hint" hidden>🛍️ Producto ya pagado. Ahora tocá cómo va a pagar el delivery: <b>Efectivo</b> o <b>Transferencia</b> (o “Lo veo al entregar”).</p></div>`+cliente+listaF+prod+presets+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
        :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+`<div id="pend-wrap" hidden><button type="button" class="chip pend-chip" data-pend>⏳ El cliente me transfiere después</button></div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
     <p class="err" id="err" ${S.err?"":"hidden"}>${esc(S.err)}</p>
     ${cm?`<button type="button" class="primary" id="savecamino" ${S.val?"":"disabled"}>Guardar pedido</button>`
@@ -1986,7 +1986,7 @@ async function save(camino){
   sinCliOk=false;
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
-  if(S.prod)d.producto=S.prod;if(camino&&S.cmMet&&M[S.cmMet]){d.metPlan=S.cmMet;if(S.cmMet==="pagado")d.pagoTipo="todo"}if(camino&&S.cmMet==="prod")d.pagoTipo="prod";if(S.pagoTipo&&d.metodo!=="pagado"&&!d.pagoTipo)d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&!camino&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true}
+  if(S.prod)d.producto=S.prod;if(camino&&S.cmMet&&M[S.cmMet]){d.metPlan=S.cmMet;if(S.cmMet==="pagado")d.pagoTipo="todo"}if(S.pagoTipo&&d.metodo!=="pagado"&&!d.pagoTipo)d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&!camino&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true}
   const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";S.err="";S.pend=false;S.lote=false;S.pagoTipo="";const _cm=S.cmMet;S.cmMet="";closeSheet();
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
@@ -2011,7 +2011,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.cli!==undefined){S.cliente=t.dataset.cli;if(t.dataset.cubic){ubicTxt=t.dataset.cubic;const ui=document.getElementById("ubic");if(ui)ui.value=ubicTxt}const v=Number(t.dataset.cval);if(v)S.val=v;S.err="";cliFocus=false;refreshForm();drawSug();const c=document.getElementById("cli");if(c)c.value=S.cliente}
   else if(t.dataset.preset){S.val=Number(t.dataset.preset);S.err="";refreshForm()}
   else if(t.dataset.metodo){S.metodo=t.dataset.metodo;if(!["efectivo","transferencia"].includes(S.metodo)&&S.pagoTipo==="prod")S.pagoTipo="";S.err="";refreshForm()}
-  else if(t.hasAttribute("data-solodel")){S.pagoTipo=S.pagoTipo==="prod"?"":"prod";if(S.pagoTipo==="prod"&&!["efectivo","transferencia"].includes(S.metodo))S.metodo="efectivo";S.err="";refreshForm()}
+  else if(t.hasAttribute("data-solodel")){S.pagoTipo=S.pagoTipo==="prod"?"":"prod";if(S.pagoTipo==="prod"){if(document.getElementById("save")){if(!["efectivo","transferencia"].includes(S.metodo))S.metodo="efectivo"}else if(["anotado","pagado"].includes(S.cmMet))S.cmMet=""}S.err="";refreshForm()}
   else if(t.hasAttribute("data-other")){S.val=0;S.err="";refreshForm();const v=document.getElementById("val");v.value="";v.focus()}
   else if(t.id==="save")save();
   else if(t.id==="savecamino")save(true);
@@ -2023,7 +2023,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.diario){const r=lockReason(S.dia);if(r){lockedMsg(r);return}openDiario(t.dataset.diario)}
   else if(t.hasAttribute("data-anotar")){if(S.mode==="db"&&!S.owner&&S.canWrite===false){noPerm();return}openEntry(true);setTimeout(()=>{const c=document.getElementById("cli");if(c)c.focus()},60)}
   else if(t.hasAttribute("data-copycuenta"))copy(cuentaTxt(S.prod,S.val,S.pagoTipo));
-  else if(t.dataset.cmet!==undefined){const was=S.cmMet;S.cmMet=t.dataset.cmet;if(S.cmMet==="pagado")S.pagoTipo="";else if(S.cmMet==="prod")S.pagoTipo="prod";else if(was==="prod")S.pagoTipo="";refreshForm()}
+  else if(t.dataset.cmet!==undefined){S.cmMet=t.dataset.cmet;if(["pagado","anotado"].includes(S.cmMet)&&S.pagoTipo==="prod")S.pagoTipo="";if(S.cmMet==="pagado")S.pagoTipo="";refreshForm()}
   else if(t.dataset.pt){S.pagoTipo=S.pagoTipo===t.dataset.pt?"":t.dataset.pt;refreshForm()}
   else if(t.dataset.camino)openCamino(t.dataset.camino);
   else if(t.dataset.copyc2){const d=S.items.get(t.dataset.copyc2);if(d)copy(cuentaTxt(d.producto||0,d.valor,d.pagoTipo))}
