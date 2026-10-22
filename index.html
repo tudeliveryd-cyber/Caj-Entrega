@@ -550,6 +550,23 @@ details.sec.fold{display:grid;gap:10px}
 .msg-dia.fold>summary{margin:0}.msg-dia.fold p{margin:8px 0 0}
 .big-fin{font-size:17px!important;padding:16px!important}
 .net-banner.upd{background:#2e9e5b}
+.pts-card{display:grid;gap:8px;width:100%;text-align:left;border:1px solid #d9a93a;background:linear-gradient(135deg,rgba(217,169,58,.16),rgba(217,169,58,.04));color:var(--ink);border-radius:16px;padding:14px;font:15px var(--body);cursor:pointer}
+.pts-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.pts-n b{font-size:22px;color:#d9a93a}
+.pts-racha{font-size:13px;font-weight:700;color:#e8743b}
+.pts-bar{display:block;height:10px;border-radius:6px;background:rgba(127,127,127,.2);overflow:hidden}
+.pts-bar i{display:block;height:100%;background:linear-gradient(90deg,#d9a93a,#f2c95b);border-radius:6px}
+.pts-card small{font-size:13.5px;line-height:1.35;color:var(--muted)}.pts-card small b{color:var(--ink)}
+.pts-more{font-size:12.5px;color:#d9a93a;font-weight:700}
+.pts-big{display:grid;justify-items:center;gap:2px;padding:6px 0}.pts-big b{font-size:44px;color:#d9a93a;line-height:1}.pts-big span{color:var(--muted);font-size:14px}
+.pts-det{display:grid;gap:4px;font-size:14px;color:var(--muted)}.pts-det span{display:flex;justify-content:space-between}.pts-det b{color:var(--ink)}
+.pz-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;border-top:1px solid var(--line)}.pz-row:first-child{border-top:0}
+.pz-row .who{display:grid;gap:2px;min-width:0}.pz-row.ok b{color:var(--ink)}.pz-row.ok{background:rgba(46,158,91,.08)}
+.pts-reglas{display:grid;gap:4px;font-size:13.5px;color:var(--muted);border:1px dashed var(--line);border-radius:12px;padding:10px 12px}.pts-reglas>b{color:var(--ink);font-size:14px}.pts-reglas span b{color:var(--ink)}
+.pts-row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:11px 14px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);font:15px var(--body);text-align:left;cursor:pointer}.pts-row:first-child{border-top:0}
+.pts-row .who{display:grid;gap:2px;min-width:0}.pts-row b.num{color:#d9a93a;white-space:nowrap}
+.pts-sec{display:grid;gap:10px}
+.pe-row{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px}.pe-row input{min-width:0;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:16px var(--body)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -681,7 +698,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="71";
+const APPV="72";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -722,10 +739,76 @@ function subscribeUser(u){
   if(S.owner)db.collection("liq/"+u+"/movs").where("abierto","==",true).limit(300).onSnapshot(snap=>{
     for(const k of[...movs.keys()])if(k.startsWith(u+"|"))movs.delete(k);
     for(const d of snap.docs)movs.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
+  db.collection("liq/"+u+"/premios").limit(300).onSnapshot(snap=>{
+    for(const k of[...canjes.keys()])if(k.startsWith(u+"|"))canjes.delete(k);
+    for(const d of snap.docs)canjes.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
   db.collection("liq/"+u+"/dias").where("dia",">=",from).limit(200).onSnapshot(snap=>{
     for(const k of[...S.pagos.keys()])if(k.startsWith(u+"|"))S.pagos.delete(k);
     for(const d of snap.docs)S.pagos.set(u+"|"+d.id,d.data());render()},()=>{});
 }
+/* ---------- puntos y premios ----------
+   1 punto por entrega · 5 por cerrar el día · 20 cada 7 días seguidos cerrando (los días sin entregas no cortan la racha).
+   Ganados: ranking/<uid> {pd:{dia:entregas}, cier:[dias]} · Canjes: liq/<uid>/premios (solo dueño/socios) · Config: ranking/_puntos */
+var PTS_INI="2026-10-22";
+var PREM_DEF=[{p:600,n:"Recarga de celular ₲ 50.000"},{p:1500,n:"Tanque lleno de nafta"},{p:2000,n:"₲ 150.000"}];
+var ptsCfg=null,canjes=new Map(),pEdit=null;
+function premiosL(){const l=ptsCfg&&Array.isArray(ptsCfg.premios)&&ptsCfg.premios.length?ptsCfg.premios:PREM_DEF;return l.filter(x=>x&&x.p>0&&x.n).slice().sort((a,b)=>a.p-b.p)}
+function ptsIni(){return (ptsCfg&&ptsCfg.inicio)||PTS_INI}
+function sinPuntos(u){return roles.socios.includes(u)||(u===S.me&&isRealOwner)}
+function livePts(u){const ini=ptsIni(),pd={},cier=[];if(!subs.has(u))return{pd,cier,ok:false};const wf=addDays(today(),-WINDOW);
+  for(const[,d]of S.items)if(d._u===u&&d.dia>=ini&&d.dia>=wf&&!isCamino(d)&&!d.diario)pd[d.dia]=(pd[d.dia]||0)+(d.cant||1);
+  const p=S.people.get(u);if(p&&p.cierre&&p.cierre.dia>=ini)cier.push(p.cierre.dia);return{pd,cier,ok:true}}
+function ptsDe(u){const r=rank.get(u)||{};const lv=livePts(u);const wf=addDays(today(),-WINDOW);const ini=ptsIni(),t=today();
+  const pd={};for(const[k,v]of Object.entries(r.pd||{}))if(!lv.ok||k<wf)pd[k]=v;Object.assign(pd,lv.pd);
+  const cier=new Set([...(r.cier||[]),...lv.cier]);
+  let ent=0,ci=0,bon=0,racha=0;
+  for(const d of Object.keys(pd).filter(d=>d>=ini&&pd[d]>0).sort()){ent+=pd[d];
+    if(cier.has(d)){ci++;racha++;if(racha%7===0)bon++}else if(d!==t)racha=0}
+  const ganados=ent+ci*5+bon*20;const hist=[...canjes.values()].filter(c=>c._u===u).sort((a,b)=>(b.em||0)-(a.em||0));
+  const usados=hist.reduce((a,c)=>a+(c.pts||0),0);
+  return{ent,ci,bon,racha,ganados,usados,pts:Math.max(0,ganados-usados),hist,cierHoy:cier.has(t)}}
+function ptsCard(u){const P=ptsDe(u),pr=premiosL();if(!pr.length)return"";const yo=u===S.me;
+  const next=pr.find(x=>x.p>P.pts),ready=pr.filter(x=>x.p<=P.pts);const prevP=0;
+  const pct=next?Math.min(100,(P.pts-prevP)/(next.p-prevP)*100):100;
+  return `<button type="button" class="pts-card" data-pts="${esc(u)}">
+    <div class="pts-top"><span class="pts-n">⭐ <b class="num">${P.pts.toLocaleString("es-PY")}</b> puntos${yo?"":" · "+esc(personName(u))}</span>${P.racha?`<span class="pts-racha">🔥 ${P.racha} ${P.racha===1?"día":"días"}</span>`:""}</div>
+    <span class="pts-bar"><i style="width:${pct.toFixed(1)}%"></i></span>
+    <small>${ready.length?`🎁 <b>${yo?"¡Ya ganaste":"Ya ganó"} ${esc(ready[ready.length-1].n)}!</b>${yo?" Pedile el premio a la empresa.":" Tocá para entregar el premio."}`
+      :next?`${yo?"Te faltan":"Le faltan"} <b>${(next.p-P.pts).toLocaleString("es-PY")}</b> para <b>${esc(next.n)}</b>`:""}</small>
+    <span class="pts-more">Ver premios ›</span></button>`}
+function ptsTeam(){const ids=activos().filter(u=>!sinPuntos(u)&&u!==S.me);if(!ids.length)return"";const pr=premiosL();
+  const rows=ids.map(u=>({u,P:ptsDe(u)})).sort((a,b)=>b.P.pts-a.P.pts);const nReady=rows.filter(r=>pr.some(x=>x.p<=r.P.pts)).length;
+  return `<details class="sec fold" id="pts-team"><summary class="sec-h"><h2>⭐ Puntos del equipo</h2><span class="fold-more">${nReady?`<b class="c-ok">🎁 ${nReady}</b> `:""}›</span></summary>
+    <div class="list">${rows.map(({u,P})=>{const rd=pr.filter(x=>x.p<=P.pts);const nx=pr.find(x=>x.p>P.pts);
+      return `<button type="button" class="pts-row" data-pts="${esc(u)}"><span class="who"><b>${esc(personName(u))}</b><small>${rd.length?"🎁 ganó "+esc(rd[rd.length-1].n):nx?"faltan "+(nx.p-P.pts).toLocaleString("es-PY")+" para "+esc(nx.n):""}${P.racha?" · 🔥 "+P.racha:""}</small></span><b class="num">⭐ ${P.pts.toLocaleString("es-PY")}</b></button>`}).join("")}</div>
+    <button type="button" class="linkbtn small-link" data-pedit style="justify-self:start">✏️ Cambiar premios</button></details>`}
+function ptsBox(){if(S.mode!=="db")return"";if(showEmp())return ptsTeam();
+  const u=S.filter==="all"?S.me:S.filter;if(sinPuntos(u))return"";return ptsCard(u)}
+function ptsReglas(){return `<div class="pts-reglas"><b>Cómo se ganan puntos</b>
+  <span>⭐ <b>1 punto</b> por cada entrega registrada en la app</span>
+  <span>🏁 <b>5 puntos</b> por tocar “Cerrar mi día”</span>
+  <span>🔥 <b>20 puntos</b> extra cada 7 días seguidos cerrando el día (los días libres no cortan la racha)</span>
+  <small>Solo cuenta lo que se registra en la app.</small></div>`}
+function openPts(u){edit=null;const P=ptsDe(u),pr=premiosL(),yo=u===S.me,adm=S.mode==="db"&&S.owner;
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Puntos">${sheetHead("⭐ Puntos"+(yo?"":" · "+esc(personName(u))))}
+    <div class="pts-big"><b class="num">${P.pts.toLocaleString("es-PY")}</b><span>puntos disponibles</span></div>
+    <div class="pts-det"><span>${P.ent} entregas <b>+${P.ent}</b></span><span>${P.ci} días cerrados <b>+${P.ci*5}</b></span><span>${P.bon} rachas de 7 días <b>+${P.bon*20}</b></span>${P.usados?`<span>Premios canjeados <b>−${P.usados.toLocaleString("es-PY")}</b></span>`:""}</div>
+    ${P.racha?`<p class="hint" style="margin:0">🔥 Racha: <b>${P.racha===1?"1 día":P.racha+" días seguidos"}</b> cerrando el día · faltan ${7-P.racha%7} para +20.</p>`:""}
+    <div class="list">${pr.map((x,i)=>{const ok=P.pts>=x.p;return `<div class="pz-row ${ok?"ok":""}"><div class="who"><b>${ok?"🎁":"🔒"} ${esc(x.n)}</b><small>${x.p.toLocaleString("es-PY")} puntos${ok?" · ¡alcanzado!":" · faltan "+(x.p-P.pts).toLocaleString("es-PY")}</small></div>
+      ${adm&&!yo&&ok?`<button type="button" class="small pay" data-pcanje="${esc(u)}|${i}">Entregar premio</button>`:""}</div>`}).join("")}</div>
+    ${adm&&!yo?`<p class="hint" style="margin:0">Al tocar <b>Entregar premio</b> se descuentan esos puntos y el resto sigue sumando.</p>`:yo?`<p class="hint" style="margin:0">Cuando llegues a un premio, avisale a la empresa para recibirlo.</p>`:""}
+    ${ptsReglas()}
+    ${P.hist.length?`<div class="sec-h"><h2>Premios recibidos</h2></div><div class="list">${P.hist.map(c=>`<div class="pz-row"><div class="who"><b>🎁 ${esc(c.n||"Premio")}</b><small>${ddmm(keyOf(new Date(c.em)))}</small></div><span class="num">−${(c.pts||0).toLocaleString("es-PY")}</span></div>`).join("")}</div>`:""}
+    ${adm?`<button type="button" class="linkbtn small-link" data-pedit style="justify-self:start">✏️ Cambiar premios</button>`:""}
+  </div></div>`}
+function openPEdit(){edit=null;pEdit=premiosL().map(x=>({...x}));drawPEdit()}
+function drawPEdit(){layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Premios">${sheetHead("✏️ Premios por puntos")}
+  <p class="hint" style="margin:0">Poné los puntos y el premio. Para quitar uno, dejá los puntos vacíos.</p>
+  ${pEdit.map((x,i)=>`<div class="pe-row"><input class="pe-p" data-pep="${i}" inputmode="numeric" placeholder="Puntos" value="${x.p||""}" aria-label="Puntos"><input class="pe-n" data-pen="${i}" placeholder="Premio" value="${esc(x.n||"")}" aria-label="Premio"></div>`).join("")}
+  <button type="button" class="ghost" data-peadd>+ Agregar premio</button>
+  <button type="button" class="primary" data-pesave>Guardar premios</button></div></div>`}
+function readPEdit(){document.querySelectorAll("[data-pep]").forEach(el=>{const i=+el.dataset.pep;pEdit[i].p=parseInt(el.value.replace(/\D/g,""))||0});
+  document.querySelectorAll("[data-pen]").forEach(el=>{pEdit[+el.dataset.pen].n=el.value.trim()})}
 function scheduleRank(u){if(!db||!(u===S.me||S.owner))return;clearTimeout(rankTimers.get(u));rankTimers.set(u,setTimeout(()=>syncRank(u),1500))}
 const isBaja=u=>!!(S.people.get(u)&&S.people.get(u).baja);
 const isAprob=u=>{const p=S.people.get(u);return !!(p&&p.aprobado)||roles.socios.includes(u)};
@@ -739,9 +822,13 @@ async function syncRank(u){
   const from=addDays(today(),-65);const dias={};
   for(const[,d]of S.items)if(d._u===u&&d.dia>=from&&!isCamino(d)&&!d.diario)dias[d.dia]=(dias[d.dia]||0)+(d.cant||1);
   const nome=(S.people.get(u)&&S.people.get(u).nome)||"";const cur=rank.get(u);
-  if(cur&&JSON.stringify(cur.dias||{})===JSON.stringify(dias)&&(cur.nome||"")===nome)return;
+  const lv=livePts(u),wf=addDays(today(),-WINDOW);const pd={};for(const[k,v]of Object.entries((cur&&cur.pd)||{}))if(k<wf)pd[k]=v;Object.assign(pd,lv.pd);
+  const cier=[...new Set([...((cur&&cur.cier)||[]),...lv.cier])].sort().slice(-500);
+  const sk=o=>JSON.stringify(Object.keys(o).sort().map(k=>[k,o[k]]));
+  if(cur&&sk(cur.dias||{})===sk(dias)&&(cur.nome||"")===nome&&sk(cur.pd||{})===sk(pd)&&JSON.stringify(cur.cier||[])===JSON.stringify(cier))return;
   if(!cur&&!Object.keys(dias).length&&!nome)return;
-  try{await db.doc("ranking/"+u).set({nome,dias,atualizado:Date.now()})}catch(e){}
+  const doc={nome,dias,pd,cier,atualizado:Date.now()};rank.set(u,doc);
+  try{await db.doc("ranking/"+u).set(doc)}catch(e){}
 }
 
 {const c=lsGet(LSC,null);if(c&&c.pct)S.cfg={pct:c.pct,por:c.por||{}};else{const old=lsGet("caixa_config_v1",null);if(old&&old.pct)S.cfg.pct=old.pct}}
@@ -834,6 +921,11 @@ function startDemo(modo){
   const seedBase=()=>{
   put("ranking/r2",{nome:"Juan",dias:{[t]:11,[y]:9}});
   put("ranking/r3",{nome:"Pedro",dias:{[t]:6,[y]:12}});
+  {const pd=k=>{const o={};for(let i=33;i<33+k;i++)o[addDays(t,-i)]=12;return o};const ci=k=>{const a=[];for(let i=33;i<33+k;i++)a.push(addDays(t,-i));return a.sort()};
+   put("ranking/_puntos",{inicio:addDays(t,-200),premios:[{p:600,n:"Recarga de celular ₲ 50.000"},{p:1500,n:"Tanque lleno de nafta"},{p:2000,n:"₲ 150.000"}]});
+   put("ranking/r2",{nome:"Juan",dias:{[t]:11,[y]:9},pd:{...pd(40),[t]:11,[y]:9},cier:ci(40)});
+   put("ranking/r3",{nome:"Pedro",dias:{[t]:6,[y]:12},pd:{...pd(20),[t]:6,[y]:12},cier:ci(10)});
+   window.__demoPts={pd,ci}}
   put("ranking/_mensaje",{texto:"Bienvenidos a la app de Tú Delivery. Registren todas las entregas del día y no se olviden de anotar los pedidos.",criadoEm:at(t,7,0)});};
   const seedFull=()=>{
   put("turnos/demo",{nome:"Carlos Demo",aprobado:true,baja:false});
@@ -855,12 +947,13 @@ function startDemo(modo){
   put("turnos/demo/chat/c2",{de:"demo",texto:"Dale, en 10 minutos estoy ahí.",em:at(t,10,32)});
   put(E+"e7",{valor:15000,producto:40000,metodo:"transferencia",cliente:"Doña Marta",obs:"",dia:t,criadoEm:at(t,8,30)});
   put("turnos/demo/pendientes/e7",{cliente:"Doña Marta",monto:55000,dia:t,criadoEm:at(t,8,30),abierto:true});
+  put("ranking/demo",{nome:"Carlos Demo",dias:{},pd:window.__demoPts.pd(37),cier:window.__demoPts.ci(37)});
   put("liq/demo/dias/"+y,{dia:y,monto:9600,sentido:"paga",total:53000,pagadoEm:at(y,20,0)});
   };
   /* dueño en demo: un delivery de ejemplo con días sin pagar, para probar cuentas y pagos parciales */
   const seedOwner=()=>{const G="turnos/gabi/entregas/";put("turnos/gabi",{nome:"Gabi (ejemplo)",aprobado:true,baja:false,horario:{res:{0:["09:00|23:00"],1:["09:00|23:00"],2:["09:00|23:00"],3:["09:00|23:00"],4:["09:00|23:00"],5:["09:00|23:00"],6:["09:00|23:00"]}}});
     [[4,[20000,15000,30000,25000]],[2,[15000,20000,18000]],[1,[25000,30000,15000,20000,15000]]].forEach(([dd,vs])=>{const dk=addDays(t,-dd);vs.forEach((v,i)=>put(G+"g"+dd+"_"+i,{valor:v,metodo:i%3===1?"transferencia":"efectivo",cliente:"Cliente "+(i+1),obs:"",dia:dk,criadoEm:at(dk,10+i,0)}))});
-    put("ranking/gabi",{nome:"Gabi (ejemplo)",dias:{}})};
+    put("ranking/gabi",{nome:"Gabi (ejemplo)",dias:{},pd:window.__demoPts.pd(110),cier:window.__demoPts.ci(110)})};
   seedBase();
   window.__demoAprobar=()=>{store.set("turnos/demo",{...(store.get("turnos/demo")||{}),aprobado:true});notify()};
   const user={uid:me,email:"demo@tudelivery",emailVerified:true,getIdToken(){return Promise.resolve("")},reload(){return Promise.resolve()}};
@@ -947,7 +1040,7 @@ function startData(me){
     cfgRef.onSnapshot(s=>{if(s.exists){const d=s.data();S.cfg={pct:d.pct||30,por:d.por||{}};lsSet(LSC,S.cfg);render(true)}},()=>{})}
   subscribeUser(me);
   if(S.owner)egCol().where("dia",">=",addDays(today(),-WINDOW)).limit(1000).onSnapshot(snap=>{S.egastos=new Map(snap.docs.map(d=>[d.id,{...d.data(),_id:d.id}]));render()},()=>{});
-  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;metaDia=0;const hadG=chatG.length;chatG=[];for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}if(d.id==="_meta"){metaDia=Number(d.data().n)||0;continue}if(d.id==="_chat"){chatG=(d.data().msgs||[]);continue}rank.set(d.id,d.data())}{const sig=JSON.stringify(msgDia)+"|"+metaDia;if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(chatG.length!==hadG){chatNotify();render()}if(S.tab==="rank")render(true)},()=>{});
+  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;metaDia=0;const hadG=chatG.length;chatG=[];for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}if(d.id==="_meta"){metaDia=Number(d.data().n)||0;continue}if(d.id==="_puntos"){ptsCfg=d.data();continue}if(d.id==="_chat"){chatG=(d.data().msgs||[]);continue}rank.set(d.id,d.data())}if(!snap.docs.some(d=>d.id==="_puntos"))ptsCfg=null;render();{const sig=JSON.stringify(msgDia)+"|"+metaDia;if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(chatG.length!==hadG){chatNotify();render()}if(S.tab==="rank")render(true)},()=>{});
   if(S.owner){let first=true;db.collection("turnos").limit(200).onSnapshot(snap=>{for(const d of snap.docs){const prev=S.people.get(d.id),nd=d.data();
     if(!first&&d.id!==S.me&&nd.cierre&&nd.cierre.dia===today()&&!(prev&&prev.cierre&&prev.cierre.em===nd.cierre.em))toast("🏁 "+(nd.nome||"Un delivery")+" cerró su día");
     if(!first&&d.id!==S.me&&nd.inicio&&nd.inicio.dia===today()&&!(prev&&prev.inicio&&prev.inicio.em===nd.inicio.em))toast("▶️ "+(nd.nome||"Un delivery")+" empezó a trabajar");
@@ -1062,6 +1155,7 @@ function paint(){
     {const cb=document.getElementById("cta-box");if(cb)cb.innerHTML=cuentasBox()}
     {const cl=caminoList();const el=document.getElementById("camino-list");const ev=showEmp()&&S.mode==="db";el.hidden=!cl.length||ev;el.innerHTML=cl.length&&!ev?viewCamino(cl):""}
     {const mb=document.getElementById("meta-box");if(mb){const h=viewMeta(list);mb.hidden=!h;mb.innerHTML=h}}
+    {const pb=document.getElementById("pts-box");if(pb){let h="";try{h=S.dia===today()?ptsBox():""}catch(e){}if(pb.dataset.h!==h){const op=pb.querySelector("details[open]");pb.innerHTML=h;pb.dataset.h=h;if(op){const d=pb.querySelector("details");if(d)d.open=true}}}}
     {const cb=document.getElementById("cierre-box");if(cb){const h=viewCierre(list);cb.hidden=!h;cb.innerHTML=h}}
     document.getElementById("mode-note").textContent=noteTxt()+" · versión "+APPV;
     {const gl=document.getElementById("gastos-list");if(gl)gl.innerHTML=viewGastosList();const gt=document.getElementById("g-tot");if(gt)gt.textContent=gs(gStats(gastosRange(S.dia,S.dia)).total);const et=document.getElementById("eg-tot");if(et)et.textContent=gs(egStats(egRange(S.dia,S.dia)).total)}
@@ -1172,6 +1266,7 @@ function viewDiaShell(){
   ${showEmp()?`<section class="sec" id="cierre-box" hidden></section>`:""}
   <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
   <section class="sec" id="meta-box" hidden></section>
+  <div id="pts-box"></div>
   ${showEmp()?"":`<section class="sec" id="cierre-box" hidden></section>`}
   <section class="sec" id="dia-list"></section>
   <details class="sec fold" aria-label="Gastos"><summary class="sec-h"><h2>${ownView()?"Mis gastos":showEmp()?"Gastos de los deliverys":"Gastos de "+esc(personName(S.filter))}</h2><span class="fold-more"><b class="num" id="g-tot"></b> ›</span></summary>
@@ -1861,7 +1956,7 @@ function viewRanking(){
       <div class="rk-main"><div class="rk-name"><b>${esc(r.nome)}</b>${me?'<span class="pill p-transfer">vos</span>':""}</div>
       <span class="rk-bar"><i style="width:${(r.n/max*100).toFixed(1)}%"></i></span></div>
       <span class="rk-n num">${r.n}<small>${r.n===1?"entrega":"entregas"}</small></span></div>`}).join("");
-  return `${premiosBlock()}
+  return `${premiosBlock()}${S.mode==="db"?`<div class="sec pts-sec"><div class="sec-h"><h2>⭐ Premios por puntos</h2></div><div class="list">${premiosL().map(x=>`<div class="pz-row"><div class="who"><b>${esc(x.n)}</b></div><b class="num">${x.p.toLocaleString("es-PY")} pts</b></div>`).join("")}</div>${ptsReglas()}${sinPuntos(S.me)?"":ptsCard(S.me)}</div>`:""}
   <div class="seg" role="group" aria-label="Período">${[[1,"Hoy"],[7,"7 días"],[30,"30 días"]].map(([n,l])=>`<button type="button" data-rrange="${n}" aria-pressed="${rankRange===n}">${l}</button>`).join("")}</div>
   <div class="rk-head"><div><div class="lbl">Ranking de entregas</div><div class="big num">${total}</div></div><div class="muted-r">entregas del equipo<br>${rankRange===1?"hoy":"en los últimos "+rankRange+" días"}</div></div>
   ${rows.length&&total?`<div class="list">${html}</div>`:`<div class="empty">Todavía no hay entregas en este período. El ranking aparece cuando los deliverys registren entregas.</div>`}
@@ -2050,6 +2145,8 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-empezar")){const i={dia:today(),em:Date.now()};const cur=S.people.get(S.me)||{};S.people.set(S.me,{...cur,inicio:i});render(true);
     try{const w=await sendW(db.doc("turnos/"+S.me).set({inicio:i},{merge:true}));toast(w==="wait"?"Inicio guardado · se envía al volver la señal":"¡Buen trabajo hoy! 💪")}catch(err){toast("No se guardó.")}}
   else if(t.hasAttribute("data-meta"))openMeta();
+  else if(t.dataset.pts&&!t.closest("#layer"))openPts(t.dataset.pts);
+  else if(t.hasAttribute("data-pedit")&&!t.closest("#layer"))openPEdit();
   else if(t.hasAttribute("data-viewpick"))openViewPick();
   else if(t.dataset.cuenta)openCuenta(t.dataset.cuenta);
   else if(t.hasAttribute("data-pend")){S.pend=!S.pend;refreshForm()}
@@ -2103,6 +2200,16 @@ layer.addEventListener("click",async e=>{
   if(e.target.hasAttribute&&e.target.hasAttribute("data-close")){closeSheet();return}
   const t=e.target.closest("button");if(!t)return;
   if(t.hasAttribute("data-cancel")){closeSheet();return}
+  if(t.hasAttribute("data-pedit")){openPEdit();return}
+  if(t.hasAttribute("data-peadd")){readPEdit();pEdit.push({p:0,n:""});drawPEdit();return}
+  if(t.hasAttribute("data-pesave")){readPEdit();const l=pEdit.filter(x=>x.p>0&&x.n).map(x=>({p:x.p,n:x.n})).sort((a,b)=>a.p-b.p);if(!l.length){toast("Poné al menos un premio");return}
+    ptsCfg={...(ptsCfg||{}),premios:l,inicio:ptsIni()};closeSheet();render(true);
+    try{const w=await sendW(db.doc("ranking/_puntos").set(ptsCfg));toast(w==="wait"?"Guardado · se envía al volver la señal":"Premios guardados")}catch(err){toast("No se guardó.")}return}
+  if(t.dataset.pcanje){const[u,i]=t.dataset.pcanje.split("|");const x=premiosL()[+i];if(!x)return;
+    if(ptsDe(u).pts<x.p){toast("No le alcanzan los puntos");return}
+    if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Entregado? Tocá de nuevo";setTimeout(()=>{if(t.isConnected){t.classList.remove("armed");t.textContent="Entregar premio"}},3000);return}
+    const id=uid(),c={pts:x.p,n:x.n,em:Date.now(),por:S.me};canjes.set(u+"|"+id,{...c,_u:u,_id:id});openPts(u);render(true);
+    try{const w=await sendW(db.doc("liq/"+u+"/premios/"+id).set(c));toast("🎁 Premio entregado · −"+x.p.toLocaleString("es-PY")+" puntos")}catch(err){canjes.delete(u+"|"+id);openPts(u);toast("No se guardó.")}return}
   if(t.hasAttribute("data-msave")||t.hasAttribute("data-mdel")){const v=t.hasAttribute("data-mdel")?"":document.getElementById("m-txt").value.trim();closeSheet();
     try{if(v)await db.doc("ranking/_mensaje").set({texto:v,criadoEm:Date.now()});else await db.doc("ranking/_mensaje").delete();toast(v?"Aviso publicado para todos":"Aviso quitado")}catch(err){toast("No se guardó.")}return}
   if(t.dataset.spara){solPara=t.dataset.spara;layer.querySelectorAll("[data-spara]").forEach(c=>c.classList.toggle("on",c===t));return}
@@ -2179,7 +2286,7 @@ layer.addEventListener("click",async e=>{
     metaDia=v;render(true);
     try{const w=await sendW(v?db.doc("ranking/_meta").set({n:v,criadoEm:Date.now()}):db.doc("ranking/_meta").delete());toast(v?"Meta: "+plural(v,"entrega")+" por día":"Meta quitada")}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-cierreok")){const n=stats(listDay(today()).filter(([,d])=>d._u===S.me)).n;const c={dia:today(),em:Date.now(),n};closeSheet();
-    const cur=S.people.get(S.me)||{};S.people.set(S.me,{...cur,cierre:c});render(true);
+    const cur=S.people.get(S.me)||{};S.people.set(S.me,{...cur,cierre:c});render(true);scheduleRank(S.me);
     try{const w=await sendW(db.doc("turnos/"+S.me).set({cierre:c},{merge:true}));toast(w==="wait"?"Cierre guardado · se envía al volver la señal":"Día cerrado · ¡buen trabajo!")}catch(err){toast("No se guardó.")}return}
   if(t.dataset.reactivar){try{await setBaja(t.dataset.reactivar,false);toast("Delivery reactivado");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.dataset.dvia){layer.querySelectorAll("[data-dvia]").forEach(b=>b.setAttribute("aria-pressed",b===t));return}
