@@ -674,7 +674,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="65";
+const APPV="66";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1106,7 +1106,7 @@ function drawSug(){
   box.hidden=!list.length;
   box.innerHTML=list.map(c=>`<button type="button" class="sug" data-cli="${esc(c.nome)}" data-cval="${c.val}" data-cubic="${esc(c.ubic||"")}"><b>${esc(c.nome)}</b><span class="num">${gs(c.val)} · ${plural(c.n,"vez")}</span></button>`).join("").replace(/vezs/g,"veces");
 }
-const methodBtns=(attr,cur)=>Object.keys(M).map(k=>`<button type="button" class="method m-${M[k].c}" ${attr}="${k}" aria-pressed="${cur===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`+(k==="pagado"&&attr==="data-metodo"?`<button type="button" class="method m-paid" data-solodel aria-pressed="${S.pagoTipo==="prod"}"><span style="font-size:22px">🛍️</span>Solo el delivery<small>producto ya pagado</small></button>`:"")).join("")+(attr==="data-metodo"?`<p class="hint solodel-hint" id="solodel-hint" hidden>🛍️ Producto ya pagado. Ahora tocá cómo te pagó el delivery: <b>Efectivo</b> o <b>Transferencia</b>.</p>`:"");
+const methodBtns=(attr,cur)=>Object.keys(M).map(k=>`<button type="button" class="method m-${M[k].c}" ${attr}="${k}" aria-pressed="${cur===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`+(k==="pagado"&&(attr==="data-metodo"||attr==="data-cmet")?`<button type="button" class="method m-paid" data-solodel aria-pressed="${S.pagoTipo==="prod"}"><span style="font-size:22px">🛍️</span>Solo el delivery<small>producto ya pagado</small></button>`:"")).join("")+(attr==="data-metodo"||attr==="data-cmet"?`<p class="hint solodel-hint" id="solodel-hint" hidden>🛍️ Producto ya pagado. Ahora tocá cómo ${attr==="data-cmet"?"va a pagar":"te pagó"} el delivery: <b>Efectivo</b> o <b>Transferencia</b>.</p>`:"");
 
 function dayIndex(k){const d=fromKey(k);return Math.floor((d-new Date(d.getFullYear(),0,0))/864e5)+d.getFullYear()*7}
 /* clima de Santa Rita (Open-Meteo, gratis, sin clave): consejo del día para los deliverys */
@@ -1904,7 +1904,7 @@ function openName(){edit=null;const cur=S.people.get(S.me);layer.innerHTML=`<div
   <div class="field"><label for="n-val">Tu nombre</label><input id="n-val" autocomplete="name" value="${esc(cur?cur.nome:"")}" placeholder="Ej.: Juan"></div>
   <button class="primary" data-nsave>Guardar</button></div></div>`;setTimeout(()=>{const n=document.getElementById("n-val");if(n)n.focus()},50)}
 function sheetHead(title){return `<div class="sheet-h"><h3>${title}</h3><button type="button" class="x" data-cancel aria-label="Cerrar">✕</button></div>`}
-function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pagoTipo="";S.cmMet="";if(!S.cliente){ubicTxt="";listaTxt=""}const isToday=S.dia===today();
+function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pagoTipo="";S.cmMet="efectivo";if(!S.cliente){ubicTxt="";listaTxt=""}const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
   const cliente=`<div class="field"><label for="cli">${cm?"Pedido / cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
@@ -1920,7 +1920,7 @@ function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pago
     <small class="hint" style="margin:0">En el mercado abrís la lista desde “En camino” y vas marcando cada producto.</small></div>`;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet entry-sheet" role="dialog" aria-label="${cm?"Anotar pedido":"Nueva entrega"}">
     ${sheetHead((cm?"Anotar pedido":"Nueva entrega")+(isToday?"":" · "+ddmm(S.dia))+forWho)}
-    ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${["efectivo","transferencia","anotado","pagado"].map(k=>`<button type="button" class="method m-${M[k].c}" data-cmet="${k}" aria-pressed="${S.cmMet===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("")}<button type="button" class="method m-paid" data-solodel aria-pressed="${S.pagoTipo==="prod"}"><span style="font-size:22px">🛍️</span>Solo el delivery<small>producto ya pagado</small></button><button type="button" class="method m-none" data-cmet="" aria-pressed="${!S.cmMet}">🤷 Lo veo al entregar<small>elegís al finalizar</small></button><p class="hint solodel-hint" id="solodel-hint" hidden>🛍️ Producto ya pagado. Ahora tocá cómo va a pagar el delivery: <b>Efectivo</b> o <b>Transferencia</b> (o “Lo veo al entregar”).</p></div>`+cliente+listaF+prod+presets+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
+    ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${methodBtns("data-cmet",S.cmMet)}</div>`+cliente+listaF+prod+presets+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
        :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+`<div id="pend-wrap" hidden><button type="button" class="chip pend-chip" data-pend>⏳ El cliente me transfiere después</button></div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
     <p class="err" id="err" ${S.err?"":"hidden"}>${esc(S.err)}</p>
     ${cm?`<button type="button" class="primary" id="savecamino" ${S.val?"":"disabled"}>Guardar pedido</button>`
@@ -2011,7 +2011,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.cli!==undefined){S.cliente=t.dataset.cli;if(t.dataset.cubic){ubicTxt=t.dataset.cubic;const ui=document.getElementById("ubic");if(ui)ui.value=ubicTxt}const v=Number(t.dataset.cval);if(v)S.val=v;S.err="";cliFocus=false;refreshForm();drawSug();const c=document.getElementById("cli");if(c)c.value=S.cliente}
   else if(t.dataset.preset){S.val=Number(t.dataset.preset);S.err="";refreshForm()}
   else if(t.dataset.metodo){S.metodo=t.dataset.metodo;if(!["efectivo","transferencia"].includes(S.metodo)&&S.pagoTipo==="prod")S.pagoTipo="";S.err="";refreshForm()}
-  else if(t.hasAttribute("data-solodel")){S.pagoTipo=S.pagoTipo==="prod"?"":"prod";if(S.pagoTipo==="prod"){if(document.getElementById("save")){if(!["efectivo","transferencia"].includes(S.metodo))S.metodo="efectivo"}else if(["anotado","pagado"].includes(S.cmMet))S.cmMet=""}S.err="";refreshForm()}
+  else if(t.hasAttribute("data-solodel")){S.pagoTipo=S.pagoTipo==="prod"?"":"prod";if(S.pagoTipo==="prod"){if(document.getElementById("save")){if(!["efectivo","transferencia"].includes(S.metodo))S.metodo="efectivo"}else if(!["efectivo","transferencia"].includes(S.cmMet))S.cmMet="efectivo"}S.err="";refreshForm()}
   else if(t.hasAttribute("data-other")){S.val=0;S.err="";refreshForm();const v=document.getElementById("val");v.value="";v.focus()}
   else if(t.id==="save")save();
   else if(t.id==="savecamino")save(true);
@@ -2023,7 +2023,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.diario){const r=lockReason(S.dia);if(r){lockedMsg(r);return}openDiario(t.dataset.diario)}
   else if(t.hasAttribute("data-anotar")){if(S.mode==="db"&&!S.owner&&S.canWrite===false){noPerm();return}openEntry(true);setTimeout(()=>{const c=document.getElementById("cli");if(c)c.focus()},60)}
   else if(t.hasAttribute("data-copycuenta"))copy(cuentaTxt(S.prod,S.val,S.pagoTipo));
-  else if(t.dataset.cmet!==undefined){S.cmMet=t.dataset.cmet;if(["pagado","anotado"].includes(S.cmMet)&&S.pagoTipo==="prod")S.pagoTipo="";if(S.cmMet==="pagado")S.pagoTipo="";refreshForm()}
+  else if(t.dataset.cmet!==undefined){S.cmMet=t.dataset.cmet;if(!["efectivo","transferencia"].includes(S.cmMet)&&S.pagoTipo==="prod")S.pagoTipo="";if(S.cmMet==="pagado")S.pagoTipo="";refreshForm()}
   else if(t.dataset.pt){S.pagoTipo=S.pagoTipo===t.dataset.pt?"":t.dataset.pt;refreshForm()}
   else if(t.dataset.camino)openCamino(t.dataset.camino);
   else if(t.dataset.copyc2){const d=S.items.get(t.dataset.copyc2);if(d)copy(cuentaTxt(d.producto||0,d.valor,d.pagoTipo))}
@@ -2181,7 +2181,7 @@ layer.addEventListener("click",async e=>{
     if(how==="anotado"&&!(d.cliente||"").trim()){toast("Para anotar, el pedido necesita nombre de cliente");return}
     const r=S.mode==="db"&&!S.owner&&pagoOf(S.me,today())?"Hoy ya fue liquidado. Pedile al dueño que lo registre.":"";if(r){lockedMsg(r);return}
     if(t.dataset.pendc&&!(d.cliente||"").trim()){toast("Para cobrar después, el pedido necesita nombre de cliente");return}
-    closeSheet();try{if(t.dataset.pendc)addPend(d._u,d._id,{...d,dia:today()}).catch(()=>{});await patchItem(k,{estado:"ok",metodo:how,dia:today(),criadoEm:Date.now()});toast(t.dataset.pendc?"Entregado · ⏳ transferencia por cobrar":"Entrega finalizada · "+M[how].n)}catch(err){toast("No se guardó.")}return}
+    closeSheet();try{if(t.dataset.pendc)addPend(d._u,d._id,{...d,dia:today()}).catch(()=>{});await patchItem(k,how==="fijo"?{estado:"ok",metodo:how,valor:0,dia:today(),criadoEm:Date.now()}:{estado:"ok",metodo:how,dia:today(),criadoEm:Date.now()});toast(t.dataset.pendc?"Entregado · ⏳ transferencia por cobrar":"Entrega finalizada · "+M[how].n)}catch(err){toast("No se guardó.")}return}
   if(t.dataset.cdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo para quitarlo";return}
     const k=t.dataset.cdel;closeSheet();try{await delItem(k);toast("Quitado de la lista")}catch(err){toast("No se eliminó.")}return}
   if(t.hasAttribute("data-nsave")){const n=document.getElementById("n-val").value.trim();if(!n){toast("Escribí tu nombre");return}closeSheet();try{await saveName(n);toast("Nombre guardado")}catch(err){noPerm()}return}
