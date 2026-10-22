@@ -471,6 +471,13 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .hor-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .hor-grid input{border:1px solid var(--line);border-radius:10px;padding:10px;font:16px var(--body);background:var(--bg);color:var(--ink);width:100%;min-width:0}
 .hor-grid label{font-size:12px;color:var(--muted);display:grid;gap:4px}
+.wk-list{display:grid;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.wk-day{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:center;padding:8px 10px;border-top:1px solid var(--line)}
+.wk-day:first-child{border-top:0}
+.wk-opts{display:flex;gap:6px;flex-wrap:wrap}
+.wk-o{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:7px 9px;font:600 13px var(--body);cursor:pointer}
+.wk-o.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.wk-o.lib.on{background:var(--due);border-color:var(--due);color:#fff}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -1209,14 +1216,35 @@ const cierreOf=u=>{const p=S.people.get(u);return p&&p.cierre&&p.cierre.dia===to
 /* horario y estado de cada delivery (horario lo define el dueño; "inicio" y "cierre" los marca el delivery) */
 const DIAS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const DEF_TF=[{id:"t1",n:"☀️ 1º Turno",a:"07:00",b:"18:00"},{id:"t2",n:"🌙 2º Turno",a:"11:00",b:"23:00"},{id:"t3",n:"⭐ 3º Turno",a:"",b:""}];
-let TF=DEF_TF.map(x=>({...x}));
+var TF=DEF_TF.map(x=>({...x}));
 const tfById=id=>TF.find(x=>x.id===id);
 function horFromRefs(refs){const ts=refs.map(tfById).filter(x=>x&&x.a&&x.b).sort((x,y)=>toMin(x.a)-toMin(y.a)).slice(0,2);return{t1:ts[0]?[ts[0].a,ts[0].b]:null,t2:ts[1]?[ts[1].a,ts[1].b]:null}}
-function horLabel(h){if(!h)return"";if(h.refs&&h.refs.length){const n=h.refs.map(tfById).filter(Boolean).map(x=>x.n);if(n.length)return n.join(" + ")}return horTxt([h.t1,h.t2].filter(t=>t&&t[0]&&t[1]))}
+/* semana: sem[dow] = id de turno fijo | "p" (horario propio) | "libre"; res[dow] = horarios ya calculados (para el delivery) */
+const ORD=[1,2,3,4,5,6,0];
+function resolveSem(sem,p){const res={};for(const d of ORD){const v=sem[d];if(!v)continue;if(v==="libre"){res[d]="libre";continue}
+  if(v==="p"){if(p&&p[0]&&p[1])res[d]=[[p[0],p[1]]];continue}const x=tfById(v);if(x&&x.a&&x.b)res[d]=[[x.a,x.b]]}return res}
+function semLabel(h){const g=new Map();for(const d of ORD){const v=h.sem[d];if(!v)continue;const n=v==="libre"?"Libre":v==="p"?(h.p?h.p[0]+"–"+h.p[1]:"Propio"):((tfById(v)||{}).n||"Turno");if(!g.has(n))g.set(n,[]);g.get(n).push(DIAS[d])}
+  return[...g.entries()].map(([n,ds])=>n+": "+(ds.length===7?"todos los días":ds.join(" "))).join(" · ")}
+let HS=null;
+function drawHor(){if(!HS)return;const u=HS.u;const opts=[...TF.filter(x=>x.a&&x.b).map(x=>[x.id,x.n.replace(/^\S+\s/,"").replace(/\s*Turno\s*/i,"")+" turno"]),["p","Propio"],["libre","Libre"]];
+  const usaP=ORD.some(dd=>HS.sem[dd]==="p");const pa=document.getElementById("hp-a");if(pa)HS.p=[pa.value,document.getElementById("hp-b").value];
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Horario">
+    ${sheetHead("🕒 Horario de "+esc(personName(u)))}
+    <div class="lbl">Mismo turno todos los días</div>
+    <div class="chips">${TF.filter(x=>x.a&&x.b).map(x=>`<button type="button" class="chip" data-hall="${x.id}">${esc(x.n)} <small>${x.a}–${x.b}</small></button>`).join("")}</div>
+    <div class="lbl">O elegí día por día</div>
+    <div class="wk-list">${ORD.map(dd=>`<div class="wk-day"><b>${DIAS[dd]}</b><div class="wk-opts">${opts.map(([id,n])=>`<button type="button" class="wk-o ${HS.sem[dd]===id?"on":""} ${id==="libre"?"lib":""}" data-hd="${dd}|${id}">${esc(n)}</button>`).join("")}</div></div>`).join("")}</div>
+    ${usaP?`<div class="lbl">Horario propio (para los días marcados “Propio”)</div><div class="hor-grid"><label>Entrada<input type="time" id="hp-a" value="${esc(HS.p[0]||"")}"></label><label>Salida<input type="time" id="hp-b" value="${esc(HS.p[1]||"")}"></label></div>`:""}
+    <p class="hint" style="margin:0">${TF.filter(x=>x.a&&x.b).map(x=>esc(x.n)+": "+x.a+"–"+x.b).join(" · ")}. El día sin marcar no cuenta.</p>
+    <button type="button" class="primary" data-horsave="${esc(u)}">Guardar horario</button>
+    ${(S.people.get(u)||{}).horario?`<button type="button" class="danger" data-hordel="${esc(u)}">Quitar horario</button>`:""}
+    <button type="button" class="ghost" data-equipo2>Volver al equipo</button></div></div>`}
+function horLabel(h){if(h&&h.sem)return semLabel(h);if(!h)return"";if(h.refs&&h.refs.length){const n=h.refs.map(tfById).filter(Boolean).map(x=>x.n);if(n.length)return n.join(" + ")}return horTxt([h.t1,h.t2].filter(t=>t&&t[0]&&t[1]))}
 const toMin=t=>{const[a,b]=String(t||"0:0").split(":").map(Number);return a*60+(b||0)};
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
 const msMin=ms=>{const d=new Date(ms);return d.getHours()*60+d.getMinutes()};
-function turnosHoy(u){const h=(S.people.get(u)||{}).horario;if(!h)return null;if((h.libres||[]).includes(new Date().getDay()))return"libre";
+function turnosHoy(u){const h=(S.people.get(u)||{}).horario;if(!h)return null;
+  if(h.res){const r=h.res[new Date().getDay()];if(r==="libre")return"libre";return Array.isArray(r)&&r.length?r:null}if((h.libres||[]).includes(new Date().getDay()))return"libre";
   const ts=[h.t1,h.t2].filter(t=>t&&t[0]&&t[1]);return ts.length?ts:null}
 const minTxt=m=>m>=60?Math.floor(m/60)+" h"+(m%60?" "+(m%60)+" min":""):m+" min";
 const horTxt=ts=>ts.map(t=>t[0]+"–"+t[1]).join(" y ");
@@ -1476,7 +1504,7 @@ function premiosBlock(){
     <p class="hint">La semana va de lunes a domingo y el mes es el mes calendario. Gana quien hace más entregas.</p>`}
 function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].filter(u=>u!==S.me);
   const pend=all.filter(u=>!isAprob(u)&&!isBaja(u)),act=all.filter(u=>isAprob(u)&&!isBaja(u)),inact=all.filter(isBaja);
-  const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")+(p&&p.horario&&p.horario.t1?" · 🕒 "+esc(horLabel(p.horario)):"")};
+  const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")+(p&&p.horario&&(p.horario.t1||p.horario.sem)?" · 🕒 "+esc(horLabel(p.horario)):"")};
   const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b>${esc(personName(u))}${soc?' <span class="pill p-fijo">Socia/o</span>':""}</b><small>${kind==="pend"?"Esperando aprobación":kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-reactivar="${esc(u)}">Reactivar</button>`
@@ -1554,7 +1582,7 @@ function viewRanking(){
 }
 
 /* ---------- sheets ---------- */
-function closeSheet(){edit=null;LL=null;layer.innerHTML=""}
+function closeSheet(){edit=null;LL=null;HS=null;layer.innerHTML=""}
 function openEdit(key){const d=S.items.get(key);if(!d)return;edit={key,valor:d.valor,cant:d.cant||1,producto:d.producto||0,metodo:d.metodo,cliente:d.cliente||"",obs:d.obs||"",armed:false};drawSheet()}
 const needsApproval=()=>S.mode==="db"&&!S.owner;
 const pendingCambio=key=>{const it=S.items.get(key);if(!it)return null;for(const c of cambios.values())if(c._u===it._u&&c.entregaId===it._id&&c.estado==="pendiente")return c;return null};
@@ -1795,23 +1823,19 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.telsave){const u=t.dataset.telsave;const v=document.getElementById("t-num").value.trim();const cur=S.people.get(u)||{};S.people.set(u,{...cur,tel:v});
     try{await sendW(db.doc("turnos/"+u).set({tel:v},{merge:true}));toast(v?"Teléfono guardado":"Teléfono quitado")}catch(err){toast("No se guardó.")}openEquipo();return}
   if(t.hasAttribute("data-equipo2")){openEquipo();return}
-  if(t.dataset.horario){const u=t.dataset.horario;const h=(S.people.get(u)||{}).horario||{};const t1=h.t1||["",""],t2=h.t2||["",""],lib=h.libres||[];
-    layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Horario">
-      ${sheetHead("🕒 Horario de "+esc(personName(u)))}
-      <div class="lbl">Turnos fijos · tocá el turno de esta persona</div>
-      <div class="chips">${TF.filter(x=>x.a&&x.b).map(x=>`<button type="button" class="chip ${(h.refs||[]).includes(x.id)?"on":""}" data-tfpick="${x.id}">${esc(x.n)} <small>${x.a}–${x.b}</small></button>`).join("")}</div>
-      <p class="hint" style="margin:0">O poné un horario distinto solo para esta persona en los campos de abajo.</p>
-      <div class="lbl">Turno 1</div><div class="hor-grid"><label>Entrada<input type="time" id="h1a" value="${esc(t1[0])}"></label><label>Salida<input type="time" id="h1b" value="${esc(t1[1])}"></label></div>
-      <div class="lbl">Turno 2 (opcional, ej.: la noche)</div><div class="hor-grid"><label>Entrada<input type="time" id="h2a" value="${esc(t2[0])}"></label><label>Salida<input type="time" id="h2b" value="${esc(t2[1])}"></label></div>
-      <div class="lbl">Días libres</div><div class="chips">${DIAS.map((d,i)=>`<button type="button" class="chip ${lib.includes(i)?"on":""}" data-hlib="${i}">${d}</button>`).join("")}</div>
-      <button type="button" class="primary" data-horsave="${esc(u)}">Guardar horario</button>
-      ${h.t1?`<button type="button" class="danger" data-hordel="${esc(u)}">Quitar horario</button>`:""}
-      <button type="button" class="ghost" data-equipo2>Volver al equipo</button></div></div>`;return}
-  if(t.dataset.hlib){t.classList.toggle("on");return}
-  if(t.dataset.tfpick){const on=[...layer.querySelectorAll("[data-tfpick].on")].map(x=>x.dataset.tfpick);
-    if(!t.classList.contains("on")&&on.length>=2){toast("Máximo dos turnos");return}t.classList.toggle("on");
-    const refs=[...layer.querySelectorAll("[data-tfpick].on")].map(x=>x.dataset.tfpick);const r=horFromRefs(refs);const set=(id,v)=>{document.getElementById(id).value=v||""};
-    set("h1a",r.t1&&r.t1[0]);set("h1b",r.t1&&r.t1[1]);set("h2a",r.t2&&r.t2[0]);set("h2b",r.t2&&r.t2[1]);return}
+  if(t.dataset.horario){const u=t.dataset.horario;const h=(S.people.get(u)||{}).horario||{};
+    let sem={},p=h.p||["",""];
+    if(h.sem)sem={...h.sem};else if(h.t1){const ref=(h.refs||[])[0];for(const dd of ORD)sem[dd]=(h.libres||[]).includes(dd)?"libre":ref||"p";if(!ref)p=h.t1}
+    HS={u,sem,p};drawHor();return}
+  if(t.dataset.hall){for(const dd of ORD)if(HS.sem[dd]!=="libre")HS.sem[dd]=t.dataset.hall;drawHor();return}
+  if(t.dataset.hd){const[dd,v]=t.dataset.hd.split("|");HS.sem[dd]=HS.sem[dd]===v?"":v;drawHor();return}
+  if(t.dataset.horsave||t.dataset.hordel){const u=t.dataset.horsave||t.dataset.hordel;let h=null;
+    if(t.dataset.horsave){const pa=document.getElementById("hp-a"),pb=document.getElementById("hp-b");if(pa)HS.p=[pa.value,pb.value];
+      const usaP=ORD.some(dd=>HS.sem[dd]==="p");if(usaP&&!(HS.p[0]&&HS.p[1])){toast("Poné entrada y salida del horario propio");return}
+      if(!ORD.some(dd=>HS.sem[dd]&&HS.sem[dd]!=="libre")){toast("Elegí el turno de al menos un día");return}
+      const sem={};for(const dd of ORD)if(HS.sem[dd])sem[dd]=HS.sem[dd];h={sem,p:usaP?HS.p:null,res:resolveSem(sem,HS.p)}}
+    const cur=S.people.get(u)||{};S.people.set(u,{...cur,horario:h});HS=null;
+    try{await sendW(db.doc("turnos/"+u).set({horario:h},{merge:true}));toast(h?"Horario guardado":"Horario quitado")}catch(err){toast("No se guardó.")}openEquipo();return}
   if(t.hasAttribute("data-tfedit")){layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Turnos fijos">
       ${sheetHead("🕒 Turnos fijos")}
       <p class="hint" style="margin:0">Definí los turnos una vez. Al cambiar un horario acá, se actualiza solo para todos los deliverys de ese turno. Dejá vacío el que no uses.</p>
@@ -1822,16 +1846,8 @@ layer.addEventListener("click",async e=>{
     if(nl.some(x=>(x.a&&!x.b)||(!x.a&&x.b))){toast("Cada turno necesita entrada y salida");return}
     TF=nl;let n=0;
     try{const ps=[sendW(db.doc("config/turnos").set({list:TF}))];
-      for(const[u,p]of S.people){const h=p&&p.horario;if(!h||!h.refs||!h.refs.length)continue;const r=horFromRefs(h.refs);if(!r.t1)continue;const nh={...h,t1:r.t1,t2:r.t2};S.people.set(u,{...p,horario:nh});n++;ps.push(sendW(db.doc("turnos/"+u).set({horario:nh},{merge:true})))}
+      for(const[u,pp]of S.people){const h=pp&&pp.horario;if(!h||!h.sem)continue;const nh={...h,res:resolveSem(h.sem,h.p)};S.people.set(u,{...pp,horario:nh});n++;ps.push(sendW(db.doc("turnos/"+u).set({horario:nh},{merge:true})))}
       await Promise.all(ps);toast("Turnos guardados"+(n?" · actualizados "+plural(n,"delivery"):""))}catch(err){toast("No se guardó.")}openEquipo();return}
-  if(t.dataset.horsave||t.dataset.hordel){const u=t.dataset.horsave||t.dataset.hordel;let h=null;
-    if(t.dataset.horsave){const g=id=>document.getElementById(id).value;const a=g("h1a"),b=g("h1b"),c=g("h2a"),d=g("h2b");
-      if(!a||!b){toast("Elegí un turno fijo o poné entrada y salida");return}
-      let refs=[...layer.querySelectorAll("[data-tfpick].on")].map(x=>x.dataset.tfpick);const r=horFromRefs(refs);
-      if(!(r.t1&&r.t1[0]===a&&r.t1[1]===b&&((!r.t2&&!(c&&d))||(r.t2&&r.t2[0]===c&&r.t2[1]===d))))refs=[];
-      h={t1:[a,b],t2:c&&d?[c,d]:null,refs,libres:[...layer.querySelectorAll("[data-hlib].on")].map(x=>Number(x.dataset.hlib))}}
-    const cur=S.people.get(u)||{};S.people.set(u,{...cur,horario:h});
-    try{await sendW(db.doc("turnos/"+u).set({horario:h},{merge:true}));toast(h?"Horario guardado":"Horario quitado")}catch(err){toast("No se guardó.")}openEquipo();return}
   if(t.hasAttribute("data-metasave")||t.hasAttribute("data-metadel")){const v=t.hasAttribute("data-metadel")?0:Math.min(200,parseVal(document.getElementById("meta-n").value));closeSheet();
     metaDia=v;render(true);
     try{const w=await sendW(v?db.doc("ranking/_meta").set({n:v,criadoEm:Date.now()}):db.doc("ranking/_meta").delete());toast(v?"Meta: "+plural(v,"entrega")+" por día":"Meta quitada")}catch(err){toast("No se guardó.")}return}
