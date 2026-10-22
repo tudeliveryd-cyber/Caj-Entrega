@@ -503,7 +503,8 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .pend-chip{margin-top:2px}
 .pend-chip.on{background:var(--due);color:#fff;border-color:var(--due)}
 .pend-big{width:100%;border-style:dashed}
-.vp-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.vp-bar{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
+.vp-btn b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vp-btn{display:flex;align-items:center;gap:8px;min-width:0;border:1px solid var(--accent);background:var(--surface);color:var(--ink);border-radius:14px;padding:12px 14px;font:16px var(--body);cursor:pointer;text-align:left}
 .vp-btn b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vp-l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
@@ -607,6 +608,29 @@ details.sec.fold{display:grid;gap:10px}
 .pm-bar{fill:var(--accent);opacity:.85}.pm-we{fill:var(--accent);opacity:.5}.pm-best{fill:#d9a93a}
 .pm-avg{stroke:var(--muted);stroke-width:1;stroke-dasharray:4 3}
 .pm-ax{font:10px var(--body);fill:var(--muted)}
+.nt-open{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:5px 11px;font:600 13.5px var(--body);cursor:pointer}
+.nt-open small{background:var(--accent);color:var(--bg);border-radius:999px;padding:0 6px;font-size:11px;margin-left:2px}
+.vp-notas{font-size:18px;padding:0 11px;border-style:solid}
+.nt-sheet{min-height:70vh;align-content:start}
+.nt-top{display:flex;gap:8px;align-items:stretch}.nt-top input{flex:1;min-width:0;height:48px;box-sizing:border-box;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:16px var(--body)}
+.nt-new{width:auto!important;height:48px!important;min-height:0!important;padding:0 16px!important;white-space:nowrap;font-size:15px!important}
+.nt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+.nt-card{position:relative;display:grid;gap:6px;text-align:left;padding:12px 12px 10px;border-radius:14px;border:1px solid color-mix(in srgb,var(--nc) 45%,var(--line));border-top:5px solid var(--nc);background:color-mix(in srgb,var(--nc) 10%,var(--surface));color:var(--ink);font:14px/1.4 var(--body);cursor:pointer;min-height:84px}
+.nt-card b{font-size:15px;line-height:1.25;padding-right:18px;word-break:break-word}
+.nt-pv{white-space:pre-wrap;word-break:break-word;color:color-mix(in srgb,var(--ink) 82%,transparent);display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.nt-card small{color:var(--muted);font-size:11.5px}.nt-pin{position:absolute;top:6px;right:8px;font-size:13px}
+.nt-empty{padding:30px 10px;text-align:center;line-height:1.6}
+.nt-priv{margin:0;text-align:center}
+.nt-ed{border-top:6px solid var(--nc);gap:10px}
+.nt-ed .sheet-h{align-items:center}.nt-back{font-weight:700}.nt-st{font-size:12.5px;color:var(--muted);margin-left:auto;margin-right:8px}
+.nt-title{width:100%;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);font:800 21px var(--body);padding:6px 2px 10px;outline:none}
+.nt-text{width:100%;min-height:220px;border:0;background:color-mix(in srgb,var(--nc) 6%,transparent);border-radius:12px;color:var(--ink);font:16.5px/1.6 var(--body);padding:12px;resize:none;outline:none}
+.nt-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.nt-colors{display:flex;gap:7px;margin-left:auto}
+.nt-dot{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+.nt-dot.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface) inset}
+.nt-act{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center}
+.nt-act .wa-btn{padding:12px 14px;text-align:center}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -738,7 +762,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="81";
+const APPV="82";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1080,7 +1104,7 @@ function installHint(){if(isStandalone()||document.body.classList.contains("demo
     ${inApp()?`<span>1. Estás dentro de otra app. Tocá <b>⋮</b> y elegí <b>“Abrir en Chrome”</b>.</span>`:""}
     <span>${inApp()?"2":"1"}. En Chrome tocá <b>⋮</b> (arriba a la derecha) → <b>“Instalar app”</b> o <b>“Agregar a la pantalla principal”</b>.</span>
     <span>Listo: abrila siempre desde el ícono <b>Tú</b>.</span></div>`}
-function startData(me){
+function startData(me){setTimeout(()=>{try{subNotas()}catch(e){}},400);
   if(!isStandalone()&&!document.body.classList.contains("demo")){try{if(!sessionStorage.getItem("instHint")){sessionStorage.setItem("instHint","1");setTimeout(()=>{if(layer.innerHTML.trim())return;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Instalar">${sheetHead("📲 Instalá la app")}${installHint()}<button type="button" class="primary" data-cancel>Entendido</button></div></div>`},1500)}}catch(e){}}
   try{const pend=lsAll();const ids=Object.entries(pend);if(ids.length){Promise.all(ids.map(([id,d])=>colFor(me).doc(id).set(d))).then(()=>lsSet(LS,{})).catch(()=>{})}}catch(e){}
   if(S.owner)db.doc("config/turnos").onSnapshot(sn=>{if(sn.exists&&Array.isArray(sn.data().list)){const l=sn.data().list;TF=[...l,...DEF_TF.filter(x=>!l.some(y=>y.id===x.id)&&!(sn.data().borrados||[]).includes(x.id))]}},()=>{});
@@ -1174,13 +1198,70 @@ function addCredit(){if(!main||document.getElementById("credit"))return;if(main.
     <em class="cr-lema">Cada entrega cuenta.</em>
     <small class="cr-v">Santa Rita, Paraguay • © ${new Date().getFullYear()} • versión ${APPV}</small></footer>`)}
 function render(full){if(full)builtKey="";if(raf)return;raf=setTimeout(()=>{raf=0;try{paint();addCredit()}catch(e){console.error(e)}},0)}
+/* ---------- notas privadas: turnos/<uid>/privado (tipo "nota", sin "dia") · solo las ve quien las escribe ---------- */
+var notas=new Map(),NQ="",NE=null,ntTimer=0,ntSubbed=false;
+const NCOL={amarillo:"#e8b93a",verde:"#3fae6a",azul:"#4a8fe0",rosa:"#e0679a",violeta:"#9b7be0",gris:"#8a8797"};
+const LSN="caixa_notas_local";
+function subNotas(){if(ntSubbed)return;ntSubbed=true;
+  if(S.mode==="db"&&db&&S.me){privCol(S.me).where("tipo","==","nota").limit(500).onSnapshot(snap=>{notas=new Map(snap.docs.map(d=>[d.id,{...d.data(),_id:d.id}]));if(NE===null&&document.getElementById("nt-list"))drawNotas();render()},()=>{})}
+  else{const o=lsGet(LSN,{});notas=new Map(Object.entries(o).map(([k,v])=>[k,{...v,_id:k}]))}}
+async function putNota(id,d){if(S.mode==="db"&&db){await sendW(privCol(S.me).doc(id).set(d))}else{const o=lsGet(LSN,{});o[id]=d;lsSet(LSN,o)}}
+async function delNota(id){notas.delete(id);if(S.mode==="db"&&db){await sendW(privCol(S.me).doc(id).delete())}else{const o=lsGet(LSN,{});delete o[id];lsSet(LSN,o)}}
+const ntWhen=ms=>{const k=keyOf(new Date(ms));return k===today()?"hoy "+hhmm(ms):k===addDays(today(),-1)?"ayer "+hhmm(ms):ddmm(k)};
+function ntSorted(){const q=norm(NQ);return[...notas.values()].filter(n=>!q||norm((n.titulo||"")+" "+(n.texto||"")).includes(q)).sort((a,b)=>(b.fijada?1:0)-(a.fijada?1:0)||(b.upd||0)-(a.upd||0))}
+function ntPreview(t){return esc(String(t||"").split("\n").slice(0,5).join("\n")).replace(/^(\s*)☐/gm,"$1⬜").replace(/^(\s*)☑/gm,"$1✅")}
+function openNotas(){subNotas();edit=null;NE=null;
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet nt-sheet" role="dialog" aria-label="Notas">${sheetHead("📝 Mis notas")}
+    <div class="nt-top"><input id="nt-q" type="search" placeholder="Buscar en tus notas…" value="${esc(NQ)}" autocomplete="off"><button type="button" class="primary nt-new" data-ntnew>+ Nueva</button></div>
+    <div id="nt-list"></div>
+    <p class="hint nt-priv">🔒 Tus notas son privadas: solo vos las ves${S.mode==="db"?", desde cualquier celular donde entres con tu cuenta":" en este celular"}.</p></div></div>`;
+  drawNotas();const q=document.getElementById("nt-q");if(q)q.addEventListener("input",()=>{NQ=q.value;drawNotas()})}
+function drawNotas(){const el=document.getElementById("nt-list");if(!el)return;const l=ntSorted();
+  el.innerHTML=l.length?`<div class="nt-grid">${l.map(n=>{const c=NCOL[n.color]||NCOL.gris;const ck=(n.texto||"").match(/^\s*[☐☑]/gm)||[];const done=(n.texto||"").match(/^\s*☑/gm)||[];
+    return `<button type="button" class="nt-card" data-ntopen="${esc(n._id)}" style="--nc:${c}">${n.fijada?'<span class="nt-pin">📌</span>':""}
+      ${n.titulo?`<b>${esc(n.titulo)}</b>`:""}<span class="nt-pv">${ntPreview(n.texto)||"<i>Nota vacía</i>"}</span>
+      <small>${ck.length?`☑ ${done.length}/${ck.length} · `:""}${ntWhen(n.upd||n.em||Date.now())}</small></button>`}).join("")}</div>`
+    :`<div class="empty nt-empty">${NQ?"No hay notas con “"+esc(NQ)+"”.":"📝 Todavía no tenés notas.<br><small>Anotá direcciones, pedidos, recordatorios, listas… lo que quieras.</small>"}</div>`}
+function openNota(id){subNotas();const n=id?notas.get(id):null;
+  NE=n?{id,titulo:n.titulo||"",texto:n.texto||"",color:n.color||"amarillo",fijada:!!n.fijada,em:n.em||Date.now(),nueva:false,armed:false}
+      :{id:uid(),titulo:"",texto:"",color:"amarillo",fijada:false,em:Date.now(),nueva:true,armed:false};
+  edit=null;const c=NCOL[NE.color];
+  layer.innerHTML=`<div class="scrim"><div class="sheet nt-ed" role="dialog" aria-label="Nota" style="--nc:${c}">
+    <div class="sheet-h"><button type="button" class="linkbtn nt-back" data-ntback>‹ Notas</button><span class="nt-st" id="nt-st">${NE.nueva?"Nueva nota":"Guardado ✓"}</span><button type="button" class="x" data-ntback aria-label="Cerrar">✕</button></div>
+    <input id="nt-t" class="nt-title" placeholder="Título" value="${esc(NE.titulo)}" maxlength="120" autocomplete="off">
+    <textarea id="nt-x" class="nt-text" placeholder="Escribí tu nota…" maxlength="20000">${esc(NE.texto)}</textarea>
+    <div class="nt-tools">
+      <button type="button" class="chip" data-ntcheck>☐ Casilla</button>
+      <button type="button" class="chip ${NE.fijada?"on":""}" data-ntpin>📌 ${NE.fijada?"Fijada":"Fijar"}</button>
+      <span class="nt-colors">${Object.entries(NCOL).map(([k,v])=>`<button type="button" class="nt-dot ${NE.color===k?"on":""}" data-ntcolor="${k}" style="background:${v}" aria-label="Color ${k}"></button>`).join("")}</span>
+    </div>
+    <div class="nt-act"><a class="wa-btn" id="nt-wa" href="#" target="_blank" rel="noopener">📲 WhatsApp</a><button type="button" class="ghost" data-ntcopy>Copiar</button><button type="button" class="danger" data-ntdel>${NE.nueva?"Descartar":"Eliminar"}</button></div>
+    <small class="hint" style="margin:0">Se guarda sola mientras escribís. Tocá una casilla ☐ en la nota para marcarla ☑.</small></div></div>`;
+  const t=document.getElementById("nt-t"),x=document.getElementById("nt-x");
+  const grow=()=>{x.style.height="auto";x.style.height=Math.max(220,x.scrollHeight+4)+"px"};grow();updNtWa();
+  t.addEventListener("input",()=>{NE.titulo=t.value;ntDirty()});
+  x.addEventListener("input",()=>{NE.texto=x.value;grow();ntDirty()});
+  x.addEventListener("click",()=>{const p=x.selectionStart;const v=x.value;const ls=v.lastIndexOf("\n",p-1)+1;const m=v.slice(ls).match(/^(\s*)([☐☑])/);
+    if(m&&p<=ls+m[1].length+2){const i=ls+m[1].length;x.value=v.slice(0,i)+(m[2]==="☐"?"☑":"☐")+v.slice(i+1);x.selectionStart=x.selectionEnd=p;NE.texto=x.value;ntDirty()}});
+  if(NE.nueva)setTimeout(()=>x.focus(),80)}
+function updNtWa(){const a=document.getElementById("nt-wa");if(a&&NE)a.href="https://wa.me/?text="+encodeURIComponent((NE.titulo?"*"+NE.titulo+"*\n":"")+NE.texto)}
+function ntDirty(){const st=document.getElementById("nt-st");if(st)st.textContent="Guardando…";updNtWa();clearTimeout(ntTimer);ntTimer=setTimeout(ntSave,700)}
+async function ntSave(){clearTimeout(ntTimer);if(!NE)return;const e=NE;if(!e.titulo.trim()&&!e.texto.trim()){return}
+  const d={tipo:"nota",titulo:e.titulo.trim(),texto:e.texto,color:e.color,fijada:e.fijada,em:e.em,upd:Date.now()};
+  notas.set(e.id,{...d,_id:e.id});e.nueva=false;
+  try{const w=await putNota(e.id,d);const st=document.getElementById("nt-st");if(st&&NE===e)st.textContent=w==="wait"?"Guardado en el celular ✓":"Guardado ✓";
+    const del=document.querySelector("[data-ntdel]");if(del&&NE===e&&!e.armed)del.textContent="Eliminar"}
+  catch(err){const st=document.getElementById("nt-st");if(st)st.textContent="⚠️ No se guardó";}}
+function ntBack(){const e=NE;if(e){clearTimeout(ntTimer);if(e.titulo.trim()||e.texto.trim())ntSave()}openNotas();render()}
+
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
-  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b></span><span class="wb-act"><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
+  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b></span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
   const ids=activos();
   const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
   return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
+    <button type="button" class="vp-team vp-notas" data-notas aria-label="Mis notas">📝</button>
     <button type="button" class="vp-team" data-equipo>👥 Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
 }
 function openViewPick(){edit=null;const ids=activos();const t=today();
@@ -2080,7 +2161,7 @@ function viewRanking(){
 }
 
 /* ---------- sheets ---------- */
-function closeSheet(){edit=null;LL=null;HS=null;layer.innerHTML=""}
+function closeSheet(){if(NE){const e=NE;if(e.titulo.trim()||e.texto.trim())ntSave();NE=null}edit=null;LL=null;HS=null;layer.innerHTML=""}
 function openEdit(key){const d=S.items.get(key);if(!d)return;edit={key,valor:d.valor,cant:d.cant||1,producto:d.producto||0,metodo:d.metodo,cliente:d.cliente||"",obs:d.obs||"",armed:false};drawSheet()}
 const needsApproval=()=>S.mode==="db"&&!S.owner;
 const pendingCambio=key=>{const it=S.items.get(key);if(!it)return null;for(const c of cambios.values())if(c._u===it._u&&c.entregaId===it._id&&c.estado==="pendiente")return c;return null};
@@ -2271,6 +2352,7 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-empezar")){const i={dia:today(),em:Date.now()};const cur=S.people.get(S.me)||{};S.people.set(S.me,{...cur,inicio:i});render(true);
     try{const w=await sendW(db.doc("turnos/"+S.me).set({inicio:i},{merge:true}));toast(w==="wait"?"Inicio guardado · se envía al volver la señal":"¡Buen trabajo hoy! 💪")}catch(err){toast("No se guardó.")}}
   else if(t.hasAttribute("data-meta"))openMeta();
+  else if(t.hasAttribute("data-notas")&&!t.closest("#layer"))openNotas();
   else if(t.dataset.pts&&!t.closest("#layer"))openPts(t.dataset.pts);
   else if(t.hasAttribute("data-pedit")&&!t.closest("#layer"))openPEdit();
   else if(t.hasAttribute("data-viewpick"))openViewPick();
@@ -2330,6 +2412,18 @@ layer.addEventListener("click",async e=>{
   if(e.target.hasAttribute&&e.target.hasAttribute("data-close")){closeSheet();return}
   const t=e.target.closest("button");if(!t)return;
   if(t.hasAttribute("data-cancel")){closeSheet();return}
+  if(t.hasAttribute("data-ntnew")){openNota(null);return}
+  if(t.dataset.ntopen){openNota(t.dataset.ntopen);return}
+  if(t.hasAttribute("data-ntback")){ntBack();return}
+  if(NE&&t.hasAttribute("data-ntpin")){NE.fijada=!NE.fijada;t.classList.toggle("on",NE.fijada);t.textContent="📌 "+(NE.fijada?"Fijada":"Fijar");ntDirty();return}
+  if(NE&&t.dataset.ntcolor){NE.color=t.dataset.ntcolor;document.querySelectorAll("[data-ntcolor]").forEach(b=>b.classList.toggle("on",b===t));const sh=document.querySelector(".nt-ed");if(sh)sh.style.setProperty("--nc",NCOL[NE.color]);ntDirty();return}
+  if(NE&&t.hasAttribute("data-ntcheck")){const x=document.getElementById("nt-x");const p=x.selectionStart,v=x.value;const ls=v.lastIndexOf("\n",p-1)+1;const line=v.slice(ls,v.indexOf("\n",p)<0?v.length:v.indexOf("\n",p));
+    let nv,np;if(!line.trim()){nv=v.slice(0,ls)+"☐ "+v.slice(ls);np=ls+2}else{const end=v.indexOf("\n",p)<0?v.length:v.indexOf("\n",p);nv=v.slice(0,end)+"\n☐ "+v.slice(end);np=end+3}
+    x.value=nv;x.focus();x.selectionStart=x.selectionEnd=np;NE.texto=nv;x.dispatchEvent(new Event("input"));return}
+  if(NE&&t.hasAttribute("data-ntcopy")){copy((NE.titulo?NE.titulo+"\n":"")+NE.texto);return}
+  if(NE&&t.hasAttribute("data-ntdel")){if(NE.nueva&&!notas.has(NE.id)){NE=null;openNotas();return}
+    if(!NE.armed){NE.armed=true;t.classList.add("armed");t.textContent="Tocá de nuevo para eliminar";setTimeout(()=>{if(NE&&t.isConnected){NE.armed=false;t.classList.remove("armed");t.textContent="Eliminar"}},3000);return}
+    const id=NE.id;clearTimeout(ntTimer);NE=null;try{await delNota(id);toast("Nota eliminada")}catch(err){toast("No se pudo eliminar")}openNotas();render();return}
   if(t.hasAttribute("data-pedit")){openPEdit();return}
   if(t.hasAttribute("data-peadd")){readPEdit();pEdit.push({p:0,n:""});drawPEdit();return}
   if(t.hasAttribute("data-pesave")){readPEdit();const l=pEdit.filter(x=>x.p>0&&x.n).map(x=>({p:x.p,n:x.n})).sort((a,b)=>a.p-b.p);if(!l.length){toast("Poné al menos un premio");return}
