@@ -674,7 +674,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="66";
+const APPV="67";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1088,7 +1088,7 @@ function refreshForm(){
   document.querySelectorAll("[data-cmet]").forEach(c=>c.setAttribute("aria-pressed",c.dataset.cmet===S.cmMet));
   const ptE=S.cmMet==="pagado"||(S.metodo==="pagado"&&document.getElementById("save"))?"todo":S.pagoTipo;const cb=document.getElementById("cobrar");if(cb){const sh=S.prod||ptE;cb.hidden=!sh;const cob=cobrarDe({producto:S.prod,valor:S.val,pagoTipo:ptE});
     cb.innerHTML=!sh?"":ptE==="todo"?`<div><span>Cobrar al cliente</span><b class="num">₲ 0</b></div><small>✅ Pedido ya pagado a la empresa: no cobres nada, solo entregá.</small>`
-      :`<div><span>Cobrar al cliente</span><b class="num">${gs(cob)}</b></div><small>${ptE==="prod"?"🛍️ Producto ya pagado · cobrá solo el delivery "+gs(S.val):"Producto "+gs(S.prod)+" + delivery "+gs(S.val)}</small><button type="button" class="linkbtn" data-copycuenta>Copiar cuenta para WhatsApp</button>`}
+      :`<div><span>Cobrar al cliente</span><b class="num">${gs(cob)}</b></div><small>${ptE==="prod"?"Producto ya pagado · cobrá solo el delivery "+gs(S.val):"Producto "+gs(S.prod)+" + delivery "+gs(S.val)}</small><button type="button" class="linkbtn" data-copycuenta>Copiar cuenta para WhatsApp</button>`}
   updMapLink();
   const set=(id,v)=>{const el=document.getElementById(id);if(el&&document.activeElement!==el)el.value=v};
   set("val",fmtInput(S.val));set("prod",fmtInput(S.prod));set("cli",S.cliente);set("obs",S.obs);
@@ -1106,7 +1106,7 @@ function drawSug(){
   box.hidden=!list.length;
   box.innerHTML=list.map(c=>`<button type="button" class="sug" data-cli="${esc(c.nome)}" data-cval="${c.val}" data-cubic="${esc(c.ubic||"")}"><b>${esc(c.nome)}</b><span class="num">${gs(c.val)} · ${plural(c.n,"vez")}</span></button>`).join("").replace(/vezs/g,"veces");
 }
-const methodBtns=(attr,cur)=>Object.keys(M).map(k=>`<button type="button" class="method m-${M[k].c}" ${attr}="${k}" aria-pressed="${cur===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`+(k==="pagado"&&(attr==="data-metodo"||attr==="data-cmet")?`<button type="button" class="method m-paid" data-solodel aria-pressed="${S.pagoTipo==="prod"}"><span style="font-size:22px">🛍️</span>Solo el delivery<small>producto ya pagado</small></button>`:"")).join("")+(attr==="data-metodo"||attr==="data-cmet"?`<p class="hint solodel-hint" id="solodel-hint" hidden>🛍️ Producto ya pagado. Ahora tocá cómo ${attr==="data-cmet"?"va a pagar":"te pagó"} el delivery: <b>Efectivo</b> o <b>Transferencia</b>.</p>`:"");
+const methodBtns=(attr,cur)=>Object.keys(M).map(k=>`<button type="button" class="method m-${M[k].c}" ${attr}="${k}" aria-pressed="${cur===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`+(k==="pagado"&&(attr==="data-metodo"||attr==="data-cmet")?`<button type="button" class="method m-paid" data-solodel aria-pressed="${S.pagoTipo==="prod"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M8 17h7.5l2.5-7h-5"/><path d="M14.5 4h2.5l2 6"/><path d="M4 13l3-5h6"/></svg>Solo el delivery<small>producto ya pagado</small></button>`:"")).join("")+(attr==="data-metodo"||attr==="data-cmet"?`<p class="hint solodel-hint" id="solodel-hint" hidden>Producto ya pagado. Ahora tocá cómo ${attr==="data-cmet"?"va a pagar":"te pagó"} el delivery: <b>Efectivo</b> o <b>Transferencia</b>.</p>`:"");
 
 function dayIndex(k){const d=fromKey(k);return Math.floor((d-new Date(d.getFullYear(),0,0))/864e5)+d.getFullYear()*7}
 /* clima de Santa Rita (Open-Meteo, gratis, sin clave): consejo del día para los deliverys */
@@ -1252,7 +1252,7 @@ function viewSummary(list){
 }
 function rowHtml(key,d,showDate){const t=d.criadoEm?new Date(d.criadoEm):null;const pcb=pendingCambio(key);
   const showWho=S.mode!=="db"||(S.owner&&S.filter==="all");
-  const sub=[showWho&&("Delivery: "+esc(groupName(groupKey(d)))),d.pagoTipo==="prod"?"🛍️ producto ya pagado":d.metodo==="pagado"?"✅ pedido pago":d.producto&&("Prod. "+gs(d.producto)+" · cobrado "+gs(d.producto+d.valor)),d.obs&&esc(d.obs)].filter(Boolean).join(" · ");
+  const sub=[showWho&&("Delivery: "+esc(groupName(groupKey(d)))),d.pagoTipo==="prod"?"producto ya pagado":d.metodo==="pagado"?"✅ pedido pago":d.producto&&("Prod. "+gs(d.producto)+" · cobrado "+gs(d.producto+d.valor)),d.obs&&esc(d.obs)].filter(Boolean).join(" · ");
   return `<button class="row" data-edit="${esc(key)}"><span class="time num">${showDate?ddmm(d.dia):(t?pad(t.getHours())+":"+pad(t.getMinutes()):"")}</span>
     <span class="who"><b>${esc(d.cliente)||"Sin cliente"}</b>${sub?`<small>${sub}</small>`:""}</span>
     <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?((d.cant||1)>1?"× "+d.cant:"—"):gs(d.valor)}</b>${d.metodo!=="fijo"&&(d.cant||1)>1?`<span class="pill p-fijo">× ${d.cant} entregas</span>`:""}<span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span>${pends.has(d._u+"|"+d._id)?`<span class="pill p-due">⏳ Por cobrar</span>`:""}${pcb?`<span class="pill p-due">${pcb.tipo==="borrar"?"Pide borrar":"Cambio pedido"}</span>`:""}</span></button>`}
@@ -1572,7 +1572,7 @@ function viewCamino(cl){
   const showWho=S.mode==="db"&&S.owner&&S.filter==="all";
   return `<div class="sec-h"><h2>En camino</h2><span>${plural(cl.length,"pedido")}</span></div><div class="list">
   ${cl.map(([k,d])=>`<div class="cam-row"><div class="cam-info">
-      <div class="who"><b>${esc(d.cliente)||"Sin cliente"}</b><small>${[showWho&&esc(personName(d._u)),d.metPlan&&d.metPlan!=="pagado"?"Paga: "+M[d.metPlan].n:"",d.pagoTipo==="todo"?"✅ Pedido pago · no cobrar":d.pagoTipo==="prod"?"🛍️ Producto ya pagado · solo delivery":d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
+      <div class="who"><b>${esc(d.cliente)||"Sin cliente"}</b><small>${[showWho&&esc(personName(d._u)),d.metPlan&&d.metPlan!=="pagado"?"Paga: "+M[d.metPlan].n:"",d.pagoTipo==="todo"?"✅ Pedido pago · no cobrar":d.pagoTipo==="prod"?"Producto ya pagado · solo delivery":d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
       <div class="amt"><small>Cobrar</small><b class="num">${gs(cobrarDe(d))}</b></div></div>
     <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>!x.nota&&x.ok!==null&&x.ok!==undefined).length}/${d.lista.filter(x=>!x.nota).length}</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${linkIn(d.ubic)?"Ubicación":"Mapa"}</a><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
 function fijosBlock(list){
@@ -1886,7 +1886,7 @@ async function resolverCambio(k,ok){const c=cambios.get(k);if(!c)return;
 function openCamino(key){const d=S.items.get(key);if(!d)return;edit=null;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Pedido en camino">
     ${sheetHead("Finalizar entrega · "+(esc(d.cliente)||"Sin cliente"))}
-    <div class="cobrar"><div><span>Cobrar al cliente</span><b class="num">${gs(cobrarDe(d))}</b></div>${d.pagoTipo==="todo"?`<small>✅ Pedido ya pagado a la empresa: no cobres nada.</small>`:d.pagoTipo==="prod"?`<small>🛍️ Producto ya pagado · cobrá solo el delivery ${gs(d.valor)}</small>`:d.producto?`<small>Producto ${gs(d.producto)} + delivery ${gs(d.valor)}</small>`:`<small>Delivery ${gs(d.valor)}</small>`}
+    <div class="cobrar"><div><span>Cobrar al cliente</span><b class="num">${gs(cobrarDe(d))}</b></div>${d.pagoTipo==="todo"?`<small>✅ Pedido ya pagado a la empresa: no cobres nada.</small>`:d.pagoTipo==="prod"?`<small>Producto ya pagado · cobrá solo el delivery ${gs(d.valor)}</small>`:d.producto?`<small>Producto ${gs(d.producto)} + delivery ${gs(d.valor)}</small>`:`<small>Delivery ${gs(d.valor)}</small>`}
       <button type="button" class="linkbtn" data-copyc="${esc(key)}">Copiar cuenta para WhatsApp</button></div>
     ${d.metPlan&&d.pagoTipo!=="todo"?`<button type="button" class="primary big-fin" data-entregado="${esc(key)}" data-how="${d.metPlan}">✓ Entregado · ${M[d.metPlan].n}</button><p class="hint" style="margin:0">¿Pagó de otra forma? Elegí abajo:</p>`:`<p class="hint" style="margin:0"><b>¿Cómo te pagó el cliente?</b> Al tocar, la entrega queda finalizada, sale de “En camino” y se suma a las entregas del día.</p>`}
     <div class="methods">${(d.pagoTipo==="todo"?["pagado"]:Object.keys(M)).map(k=>`<button type="button" class="method m-${M[k].c}" data-entregado="${esc(key)}" data-how="${k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("")}</div>
