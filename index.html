@@ -558,6 +558,13 @@ details.sec.fold{display:grid;gap:10px}
 .pts-bar i{display:block;height:100%;background:linear-gradient(90deg,#d9a93a,#f2c95b);border-radius:6px}
 .pts-card small{font-size:13.5px;line-height:1.35;color:var(--muted)}.pts-card small b{color:var(--ink)}
 .pts-more{font-size:12.5px;color:#d9a93a;font-weight:700}
+.pts-right{display:flex;gap:10px;align-items:center}
+.pts-card{position:relative;overflow:hidden}
+.pts-plus{position:absolute;right:16px;top:8px;font:800 22px var(--body);color:#d9a93a;animation:ptsUp 1.5s ease-out forwards;pointer-events:none}
+@keyframes ptsUp{0%{opacity:0;transform:translateY(14px) scale(.8)}20%{opacity:1;transform:translateY(0) scale(1.15)}100%{opacity:0;transform:translateY(-26px) scale(1)}}
+.pts-pop{animation:ptsPop .5s ease-out}
+@keyframes ptsPop{0%{transform:scale(1)}40%{transform:scale(1.03)}100%{transform:scale(1)}}
+#pts-box:empty{display:none}
 .pts-big{display:grid;justify-items:center;gap:2px;padding:6px 0}.pts-big b{font-size:44px;color:#d9a93a;line-height:1}.pts-big span{color:var(--muted);font-size:14px}
 .pts-det{display:grid;gap:4px;font-size:14px;color:var(--muted)}.pts-det span{display:flex;justify-content:space-between}.pts-det b{color:var(--ink)}
 .pz-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;border-top:1px solid var(--line)}.pz-row:first-child{border-top:0}
@@ -698,7 +705,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="72";
+const APPV="73";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -771,11 +778,15 @@ function ptsCard(u){const P=ptsDe(u),pr=premiosL();if(!pr.length)return"";const 
   const next=pr.find(x=>x.p>P.pts),ready=pr.filter(x=>x.p<=P.pts);const prevP=0;
   const pct=next?Math.min(100,(P.pts-prevP)/(next.p-prevP)*100):100;
   return `<button type="button" class="pts-card" data-pts="${esc(u)}">
-    <div class="pts-top"><span class="pts-n">⭐ <b class="num">${P.pts.toLocaleString("es-PY")}</b> puntos${yo?"":" · "+esc(personName(u))}</span>${P.racha?`<span class="pts-racha">🔥 ${P.racha} ${P.racha===1?"día":"días"}</span>`:""}</div>
+    <div class="pts-top"><span class="pts-n">⭐ <b class="num" data-v="${P.pts}">${P.pts.toLocaleString("es-PY")}</b> puntos${yo?"":" · "+esc(personName(u))}</span><span class="pts-right">${P.racha?`<span class="pts-racha">🔥 ${P.racha} ${P.racha===1?"día":"días"}</span>`:""}<span class="pts-more">Premios ›</span></span></div>
     <span class="pts-bar"><i style="width:${pct.toFixed(1)}%"></i></span>
     <small>${ready.length?`🎁 <b>${yo?"¡Ya ganaste":"Ya ganó"} ${esc(ready[ready.length-1].n)}!</b>${yo?" Pedile el premio a la empresa.":" Tocá para entregar el premio."}`
       :next?`${yo?"Te faltan":"Le faltan"} <b>${(next.p-P.pts).toLocaleString("es-PY")}</b> para <b>${esc(next.n)}</b>`:""}</small>
-    <span class="pts-more">Ver premios ›</span></button>`}
+    </button>`}
+function ptsAnim(pb){const nb=pb.querySelector(".pts-n b[data-v]");if(!nb){pb.dataset.v="";return}const nv=+nb.dataset.v,ov=pb.dataset.v===""||pb.dataset.v==null?NaN:+pb.dataset.v;pb.dataset.v=nv;
+  if(isNaN(ov)||nv<=ov)return;const t0=performance.now(),dur=900;
+  const step=now=>{const k=Math.min(1,(now-t0)/dur);nb.textContent=Math.round(ov+(nv-ov)*k).toLocaleString("es-PY");if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step);
+  const card=pb.querySelector(".pts-card");if(card){const pl=document.createElement("span");pl.className="pts-plus";pl.textContent="+"+(nv-ov);card.appendChild(pl);card.classList.add("pts-pop");setTimeout(()=>{pl.remove();card.classList.remove("pts-pop")},1600)}}
 function ptsTeam(){const ids=activos().filter(u=>!sinPuntos(u)&&u!==S.me);if(!ids.length)return"";const pr=premiosL();
   const rows=ids.map(u=>({u,P:ptsDe(u)})).sort((a,b)=>b.P.pts-a.P.pts);const nReady=rows.filter(r=>pr.some(x=>x.p<=r.P.pts)).length;
   return `<details class="sec fold" id="pts-team"><summary class="sec-h"><h2>⭐ Puntos del equipo</h2><span class="fold-more">${nReady?`<b class="c-ok">🎁 ${nReady}</b> `:""}›</span></summary>
@@ -1155,7 +1166,7 @@ function paint(){
     {const cb=document.getElementById("cta-box");if(cb)cb.innerHTML=cuentasBox()}
     {const cl=caminoList();const el=document.getElementById("camino-list");const ev=showEmp()&&S.mode==="db";el.hidden=!cl.length||ev;el.innerHTML=cl.length&&!ev?viewCamino(cl):""}
     {const mb=document.getElementById("meta-box");if(mb){const h=viewMeta(list);mb.hidden=!h;mb.innerHTML=h}}
-    {const pb=document.getElementById("pts-box");if(pb){let h="";try{h=S.dia===today()?ptsBox():""}catch(e){}if(pb.dataset.h!==h){const op=pb.querySelector("details[open]");pb.innerHTML=h;pb.dataset.h=h;if(op){const d=pb.querySelector("details");if(d)d.open=true}}}}
+    {const pb=document.getElementById("pts-box");if(pb){let h="";try{h=S.dia===today()?ptsBox():""}catch(e){}if(pb.dataset.h!==h){const op=pb.querySelector("details[open]");pb.innerHTML=h;pb.dataset.h=h;if(op){const d=pb.querySelector("details");if(d)d.open=true}ptsAnim(pb)}}}
     {const cb=document.getElementById("cierre-box");if(cb){const h=viewCierre(list);cb.hidden=!h;cb.innerHTML=h}}
     document.getElementById("mode-note").textContent=noteTxt()+" · versión "+APPV;
     {const gl=document.getElementById("gastos-list");if(gl)gl.innerHTML=viewGastosList();const gt=document.getElementById("g-tot");if(gt)gt.textContent=gs(gStats(gastosRange(S.dia,S.dia)).total);const et=document.getElementById("eg-tot");if(et)et.textContent=gs(egStats(egRange(S.dia,S.dia)).total)}
@@ -1253,7 +1264,7 @@ function openMsg(){edit=null;const cur=msgDia&&msgDia.texto||"";
 function viewDiaShell(){
   const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · para ${esc(personName(writeTarget()))}`:"";
-  return `<div id="clima-box"></div>${viewMsg()}
+  return `<div id="pts-box"></div><div id="clima-box"></div>${viewMsg()}
   <div class="daynav"><button data-day="-1" aria-label="Día anterior">‹</button>
     <label class="daylabel pick" for="dpick"><b>${dayName(S.dia)} <svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></b><span>${dayLong(S.dia)}</span>
       <input type="date" id="dpick" value="${S.dia}" max="${today()}" aria-label="Elegir día"></label>
@@ -1266,7 +1277,6 @@ function viewDiaShell(){
   ${showEmp()?`<section class="sec" id="cierre-box" hidden></section>`:""}
   <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
   <section class="sec" id="meta-box" hidden></section>
-  <div id="pts-box"></div>
   ${showEmp()?"":`<section class="sec" id="cierre-box" hidden></section>`}
   <section class="sec" id="dia-list"></section>
   <details class="sec fold" aria-label="Gastos"><summary class="sec-h"><h2>${ownView()?"Mis gastos":showEmp()?"Gastos de los deliverys":"Gastos de "+esc(personName(S.filter))}</h2><span class="fold-more"><b class="num" id="g-tot"></b> ›</span></summary>
