@@ -905,7 +905,7 @@ function installHint(){if(isStandalone()||document.body.classList.contains("demo
 function startData(me){
   if(!isStandalone()&&!document.body.classList.contains("demo")){try{if(!sessionStorage.getItem("instHint")){sessionStorage.setItem("instHint","1");setTimeout(()=>{if(layer.innerHTML.trim())return;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Instalar">${sheetHead("📲 Instalá la app")}${installHint()}<button type="button" class="primary" data-cancel>Entendido</button></div></div>`},1500)}}catch(e){}}
   try{const pend=lsAll();const ids=Object.entries(pend);if(ids.length){Promise.all(ids.map(([id,d])=>colFor(me).doc(id).set(d))).then(()=>lsSet(LS,{})).catch(()=>{})}}catch(e){}
-  if(S.owner)db.doc("config/turnos").onSnapshot(sn=>{if(sn.exists&&Array.isArray(sn.data().list))TF=sn.data().list},()=>{});
+  if(S.owner)db.doc("config/turnos").onSnapshot(sn=>{if(sn.exists&&Array.isArray(sn.data().list)){const l=sn.data().list;TF=[...l,...DEF_TF.filter(x=>!l.some(y=>y.id===x.id)&&!(sn.data().borrados||[]).includes(x.id))]}},()=>{});
   if(S.owner){cfgRef=db.doc("config/geral");
     cfgRef.onSnapshot(s=>{if(s.exists){const d=s.data();S.cfg={pct:d.pct||30,por:d.por||{}};lsSet(LSC,S.cfg);render(true)}},()=>{})}
   subscribeUser(me);
@@ -1356,7 +1356,7 @@ function openMeta(){edit=null;
 const cierreOf=u=>{const p=S.people.get(u);return p&&p.cierre&&p.cierre.dia===today()?p.cierre:null};
 /* horario y estado de cada delivery (horario lo define el dueño; "inicio" y "cierre" los marca el delivery) */
 const DIAS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
-const DEF_TF=[{id:"t1",n:"☀️ 1º Turno",a:"07:00",b:"18:00"},{id:"t2",n:"🌙 2º Turno",a:"11:00",b:"23:00"},{id:"t3",n:"🔀 3º Turno",a:"11:00",b:"14:00",a2:"18:30",b2:"23:00"}];
+const DEF_TF=[{id:"t1",n:"☀️ 1º Turno",a:"07:00",b:"18:00"},{id:"t2",n:"🌙 2º Turno",a:"11:00",b:"23:00"},{id:"t3",n:"🔀 3º Turno",a:"11:00",b:"14:00",a2:"18:30",b2:"23:00"},{id:"t4",n:"🕘 4º Turno",a:"09:00",b:"23:00"}];
 var TF=DEF_TF.map(x=>({...x}));
 const tfById=id=>TF.find(x=>x.id===id);
 function horFromRefs(refs){const ts=refs.map(tfById).filter(x=>x&&x.a&&x.b).sort((x,y)=>toMin(x.a)-toMin(y.a)).slice(0,2);return{t1:ts[0]?[ts[0].a,ts[0].b]:null,t2:ts[1]?[ts[1].a,ts[1].b]:null}}
@@ -2079,8 +2079,12 @@ layer.addEventListener("click",async e=>{
       <p class="hint" style="margin:0">Definí los turnos una vez. Al cambiar un horario acá, se actualiza solo para todos los deliverys de ese turno. Dejá vacío el que no uses.</p>
       ${TF.map(x=>`<div class="lbl">${esc(x.n)}</div><div class="hor-grid"><label>Entrada<input type="time" id="tf-${x.id}-a" value="${esc(x.a||"")}"></label><label>Salida<input type="time" id="tf-${x.id}-b" value="${esc(x.b||"")}"></label></div>
       <div class="hor-grid"><label>2º horario (opcional)<input type="time" id="tf-${x.id}-a2" value="${esc(x.a2||"")}"></label><label>Salida<input type="time" id="tf-${x.id}-b2" value="${esc(x.b2||"")}"></label></div>`).join("")}
+      <button type="button" class="ghost" data-tfadd>+ Agregar otro turno</button>
       <button type="button" class="primary" data-tfsave>Guardar turnos</button>
       <button type="button" class="ghost" data-equipo2>Volver al equipo</button></div></div>`;return}
+  if(t.hasAttribute("data-tfadd")){const nl=TF.map(x=>({...x,a:document.getElementById("tf-"+x.id+"-a").value,b:document.getElementById("tf-"+x.id+"-b").value,a2:document.getElementById("tf-"+x.id+"-a2").value,b2:document.getElementById("tf-"+x.id+"-b2").value}));
+    let k=TF.length+1;while(TF.some(x=>x.id==="t"+k))k++;TF=[...nl,{id:"t"+k,n:"🕒 "+k+"º Turno",a:"",b:""}];layer.querySelector("[data-tfedit]")||0;
+    const fake=document.createElement("button");fake.setAttribute("data-tfedit","");layer.appendChild(fake);fake.click();return}
   if(t.hasAttribute("data-tfsave")){const nl=TF.map(x=>({...x,a:document.getElementById("tf-"+x.id+"-a").value,b:document.getElementById("tf-"+x.id+"-b").value,a2:document.getElementById("tf-"+x.id+"-a2").value,b2:document.getElementById("tf-"+x.id+"-b2").value}));
     if(nl.some(x=>(x.a&&!x.b)||(!x.a&&x.b)||(x.a2&&!x.b2)||(!x.a2&&x.b2))){toast("Cada turno necesita entrada y salida");return}
     TF=nl;let n=0;
