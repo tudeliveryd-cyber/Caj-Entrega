@@ -538,6 +538,9 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .paid-note{font-size:14px;padding:10px 14px;border-top:1px solid var(--line);color:var(--ink)}
 .pt-wrap{margin-top:-4px}.pt-chip{font-size:13px}
 .pt-chip.on{background:#2e9e5b;border-color:#2e9e5b;color:#fff}
+.method.m-none[aria-pressed="true"]{border-color:var(--muted);background:var(--bg)}
+.cm-met .method{padding-top:8px;padding-bottom:8px}
+.big-fin{font-size:17px!important;padding:16px!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -628,7 +631,7 @@ const LS="caixa_entregas_v1",LSC="caixa_config_v2",LSP="caixa_pagos_v1";
 let chatSel=null,chatDraft="",chatG=[],chatSeen=null,listaTxt="",LL=null,ubicTxt="",sinCliOk=false,builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
 const subs=new Map(),rank=new Map(),rankTimers=new Map();
 const S={tab:"dia",dia:today(),val:0,prod:0,cant:1,metodo:"efectivo",cliente:"",obs:"",items:new Map(),old:new Map(),oldG:new Map(),oldE:new Map(),gastos:new Map(),priv:new Map(),egastos:new Map(),people:new Map(),pagos:new Map(),
-  pagoTipo:"",lote:false,pend:false,mode:"wait",err:"",cfg:{pct:30,por:{}},me:"local",owner:true,filter:"all",askName:false,canWrite:null};
+  cmMet:"",pagoTipo:"",lote:false,pend:false,mode:"wait",err:"",cfg:{pct:30,por:{}},me:"local",owner:true,filter:"all",askName:false,canWrite:null};
 const main=document.getElementById("main"),layer=document.getElementById("layer");
 
 /* ---------- storage ---------- */
@@ -1071,10 +1074,11 @@ function refreshForm(){
     {const fq=document.getElementById("fijo-cant");if(fq)fq.hidden=!(fx||S.lote);const ci=document.getElementById("cant");if(ci&&document.activeElement!==ci)ci.value=S.cant}
     const fc=document.getElementById("fijo-chips");if(fc){const names=[...new Set([...S.items.values()].filter(d=>d.metodo==="fijo"&&d.cliente).map(d=>d.cliente.trim()))].slice(0,6);
       fc.hidden=!fx||!names.length;fc.innerHTML=names.map(n=>`<button type="button" class="chip ${norm(n)===norm(S.cliente)?"on":""}" data-fijocli="${esc(n)}">${esc(n)}</button>`).join("")}}}
-  document.querySelectorAll("[data-pt]").forEach(c=>c.classList.toggle("on",c.dataset.pt===S.pagoTipo));
-  const cb=document.getElementById("cobrar");if(cb){const sh=S.prod||S.pagoTipo;cb.hidden=!sh;const cob=cobrarDe({producto:S.prod,valor:S.val,pagoTipo:S.pagoTipo});
-    cb.innerHTML=!sh?"":S.pagoTipo==="todo"?`<div><span>Cobrar al cliente</span><b class="num">₲ 0</b></div><small>✅ Pedido ya pagado a la empresa: no cobres nada, solo entregá.</small>`
-      :`<div><span>Cobrar al cliente</span><b class="num">${gs(cob)}</b></div><small>${S.pagoTipo==="prod"?"🛍️ Producto ya pagado · cobrá solo el delivery "+gs(S.val):"Producto "+gs(S.prod)+" + delivery "+gs(S.val)}</small><button type="button" class="linkbtn" data-copycuenta>Copiar cuenta para WhatsApp</button>`}
+  document.querySelectorAll("[data-pt]").forEach(c=>{c.classList.toggle("on",c.dataset.pt===S.pagoTipo);c.hidden=S.cmMet==="pagado"});
+  document.querySelectorAll("[data-cmet]").forEach(c=>c.setAttribute("aria-pressed",c.dataset.cmet===S.cmMet));
+  const ptE=S.cmMet==="pagado"?"todo":S.pagoTipo;const cb=document.getElementById("cobrar");if(cb){const sh=S.prod||ptE;cb.hidden=!sh;const cob=cobrarDe({producto:S.prod,valor:S.val,pagoTipo:ptE});
+    cb.innerHTML=!sh?"":ptE==="todo"?`<div><span>Cobrar al cliente</span><b class="num">₲ 0</b></div><small>✅ Pedido ya pagado a la empresa: no cobres nada, solo entregá.</small>`
+      :`<div><span>Cobrar al cliente</span><b class="num">${gs(cob)}</b></div><small>${ptE==="prod"?"🛍️ Producto ya pagado · cobrá solo el delivery "+gs(S.val):"Producto "+gs(S.prod)+" + delivery "+gs(S.val)}</small><button type="button" class="linkbtn" data-copycuenta>Copiar cuenta para WhatsApp</button>`}
   updMapLink();
   const set=(id,v)=>{const el=document.getElementById(id);if(el&&document.activeElement!==el)el.value=v};
   set("val",fmtInput(S.val));set("prod",fmtInput(S.prod));set("cli",S.cliente);set("obs",S.obs);
@@ -1557,7 +1561,7 @@ function viewCamino(cl){
   const showWho=S.mode==="db"&&S.owner&&S.filter==="all";
   return `<div class="sec-h"><h2>En camino</h2><span>${plural(cl.length,"pedido")}</span></div><div class="list">
   ${cl.map(([k,d])=>`<div class="cam-row"><div class="cam-info">
-      <div class="who"><b>${esc(d.cliente)||"Sin cliente"}</b><small>${[showWho&&esc(personName(d._u)),d.pagoTipo==="todo"?"✅ Pedido pago · no cobrar":d.pagoTipo==="prod"?"🛍️ Producto ya pagado · solo delivery":d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
+      <div class="who"><b>${esc(d.cliente)||"Sin cliente"}</b><small>${[showWho&&esc(personName(d._u)),d.metPlan&&d.metPlan!=="pagado"?"Paga: "+M[d.metPlan].n:"",d.pagoTipo==="todo"?"✅ Pedido pago · no cobrar":d.pagoTipo==="prod"?"🛍️ Producto ya pagado · solo delivery":d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
       <div class="amt"><small>Cobrar</small><b class="num">${gs(cobrarDe(d))}</b></div></div>
     <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>!x.nota&&x.ok!==null&&x.ok!==undefined).length}/${d.lista.filter(x=>!x.nota).length}</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${linkIn(d.ubic)?"Ubicación":"Mapa"}</a><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
 function fijosBlock(list){
@@ -1873,7 +1877,7 @@ function openCamino(key){const d=S.items.get(key);if(!d)return;edit=null;
     ${sheetHead("Finalizar entrega · "+(esc(d.cliente)||"Sin cliente"))}
     <div class="cobrar"><div><span>Cobrar al cliente</span><b class="num">${gs(cobrarDe(d))}</b></div>${d.pagoTipo==="todo"?`<small>✅ Pedido ya pagado a la empresa: no cobres nada.</small>`:d.pagoTipo==="prod"?`<small>🛍️ Producto ya pagado · cobrá solo el delivery ${gs(d.valor)}</small>`:d.producto?`<small>Producto ${gs(d.producto)} + delivery ${gs(d.valor)}</small>`:`<small>Delivery ${gs(d.valor)}</small>`}
       <button type="button" class="linkbtn" data-copyc="${esc(key)}">Copiar cuenta para WhatsApp</button></div>
-    <p class="hint" style="margin:0"><b>¿Cómo te pagó el cliente?</b> Al tocar, la entrega queda finalizada, sale de “En camino” y se suma a las entregas del día.</p>
+    ${d.metPlan&&d.pagoTipo!=="todo"?`<button type="button" class="primary big-fin" data-entregado="${esc(key)}" data-how="${d.metPlan}">✓ Entregado · ${M[d.metPlan].n}</button><p class="hint" style="margin:0">¿Pagó de otra forma? Elegí abajo:</p>`:`<p class="hint" style="margin:0"><b>¿Cómo te pagó el cliente?</b> Al tocar, la entrega queda finalizada, sale de “En camino” y se suma a las entregas del día.</p>`}
     <div class="methods">${(d.pagoTipo==="todo"?["pagado"]:Object.keys(M)).map(k=>`<button type="button" class="method m-${M[k].c}" data-entregado="${esc(key)}" data-how="${k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("")}</div>
     ${S.mode==="db"&&d.pagoTipo!=="todo"?`<button type="button" class="method m-due pend-big" data-entregado="${esc(key)}" data-how="transferencia" data-pendc="1">⏳ Me transfiere después<small>queda en “por cobrar” hasta que llegue</small></button>`:""}
     <button class="danger" data-cdel="${esc(key)}">Quitar de la lista sin registrar</button>
@@ -1889,7 +1893,7 @@ function openName(){edit=null;const cur=S.people.get(S.me);layer.innerHTML=`<div
   <div class="field"><label for="n-val">Tu nombre</label><input id="n-val" autocomplete="name" value="${esc(cur?cur.nome:"")}" placeholder="Ej.: Juan"></div>
   <button class="primary" data-nsave>Guardar</button></div></div>`;setTimeout(()=>{const n=document.getElementById("n-val");if(n)n.focus()},50)}
 function sheetHead(title){return `<div class="sheet-h"><h3>${title}</h3><button type="button" class="x" data-cancel aria-label="Cerrar">✕</button></div>`}
-function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pagoTipo="";if(!S.cliente){ubicTxt="";listaTxt=""}const isToday=S.dia===today();
+function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pagoTipo="";S.cmMet="";if(!S.cliente){ubicTxt="";listaTxt=""}const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
   const cliente=`<div class="field"><label for="cli">${cm?"Pedido / cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
@@ -1898,7 +1902,7 @@ function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pago
       <small class="hint" style="margin:0">Tocá <b>📍 Buscar</b> para ver el comercio en el mapa, o pegá acá la ubicación que te mandó el cliente.</small></div>`;
   const prod=`<div class="field"><label for="prod">${cm?"Valor del producto (lo que pagaste o dice el tique)":"Valor del producto (opcional, para saber cuánto cobrar)"}</label>
     <div class="money ${cm?"":"small-money"}"><span>₲</span><input id="prod" inputmode="numeric" autocomplete="off" placeholder="Ej.: 30.000" value="${fmtInput(S.prod)}"></div></div>
-    <div class="chips pt-wrap">${cm?`<button type="button" class="chip pt-chip" data-pt="todo">✅ Pedido pago · no cobrar nada</button>`:""}<button type="button" class="chip pt-chip" data-pt="prod">🛍️ Producto ya pagado · cobrar solo el delivery</button></div>`;
+    <div class="chips pt-wrap"><button type="button" class="chip pt-chip" data-pt="prod">🛍️ Producto ya pagado · cobrar solo el delivery</button></div>`;
   const val=`<div class="field"><label for="val">${cm?"Valor del delivery":"Monto del delivery (tocá un atajo o escribí el precio)"}</label>
     <div class="money"><span>₲</span><input id="val" inputmode="numeric" autocomplete="off" placeholder="Escribí el monto" value="${fmtInput(S.val)}"></div></div>`;
   const obs=`<div class="field"><label for="obs">${cm?"Dirección o detalle (opcional)":"Observación (opcional)"}</label><input id="obs" autocomplete="off" placeholder="Ej.: Barrio San Blas" value="${esc(S.obs)}"></div>`;
@@ -1906,7 +1910,7 @@ function openEntry(cm){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pago
     <small class="hint" style="margin:0">En el mercado abrís la lista desde “En camino” y vas marcando cada producto.</small></div>`;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet entry-sheet" role="dialog" aria-label="${cm?"Anotar pedido":"Nueva entrega"}">
     ${sheetHead((cm?"Anotar pedido":"Nueva entrega")+(isToday?"":" · "+ddmm(S.dia))+forWho)}
-    ${cm?cliente+listaF+prod+presets+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
+    ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${["efectivo","transferencia","anotado","pagado"].map(k=>`<button type="button" class="method m-${M[k].c}" data-cmet="${k}" aria-pressed="${S.cmMet===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("")}<button type="button" class="method m-none" data-cmet="" aria-pressed="${!S.cmMet}">🤷 Lo veo al entregar<small>elegís al finalizar</small></button></div>`+cliente+listaF+prod+presets+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
        :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+`<div id="pend-wrap" hidden><button type="button" class="chip pend-chip" data-pend>⏳ El cliente me transfiere después</button></div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
     <p class="err" id="err" ${S.err?"":"hidden"}>${esc(S.err)}</p>
     ${cm?`<button type="button" class="primary" id="savecamino" ${S.val?"":"disabled"}>Guardar pedido</button>`
@@ -1972,8 +1976,8 @@ async function save(camino){
   sinCliOk=false;
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
-  if(S.prod)d.producto=S.prod;if(S.pagoTipo&&d.metodo!=="pagado")d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&!camino&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true}
-  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";S.err="";S.pend=false;S.lote=false;S.pagoTipo="";closeSheet();
+  if(S.prod)d.producto=S.prod;if(camino&&S.cmMet){d.metPlan=S.cmMet;if(S.cmMet==="pagado")d.pagoTipo="todo"}if(S.pagoTipo&&d.metodo!=="pagado"&&!d.pagoTipo)d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&!camino&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true}
+  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";S.err="";S.pend=false;S.lote=false;S.pagoTipo="";const _cm=S.cmMet;S.cmMet="";closeSheet();
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
   const nid=uid(),wt=writeTarget();if(pendNow)addPend(wt,nid,d).catch(()=>{});
@@ -2008,6 +2012,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.diario){const r=lockReason(S.dia);if(r){lockedMsg(r);return}openDiario(t.dataset.diario)}
   else if(t.hasAttribute("data-anotar")){if(S.mode==="db"&&!S.owner&&S.canWrite===false){noPerm();return}openEntry(true);setTimeout(()=>{const c=document.getElementById("cli");if(c)c.focus()},60)}
   else if(t.hasAttribute("data-copycuenta"))copy(cuentaTxt(S.prod,S.val,S.pagoTipo));
+  else if(t.dataset.cmet!==undefined){S.cmMet=t.dataset.cmet;if(S.cmMet==="pagado")S.pagoTipo="";refreshForm()}
   else if(t.dataset.pt){S.pagoTipo=S.pagoTipo===t.dataset.pt?"":t.dataset.pt;refreshForm()}
   else if(t.dataset.camino)openCamino(t.dataset.camino);
   else if(t.dataset.copyc2){const d=S.items.get(t.dataset.copyc2);if(d)copy(cuentaTxt(d.producto||0,d.valor,d.pagoTipo))}
