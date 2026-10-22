@@ -674,7 +674,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="64";
+const APPV="65";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1056,7 +1056,7 @@ function paint(){
     {const cl=caminoList();const el=document.getElementById("camino-list");const ev=showEmp()&&S.mode==="db";el.hidden=!cl.length||ev;el.innerHTML=cl.length&&!ev?viewCamino(cl):""}
     {const mb=document.getElementById("meta-box");if(mb){const h=viewMeta(list);mb.hidden=!h;mb.innerHTML=h}}
     {const cb=document.getElementById("cierre-box");if(cb){const h=viewCierre(list);cb.hidden=!h;cb.innerHTML=h}}
-    document.getElementById("mode-note").textContent=noteTxt();
+    document.getElementById("mode-note").textContent=noteTxt()+" · versión "+APPV;
     {const gl=document.getElementById("gastos-list");if(gl)gl.innerHTML=viewGastosList()}
     const egl=document.getElementById("egastos-list");if(egl)egl.innerHTML=viewEGastosList();
     drawSug();
