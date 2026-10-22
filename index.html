@@ -483,6 +483,8 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .wl-t{font:800 26px var(--display,var(--body))}
 .wl-s{font-size:16px;color:var(--muted);line-height:1.4}
 @keyframes wlin{from{opacity:0}to{opacity:1}}
+.vis{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap}
+.vis.on{color:var(--cash)}.vis i{width:8px;height:8px;border-radius:50%;background:var(--cash);box-shadow:0 0 0 3px var(--cash-bg)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -610,7 +612,7 @@ async function setPago(u,dia,s){const doc={dia,monto:Math.abs(s.saldo),sentido:s
   if(db)await db.doc("liq/"+u+"/dias/"+dia).set(doc);else lsSet(LSP,Object.fromEntries(S.pagos));render()}
 async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"+u+"/dias/"+dia).delete();else lsSet(LSP,Object.fromEntries(S.pagos));render()}
 (function tick(){const el=document.getElementById("clock");if(el){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}setTimeout(tick,(60-new Date().getSeconds())*1000+50)})();
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio()}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 function setSync(t){document.getElementById("sync").textContent=navigator.onLine===false?"Sin conexión":t}
 /* aviso sin conexión: lo registrado queda en el celular y se envía al volver la señal */
@@ -842,7 +844,7 @@ function startData(me){
     if(!first&&d.id!==S.me&&nd.cierre&&nd.cierre.dia===today()&&!(prev&&prev.cierre&&prev.cierre.em===nd.cierre.em))toast("🏁 "+(nd.nome||"Un delivery")+" cerró su día");
     if(!first&&d.id!==S.me&&nd.inicio&&nd.inicio.dia===today()&&!(prev&&prev.inicio&&prev.inicio.em===nd.inicio.em))toast("▶️ "+(nd.nome||"Un delivery")+" empezó a trabajar");
     S.people.set(d.id,nd);subscribeUser(d.id);scheduleRank(d.id)}first=false;render(true)},()=>{})}
-  setSync("Cargando…");bootStage="datos";render(true);
+  setSync("Cargando…");bootStage="datos";render(true);heartbeat(true);
 }
 
 /* ---------- calculations ---------- */
@@ -1281,7 +1283,7 @@ function estadoDe(u){const l=allItems().filter(([,d])=>d._u===u&&d.dia===today()
 function viewCierre(list){
   if(S.mode!=="db"||S.dia!==today())return"";
   if(showEmp()){const ids=activos().filter(u=>u!==S.me||allItems().some(([,d])=>d._u===u&&d.dia===today()));if(!ids.length)return"";
-    const rows=ids.map(u=>{const e=estadoDe(u);return{...e,html:`<div class="cz-row"><div class="who"><b>${esc(personName(u))}</b><small>${e.ex.join(" · ")}</small></div><span class="cz-st ${e.cls}">${e.st}</span></div>`}});
+    const rows=ids.map(u=>{const e=estadoDe(u);return{...e,html:`<div class="cz-row"><div class="who"><b>${esc(personName(u))}</b> ${u===S.me?"":vistoTxt(u)}<small>${e.ex.join(" · ")}</small></div><span class="cz-st ${e.cls}">${e.st}</span></div>`}});
     return `<div class="sec-h"><h2>Equipo hoy</h2><span>${rows.filter(r=>r.work).length} trabajando · ${rows.filter(r=>r.done).length} terminaron</span></div><div class="list">${rows.map(r=>r.html).join("")}</div>
       <p class="hint" style="margin:0">El horario de cada uno se pone en <b>Equipo → 🕒 Horario</b>. Con turno cortado, cerrá el día solo al terminar el último horario.</p>`}
   if(!ownView())return"";
@@ -1309,6 +1311,15 @@ function checkAutoInicio(){if(S.mode!=="db"||!db||S.owner||autoIniBusy||!S.me)re
   sendW(db.doc("turnos/"+S.me).set({inicio:i},{merge:true})).catch(()=>{}).finally(()=>{autoIniBusy=false});render(true)}
 function welcome(t,sub){const el=document.createElement("div");el.className="welcome";el.innerHTML=`<div class="wl-box"><div class="wl-t">${t}</div><div class="wl-s">${sub}</div><button type="button" class="primary">¡Vamos!</button></div>`;
   el.addEventListener("click",()=>el.remove());document.body.appendChild(el);setTimeout(()=>el.remove(),9000)}
+/* presencia: cada delivery avisa cuándo tiene la app abierta (turnos/<uid>.visto) */
+var lastHB=0;
+function heartbeat(force){try{if(S.mode!=="db"||!db||!S.me||document.hidden||S.owner)return;const p=S.people.get(S.me);if(!p||!p.aprobado||p.baja)return;
+  if(!force&&Date.now()-lastHB<150000)return;lastHB=Date.now();sendW(db.doc("turnos/"+S.me).set({visto:lastHB},{merge:true})).catch(()=>{})}catch(e){}}
+setInterval(()=>heartbeat(false),60000);
+setInterval(()=>{try{if(S.owner&&S.mode==="db"&&(S.tab==="dia"))render()}catch(e){}},60000);
+function vistoTxt(u){const v=(S.people.get(u)||{}).visto;if(!v)return"";const d=Date.now()-v;
+  if(d<4*60000)return `<span class="vis on"><i></i>en la app</span>`;
+  const k=keyOf(new Date(v));return `<span class="vis">visto ${k===today()?hhmm(v):k===addDays(today(),-1)?"ayer "+hhmm(v):ddmm(k)}</span>`}
 function openCierre(){edit=null;const list=listDay(today()).filter(([,d])=>d._u===S.me);const s=stats(list);const cam=caminoList().filter(([,d])=>d._u===S.me);const g=gStats(gastosRange(today(),today()));
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Cerrar el día">
     ${sheetHead("🏁 Cerrar mi día")}
@@ -1534,7 +1545,7 @@ function premiosBlock(){
 function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].filter(u=>u!==S.me);
   const pend=all.filter(u=>!isAprob(u)&&!isBaja(u)),act=all.filter(u=>isAprob(u)&&!isBaja(u)),inact=all.filter(isBaja);
   const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")+(p&&p.horario&&(p.horario.t1||p.horario.sem)?" · 🕒 "+esc(horLabel(p.horario)):"")};
-  const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b>${esc(personName(u))}${soc?' <span class="pill p-fijo">Socia/o</span>':""}</b><small>${kind==="pend"?"Esperando aprobación":kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
+  const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b>${esc(personName(u))}</b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}</b><small>${kind==="pend"?"Esperando aprobación":kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-reactivar="${esc(u)}">Reactivar</button>`
       :`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">Dar de baja</button>`}</div></div>`};
