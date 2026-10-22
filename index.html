@@ -824,6 +824,10 @@ function startDemo(modo){
   put("turnos/demo/pendientes/e7",{cliente:"Doña Marta",monto:55000,dia:t,criadoEm:at(t,8,30),abierto:true});
   put("liq/demo/dias/"+y,{dia:y,monto:9600,sentido:"paga",total:53000,pagadoEm:at(y,20,0)});
   };
+  /* dueño en demo: un delivery de ejemplo con días sin pagar, para probar cuentas y pagos parciales */
+  const seedOwner=()=>{const G="turnos/gabi/entregas/";put("turnos/gabi",{nome:"Gabi (ejemplo)",aprobado:true,baja:false,horario:{res:{0:["09:00|23:00"],1:["09:00|23:00"],2:["09:00|23:00"],3:["09:00|23:00"],4:["09:00|23:00"],5:["09:00|23:00"],6:["09:00|23:00"]}}});
+    [[4,[20000,15000,30000,25000]],[2,[15000,20000,18000]],[1,[25000,30000,15000,20000,15000]]].forEach(([dd,vs])=>{const dk=addDays(t,-dd);vs.forEach((v,i)=>put(G+"g"+dd+"_"+i,{valor:v,metodo:i%3===1?"transferencia":"efectivo",cliente:"Cliente "+(i+1),obs:"",dia:dk,criadoEm:at(dk,10+i,0)}))});
+    put("ranking/gabi",{nome:"Gabi (ejemplo)",dias:{}})};
   seedBase();
   window.__demoAprobar=()=>{store.set("turnos/demo",{...(store.get("turnos/demo")||{}),aprobado:true});notify()};
   const user={uid:me,email:"demo@tudelivery",emailVerified:true,getIdToken(){return Promise.resolve("")},reload(){return Promise.resolve()}};
@@ -833,7 +837,7 @@ function startDemo(modo){
     sendPasswordResetEmail(){return Promise.resolve()},
     createUserWithEmailAndPassword(m,pw){if(!pw)return Promise.reject({code:"auth/missing-password"});if(pw.length<6)return Promise.reject({code:"auth/weak-password"});
       if(!/.+@.+\..+/.test(m))return Promise.reject({code:"auth/invalid-email"});user.email=m;go();return Promise.resolve({user})},
-    signInWithEmailAndPassword(m,pw){if(!pw)return Promise.reject({code:"auth/missing-password"});user.email=m;seedFull();go();return Promise.resolve({user})}};
+    signInWithEmailAndPassword(m,pw){if(!pw)return Promise.reject({code:"auth/missing-password"});user.email=m;seedFull();if(String(m).toLowerCase()===OWNER_EMAIL)seedOwner();go();return Promise.resolve({user})}};
   document.body.classList.add("demo");
   const bn=document.createElement("div");bn.className="demo-banner";bn.textContent="MODO DEMOSTRACIÓN · datos de ejemplo";document.body.prepend(bn);
   if(modo==="lleno"){seedFull();auth.currentUser=user;boot(fs,user)}else showLogin();
