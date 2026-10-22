@@ -1236,11 +1236,11 @@ function viewCierre(list){
     const rows=ids.map(u=>{const e=estadoDe(u);return{...e,html:`<div class="cz-row"><div class="who"><b>${esc(personName(u))}</b><small>${e.ex.join(" · ")}</small></div><span class="cz-st ${e.cls}">${e.st}</span></div>`}});
     return `<div class="sec-h"><h2>Equipo hoy</h2><span>${rows.filter(r=>r.work).length} trabajando · ${rows.filter(r=>r.done).length} terminaron</span></div><div class="list">${rows.map(r=>r.html).join("")}</div>
       <p class="hint" style="margin:0">El horario de cada uno se pone en <b>Equipo → 🕒 Horario</b>.</p>`}
-  if(!ownView()||S.owner)return"";
+  if(!ownView())return"";
   const c=cierreOf(S.me),i=inicioOf(S.me),ts=turnosHoy(S.me);const n=stats(list).n;
   const hor=Array.isArray(ts)?`<div class="hor-line">🕒 Tu horario hoy: <b>${horTxt(ts)}</b></div>`:ts==="libre"?`<div class="hor-line">Hoy es tu día libre 😊</div>`:"";
   if(c)return `<div class="cierre"><div class="cz-h"><b>🏁 Día cerrado</b><span class="cz-st cz-ok">✓ ${hhmm(c.em)}</span></div>${hor}
-    <p class="hint" style="margin:0">Cerraste con ${plural(c.n,"entrega")}.${c.n!==n?` Ahora tenés ${n}: tocá abajo para avisar de nuevo.`:" El dueño ya recibió el aviso."}</p>
+    <p class="hint" style="margin:0">Cerraste con ${plural(c.n,"entrega")}.${c.n!==n?` Ahora tenés ${n}: tocá abajo para avisar de nuevo.`:S.owner?"":" El dueño ya recibió el aviso."}</p>
     ${c.n!==n?`<button type="button" class="cierre-btn" data-cerrar>Actualizar cierre</button>`:""}</div>`;
   if(!i&&!n)return `<div class="cierre"><div class="cz-h"><b>¿Arrancamos?</b></div>${hor}<button type="button" class="cierre-btn" data-empezar>▶️ Empezar mi día</button>
     <p class="hint" style="margin:0">Tocá cuando empezás a trabajar: el dueño ve que ya estás en servicio.</p></div>`;
