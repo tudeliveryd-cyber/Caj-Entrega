@@ -574,6 +574,8 @@ details.sec.fold{display:grid;gap:10px}
 .pts-row .who{display:grid;gap:2px;min-width:0}.pts-row b.num{color:#d9a93a;white-space:nowrap}
 .pts-sec{display:grid;gap:10px}
 .pe-row{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px}.pe-row input{min-width:0;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:16px var(--body)}
+.cp-row{grid-template-columns:minmax(0,1fr) auto}.cp-row small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vp-btn .nb,.vp-row .nb{display:inline-block;min-width:20px;height:20px;line-height:20px;border-radius:10px;background:var(--due);color:#fff;font-size:12px;font-weight:700;text-align:center;padding:0 6px;margin-left:auto}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -705,7 +707,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="77";
+const APPV="78";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1402,10 +1404,17 @@ function chatThread(k){
     const me=m.de===S.me;const who=!me&&k!=="todos"&&S.owner?"":(!me&&k==="todos"?"📢 Tú Delivery":"");
     return sep+`<div class="bub ${me?"me":""}">${who?`<span class="who2">${who}</span>`:""}${esc(m.texto)}<small>${hhmm(m.em||0)}</small></div>`}).join("")}
 function chatHead(){const k=chatKey();
-  if(S.owner){const ids=activos().filter(u=>u!==S.me);
-    return `<div class="chat-seg" role="group">${[["todos","📢 Todos"],...ids.map(u=>[u,personName(u)])].map(([u,n])=>{const nb=u==="todos"?0:unreadOf(u);return `<button type="button" data-chat="${esc(u)}" aria-pressed="${k===u}">${esc(n)}${nb?`<span class="nb">${nb}</span>`:""}</button>`}).join("")}</div>`}
+  if(S.owner){const otros=activos().filter(u=>u!==S.me&&u!==k).reduce((a,u)=>a+unreadOf(u),0);
+    return `<div class="vp-bar"><button type="button" class="vp-btn" data-chatpick aria-label="Elegir conversación"><span class="vp-l">Chat con</span><b>${k==="todos"?"📢 Todos (comunicado)":"💬 "+esc(personName(k))}</b>${otros?`<span class="nb">${otros}</span>`:""}<span class="vp-arr">▾</span></button></div>`}
   const a=unreadOf("todos"),b=unreadOf(S.me);
   return `<div class="chat-seg" role="group"><button type="button" data-chat="${esc(S.me)}" aria-pressed="${k===S.me}">💬 Con el dueño${b?`<span class="nb">${b}</span>`:""}</button><button type="button" data-chat="todos" aria-pressed="${k==="todos"}">📢 Comunicados${a?`<span class="nb">${a}</span>`:""}</button></div>`}
+function openChatPick(){edit=null;const k=chatKey();const ids=activos().filter(u=>u!==S.me);
+  const lastOf=u=>{const l=chatList(u);return l.length?l[l.length-1]:null};
+  const rows=ids.map(u=>({u,m:lastOf(u),n:unreadOf(u)})).sort((a,b)=>(b.n>0)-(a.n>0)||((b.m&&b.m.em)||0)-((a.m&&a.m.em)||0)||personName(a.u).localeCompare(personName(b.u)));
+  const tg=chatG.length?chatG.slice().sort((a,b)=>(a.em||0)-(b.em||0))[chatG.length-1]:null;
+  const row=(u,name,m,n)=>`<button type="button" class="vp-row cp-row ${k===u?"on":""}" data-chatgo="${esc(u)}"><span class="who"><b>${name}</b><small>${m?(m.de===S.me?"Vos: ":"")+esc(String(m.texto||"").slice(0,48))+" · "+(keyOf(new Date(m.em))===today()?hhmm(m.em):ddmm(keyOf(new Date(m.em)))):"Sin mensajes"}</small></span>${n?`<span class="nb">${n}</span>`:k===u?'<span class="vp-ck">✓</span>':""}</button>`;
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Conversaciones">${sheetHead("💬 ¿Con quién hablar?")}
+    <div class="vp-list">${row("todos","📢 Todos · comunicado",tg,0)}${rows.map(r=>row(r.u,esc(personName(r.u)),r.m,r.n)).join("")}</div></div></div>`}
 function viewChatShell(){if(S.mode!=="db")return `<div class="empty">El chat funciona cuando la app está conectada a la cuenta.</div>`;
   const k=chatKey();const canWrite=k!=="todos"||S.owner;
   return `<div id="chat-head"></div><div class="chat-msgs" id="chat-msgs"></div>
@@ -2169,6 +2178,8 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-mapaequipo"))openMapaEquipo();
   else if(t.hasAttribute("data-locask")){try{localStorage.removeItem(LSL)}catch(e){}openLocAsk()}
   else if(t.dataset.chat){chatSel=t.dataset.chat;render(true)}
+  else if(t.hasAttribute("data-chatpick"))openChatPick();
+  else if(t.dataset.chatgo){chatSel=t.dataset.chatgo;closeSheet();render(true)}
   else if(t.hasAttribute("data-chatsend"))sendChat();
   else if(t.dataset.lista)openLista(t.dataset.lista);
   else if(t.dataset.cobrar!==undefined||t.dataset.descobrar!==undefined){const un=t.dataset.descobrar!==undefined;const nm=un?t.dataset.descobrar:t.dataset.cobrar;
