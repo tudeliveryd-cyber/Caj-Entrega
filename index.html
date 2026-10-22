@@ -819,7 +819,8 @@ function startDemo(modo){
   firebase.initializeApp(cfg);auth=firebase.auth();
   try{auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(e){}
   const fs=firebase.firestore();try{fs.settings({ignoreUndefinedProperties:true,experimentalForceLongPolling:true})}catch(e){}
-  fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  /* caché en el celular solo en la app instalada (una sola ventana); en pestañas de Safari varias copias se traban entre sí */
+  if(isStandalone())fs.enablePersistence({synchronizeTabs:false}).catch(()=>{});
   auth.onAuthStateChanged(u=>{if(!u){started=false;showLogin();return}hideLogin();boot(fs,u)});
 })();
 /* get con límite de tiempo: con señal débil usa lo guardado en el celular */
@@ -830,7 +831,7 @@ window.addEventListener("error",e=>{lastErr=(e&&e.message)||"error"});
 window.addEventListener("unhandledrejection",e=>{const r=e&&e.reason;lastErr=(r&&(r.code||r.message))||String(r)});
 setTimeout(function watch(){const sy=document.getElementById("sync");if(sy&&/Conectando|Cargando|Sin conexión/.test(sy.textContent)&&navigator.onLine!==false){
   let b=document.getElementById("boot-warn");if(!b){b=document.createElement("div");b.id="boot-warn";b.className="net-banner";document.body.prepend(b)}
-  b.innerHTML=`No se pudo conectar (${esc(bootStage)}${lastErr?" · "+esc(lastErr):""}). <button type="button" class="linkbtn" style="color:#fff" onclick="location.reload()">Reintentar</button>`;setTimeout(watch,5000)}
+  b.innerHTML=`No se pudo conectar (${esc(bootStage)}${lastErr?" · "+esc(lastErr):""}). <button type="button" class="linkbtn" style="color:#fff" onclick="location.reload()">Reintentar</button>${bootStage==="inicio"&&!isStandalone()?`<br><small>Tip: cerrá las otras pestañas de esta app en el navegador y abrí desde el ícono <b>Tú</b>.</small>`:""}`;setTimeout(watch,5000)}
   else{const b=document.getElementById("boot-warn");if(b)b.remove()}},12000);
 async function boot(fs,u){bootStage="cuenta";
   const mail=(u.email||"").toLowerCase();
