@@ -478,6 +478,11 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .wk-o{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:7px 9px;font:600 13px var(--body);cursor:pointer}
 .wk-o.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .wk-o.lib.on{background:var(--due);border-color:var(--due);color:#fff}
+.welcome{position:fixed;inset:0;z-index:60;background:rgba(10,5,25,.55);display:grid;place-items:center;padding:20px;animation:wlin .3s ease}
+.wl-box{background:var(--surface);color:var(--ink);border-radius:22px;padding:26px 22px;max-width:360px;width:100%;text-align:center;display:grid;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.wl-t{font:800 26px var(--display,var(--body))}
+.wl-s{font-size:16px;color:var(--muted);line-height:1.4}
+@keyframes wlin{from{opacity:0}to{opacity:1}}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -605,7 +610,7 @@ async function setPago(u,dia,s){const doc={dia,monto:Math.abs(s.saldo),sentido:s
   if(db)await db.doc("liq/"+u+"/dias/"+dia).set(doc);else lsSet(LSP,Object.fromEntries(S.pagos));render()}
 async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"+u+"/dias/"+dia).delete();else lsSet(LSP,Object.fromEntries(S.pagos));render()}
 (function tick(){const el=document.getElementById("clock");if(el){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}setTimeout(tick,(60-new Date().getSeconds())*1000+50)})();
-document.addEventListener("visibilitychange",()=>{const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio()}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 function setSync(t){document.getElementById("sync").textContent=navigator.onLine===false?"Sin conexión":t}
 /* aviso sin conexión: lo registrado queda en el celular y se envía al volver la señal */
@@ -921,6 +926,7 @@ function whoBar(){
   </div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas o anotar pedidos, tocá tu nombre.</p>`:""}`;
 }
 function paint(){
+  try{checkAutoInicio()}catch(e){}
   {const f=document.getElementById("fab");if(f)f.hidden=(S.mode==="db"&&showEmp())||S.tab==="chat"}
   updChatBadge();
   document.getElementById("badge").hidden=true;
@@ -1264,7 +1270,7 @@ function estadoDe(u){const l=allItems().filter(([,d])=>d._u===u&&d.dia===today()
   else if(i){st="🟢 Trabajando";cls="cz-work";ex.push("desde "+hhmm(i.em));
     if(Array.isArray(ts)){const im=msMin(i.em);const t=ts.find(t=>toMin(t[1])>im)||ts[ts.length-1];const late=im-toMin(t[0]);if(late>10)ex.push(`<span class="cz-warn">llegó ${minTxt(late)} tarde</span>`);
       const fin=toMin(ts[ts.length-1][1]);if(nm>fin+30)ex.push(`<span class="cz-warn">pasó su horario</span>`)}}
-  else if(n||cam){st="🟢 Trabajando";cls="cz-work";ex.push("no tocó Empezar")}
+  else if(n||cam){st="🟢 Trabajando";cls="cz-work";const f=Math.min(...l.map(([,d])=>d.criadoEm||Date.now()));ex.push("desde "+hhmm(f))}
   else if(ts==="libre"){st="Libre hoy";cls="cz-none"}
   else if(Array.isArray(ts)){const en=ts.find(t=>toMin(t[0])<=nm&&nm<toMin(t[1]));const prox=ts.find(t=>toMin(t[0])>nm);
     if(en){st="⚠️ Debería estar";cls="cz-late";const tarde=nm-toMin(en[0]);if(tarde>0)ex.push(`<span class="cz-warn">${minTxt(tarde)} de atraso</span>`)}
@@ -1284,10 +1290,25 @@ function viewCierre(list){
   if(c)return `<div class="cierre"><div class="cz-h"><b>🏁 Día cerrado</b><span class="cz-st cz-ok">✓ ${hhmm(c.em)}</span></div>${hor}
     <p class="hint" style="margin:0">Cerraste con ${plural(c.n,"entrega")}.${c.n!==n?` Ahora tenés ${n}: tocá abajo para avisar de nuevo.`:S.owner?"":" El dueño ya recibió el aviso."}</p>
     ${c.n!==n?`<button type="button" class="cierre-btn" data-cerrar>Actualizar cierre</button>`:""}</div>`;
-  if(!i&&!n)return `<div class="cierre"><div class="cz-h"><b>¿Arrancamos?</b></div>${hor}<button type="button" class="cierre-btn" data-empezar>▶️ Empezar mi día</button>
-    <p class="hint" style="margin:0">Tocá cuando empezás a trabajar: el dueño ve que ya estás en servicio.</p></div>`;
-  return `<div class="cierre"><div class="cz-h"><b>🟢 Trabajando</b>${i?`<span class="cz-st cz-work">desde ${hhmm(i.em)}</span>`:`<button type="button" class="linkbtn small-link" data-empezar>marcar inicio</button>`}</div>${hor}
+  const cam=caminoList().filter(([,d])=>d._u===S.me).length;
+  if(!i&&!n&&!cam){if(ts==="libre")return `<div class="cierre">${hor}</div>`;
+    if(Array.isArray(ts)){const nm=nowMin(),pr=ts.find(t=>toMin(t[0])>nm);if(pr)return `<div class="cierre"><div class="cz-h"><b>Tu turno empieza a las ${pr[0]}</b></div>${hor}</div>`}
+    return""}
+  const desde=i?i.em:Math.min(...allItems().filter(([,d])=>d._u===S.me&&d.dia===today()).map(([,d])=>d.criadoEm||Date.now()));
+  return `<div class="cierre"><div class="cz-h"><b>🟢 Trabajando</b><span class="cz-st cz-work">desde ${hhmm(desde)}</span></div>${hor}
     <button type="button" class="cierre-btn" data-cerrar>🏁 Cerrar mi día</button></div>`}
+/* inicio automático: al abrir la app cerca del horario (desde 45 min antes) o al registrar la primera entrega */
+var autoIniBusy=false;
+function checkAutoInicio(){if(S.mode!=="db"||!db||S.owner||autoIniBusy||!S.me)return;const p=S.people.get(S.me);if(!p||!p.aprobado||p.baja)return;
+  if(inicioOf(S.me)||cierreOf(S.me))return;const ts=turnosHoy(S.me);const nm=nowMin();
+  const hayEnt=allItems().some(([,d])=>d._u===S.me&&d.dia===today());
+  let ok=hayEnt,cedo=false;if(!ok&&Array.isArray(ts)){const t=ts.find(t=>nm>=toMin(t[0])-45&&nm<toMin(t[1]));if(t){ok=true;cedo=nm<=toMin(t[0])+5}}if(!ok)return;
+  autoIniBusy=true;const i={dia:today(),em:Date.now(),auto:true};S.people.set(S.me,{...p,inicio:i});
+  const h=new Date().getHours();const nm1=(p.nome||"").split(" ")[0];
+  if(cedo)welcome(`${h<12?"☀️ ¡Buen día":h<19?"🌤️ ¡Buenas tardes":"🌙 ¡Buenas noches"}${nm1?", "+esc(nm1):""}!`,`Ya quedó marcado tu inicio (${hhmm(i.em)}). ¡Que tengas un gran día de trabajo! 💪`);
+  sendW(db.doc("turnos/"+S.me).set({inicio:i},{merge:true})).catch(()=>{}).finally(()=>{autoIniBusy=false});render(true)}
+function welcome(t,sub){const el=document.createElement("div");el.className="welcome";el.innerHTML=`<div class="wl-box"><div class="wl-t">${t}</div><div class="wl-s">${sub}</div><button type="button" class="primary">¡Vamos!</button></div>`;
+  el.addEventListener("click",()=>el.remove());document.body.appendChild(el);setTimeout(()=>el.remove(),9000)}
 function openCierre(){edit=null;const list=listDay(today()).filter(([,d])=>d._u===S.me);const s=stats(list);const cam=caminoList().filter(([,d])=>d._u===S.me);const g=gStats(gastosRange(today(),today()));
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Cerrar el día">
     ${sheetHead("🏁 Cerrar mi día")}
