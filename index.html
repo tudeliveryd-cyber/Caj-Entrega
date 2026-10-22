@@ -487,6 +487,8 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .vis.on{color:var(--cash)}.vis i{width:8px;height:8px;border-radius:50%;background:var(--cash);box-shadow:0 0 0 3px var(--cash-bg)}
 .loc-a{color:var(--transfer)!important;text-decoration:none;margin-left:6px}
 .leaflet-tooltip{font:700 12px var(--body)}
+.inst{display:grid;gap:6px;text-align:left;background:var(--due-bg);color:var(--ink);border:1px solid var(--due);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.4;margin:6px 0}
+.inst b:first-child{color:var(--due);font-size:15px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -688,7 +690,7 @@ function showLogin(){LG.hidden=false;drawLogin()}
 function hideLogin(){LG.hidden=true}
 function drawLogin(err){
   LG.innerHTML=`<div class="lg-box"><img src="icon-192.png" alt="Tú Delivery" width="88" height="88" class="lg-logo">
-    <h1>Caja de Entregas</h1><p class="lg-sub">Tú Delivery · De confianza</p>
+    <h1>Caja de Entregas</h1><p class="lg-sub">Tú Delivery · De confianza</p>${installHint()}
     <div class="seg two" role="group"><button type="button" data-lgmode="in" aria-pressed="${lgMode==="in"}">Entrar</button><button type="button" data-lgmode="up" aria-pressed="${lgMode==="up"}">Crear cuenta</button></div>
     <form id="lg-form" class="lg-form" novalidate>
       ${lgMode==="up"?`<div class="field"><label for="lg-name">Tu nombre</label><input id="lg-name" autocomplete="name" placeholder="Ej.: Juan Pérez" required></div>`:""}
@@ -834,7 +836,16 @@ async function boot(fs,u){bootStage="cuenta";
     return}
   startData(me);if(S.askName)openName();
 }
+/* aviso para instalar: fuera de la app instalada (WhatsApp, pestaña privada) el navegador puede borrar la sesión */
+const isStandalone=()=>{try{return window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true}catch(e){return false}};
+const isIOS=()=>/iPhone|iPad|iPod/i.test(navigator.userAgent);
+const inApp=()=>/FBAN|FBAV|Instagram|WhatsApp|Line\/|; wv\)/i.test(navigator.userAgent);
+function installHint(){if(isStandalone()||document.body.classList.contains("demo"))return"";
+  const pasos=inApp()?`Estás dentro de otra app (WhatsApp, Instagram…). Tocá <b>⋯</b> y elegí <b>“Abrir en ${isIOS()?"Safari":"Chrome"}”</b>. Después:`:"";
+  const ins=isIOS()?`En <b>Safari</b> tocá <b>Compartir</b> (el cuadrado con la flecha ↑) → <b>“Agregar a inicio”</b>.`:`En <b>Chrome</b> tocá <b>⋮</b> → <b>“Instalar app”</b> o <b>“Agregar a la pantalla principal”</b>.`;
+  return `<div class="inst"><b>📲 Instalá la app para no tener que entrar cada vez</b><span>${pasos} ${ins} Después abrila siempre desde el ícono <b>Tú</b> en tu pantalla.</span></div>`}
 function startData(me){
+  if(!isStandalone()&&!document.body.classList.contains("demo")){try{if(!sessionStorage.getItem("instHint")){sessionStorage.setItem("instHint","1");setTimeout(()=>{if(layer.innerHTML.trim())return;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Instalar">${sheetHead("📲 Instalá la app")}${installHint()}<button type="button" class="primary" data-cancel>Entendido</button></div></div>`},1500)}}catch(e){}}
   try{const pend=lsAll();const ids=Object.entries(pend);if(ids.length){Promise.all(ids.map(([id,d])=>colFor(me).doc(id).set(d))).then(()=>lsSet(LS,{})).catch(()=>{})}}catch(e){}
   if(S.owner)db.doc("config/turnos").onSnapshot(sn=>{if(sn.exists&&Array.isArray(sn.data().list))TF=sn.data().list},()=>{});
   if(S.owner){cfgRef=db.doc("config/geral");
