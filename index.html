@@ -526,6 +526,11 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .cta-it b{white-space:nowrap}
 .cta-it:first-child{border-top:0}
 .cta-acts{display:flex;gap:8px;flex-wrap:wrap}
+.clima{display:grid;gap:6px;padding:12px 14px;border-radius:16px;border:1px solid var(--line);background:var(--surface)}
+.clima.warn{border-color:#e08a1e;background:color-mix(in srgb,#e08a1e 12%,var(--surface))}
+.clima.bad{border-color:#3f7fd6;background:color-mix(in srgb,#3f7fd6 14%,var(--surface))}
+.cl-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.cl-ic{font-size:28px;line-height:1}.cl-top b{font-size:26px}
+.cl-mm{font-size:13px;color:var(--muted)}.cl-tip{font-size:15px;font-weight:600;line-height:1.35}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -1021,6 +1026,7 @@ function paint(){
     const list=listDay(S.dia);
     document.getElementById("dia-sum").innerHTML=viewSummary(list);
     document.getElementById("dia-list").innerHTML=viewDiaList(list);
+    {loadClima();const cb=document.getElementById("clima-box");if(cb){const h=climaHtml();if(cb.dataset.h!==h){cb.innerHTML=h;cb.dataset.h=h}}}
     {const pb=document.getElementById("pend-box");if(pb)pb.innerHTML=pendBanner()}
     {const cb=document.getElementById("cta-box");if(cb)cb.innerHTML=cuentasBox()}
     {const cl=caminoList();const el=document.getElementById("camino-list");const ev=showEmp()&&S.mode==="db";el.hidden=!cl.length||ev;el.innerHTML=cl.length&&!ev?viewCamino(cl):""}
@@ -1070,6 +1076,29 @@ function drawSug(){
 const methodBtns=(attr,cur)=>Object.keys(M).map(k=>`<button type="button" class="method m-${M[k].c}" ${attr}="${k}" aria-pressed="${cur===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`).join("");
 
 function dayIndex(k){const d=fromKey(k);return Math.floor((d-new Date(d.getFullYear(),0,0))/864e5)+d.getFullYear()*7}
+/* clima de Santa Rita (Open-Meteo, gratis, sin clave): consejo del día para los deliverys */
+var CLIMA=null,climaAt=0,climaBusy=false;
+const LSW="caixa_clima_v1";
+function loadClima(){if(climaBusy||!window.fetch)return;if(CLIMA&&Date.now()-climaAt<30*60000)return;
+  try{const c=JSON.parse(localStorage.getItem(LSW)||"null");if(c&&Date.now()-c.at<30*60000&&c.d&&c.d.daily&&c.d.daily.time&&c.d.daily.time[0]===today()){CLIMA=c.d;climaAt=c.at;return}}catch(e){}
+  climaBusy=true;
+  fetch("https://api.open-meteo.com/v1/forecast?latitude=-25.79&longitude=-55.08&current=temperature_2m,weather_code,precipitation&hourly=precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=America%2FAsuncion&forecast_days=1")
+    .then(r=>r.ok?r.json():null).then(d=>{if(d&&d.current){CLIMA=d;climaAt=Date.now();try{localStorage.setItem(LSW,JSON.stringify({at:climaAt,d}))}catch(e){}render()}}).catch(()=>{}).finally(()=>{climaBusy=false})}
+const wIcon=c=>c<=1?"☀️":c===2?"⛅":c===3?"☁️":c<=48?"🌫️":c<=67?"🌧️":c<=77?"❄️":c<=82?"🌦️":"⛈️";
+const esLluvia=c=>(c>=51&&c<=67)||(c>=80&&c<=82)||c>=95;
+function climaHtml(){if(S.dia!==today()||!CLIMA||!CLIMA.current)return"";const cu=CLIMA.current,dl=CLIMA.daily||{},h=CLIMA.hourly||{};
+  const tNow=Math.round(cu.temperature_2m),code=cu.weather_code,mx=Math.round((dl.temperature_2m_max||[])[0]),mn=Math.round((dl.temperature_2m_min||[])[0]);
+  const hr=new Date().getHours();let rainAt=null,tormenta=code>=95,pRain=0;
+  (h.time||[]).forEach((t,i)=>{const H=Number(String(t).slice(11,13));if(H<hr)return;const pr=(h.precipitation_probability||[])[i]||0,wc=(h.weather_code||[])[i]||0;if(wc>=95)tormenta=true;if(pr>pRain)pRain=pr;if(rainAt===null&&(pr>=60||esLluvia(wc)))rainAt=H});
+  const lloviendo=esLluvia(code)||(cu.precipitation||0)>0.2;
+  let tip,cls="ok";
+  if(tormenta){tip="⛈️ Tormenta: si hay rayos, esperá bajo techo y cuidá el celular.";cls="bad"}
+  else if(lloviendo){tip="🌧️ Está lloviendo: capa puesta y andá despacio, el piso resbala.";cls="bad"}
+  else if(rainAt!==null){tip=`☔ Lluvia desde las ${String(rainAt).padStart(2,"0")}:00: llevá la capa de lluvia en la moto.`;cls="warn"}
+  else if(mx>=33){tip=`🥵 Mucho calor (máx ${mx}°): tomá agua y protegete del sol.`;cls="warn"}
+  else if(mn<=10){tip="🧥 Hace frío: abrigate bien, sobre todo a la noche.";cls="warn"}
+  else tip="😎 Buen tiempo: ¡aprovechá para hacer muchas entregas!";
+  return `<div class="clima ${cls}"><div class="cl-top"><span class="cl-ic">${wIcon(code)}</span><b class="num">${tNow}°</b><span class="cl-mm">Santa Rita · máx ${mx}° · mín ${mn}°${pRain>=30?` · lluvia ${pRain}%`:""}</span></div><div class="cl-tip">${tip}</div></div>`}
 function viewMsg(){
   const aviso=msgDia&&msgDia.texto?`<div class="aviso"><div class="aviso-h">📢 Aviso de Tú Delivery</div><p>${esc(msgDia.texto)}</p><small>${msgDia.criadoEm?"Publicado el "+ddmm(keyOf(new Date(msgDia.criadoEm)))+" "+hhmm(msgDia.criadoEm):""}</small>
     ${S.mode==="db"&&S.owner?`<button type="button" class="linkbtn small-link" data-msg>Cambiar o quitar aviso</button>`:""}</div>`:"";
@@ -1090,7 +1119,7 @@ function openMsg(){edit=null;const cur=msgDia&&msgDia.texto||"";
 function viewDiaShell(){
   const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · para ${esc(personName(writeTarget()))}`:"";
-  return `${viewMsg()}
+  return `<div id="clima-box"></div>${viewMsg()}
   <div class="daynav"><button data-day="-1" aria-label="Día anterior">‹</button>
     <label class="daylabel pick" for="dpick"><b>${dayName(S.dia)} <svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></b><span>${dayLong(S.dia)}</span>
       <input type="date" id="dpick" value="${S.dia}" max="${today()}" aria-label="Elegir día"></label>
