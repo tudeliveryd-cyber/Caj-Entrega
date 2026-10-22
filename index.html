@@ -837,9 +837,9 @@ async function boot(fs,u){bootStage="cuenta";
   startData(me);if(S.askName)openName();
 }
 /* aviso para instalar: fuera de la app instalada (WhatsApp, pestaña privada) el navegador puede borrar la sesión */
-const isStandalone=()=>{try{return window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true}catch(e){return false}};
-const isIOS=()=>/iPhone|iPad|iPod/i.test(navigator.userAgent);
-const inApp=()=>/FBAN|FBAV|Instagram|WhatsApp|Line\/|; wv\)/i.test(navigator.userAgent);
+function isStandalone(){try{return window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true}catch(e){return false}}
+function isIOS(){return /iPhone|iPad|iPod/i.test(navigator.userAgent)}
+function inApp(){return /FBAN|FBAV|Instagram|WhatsApp|Line\/|; wv\)/i.test(navigator.userAgent)}
 function installHint(){if(isStandalone()||document.body.classList.contains("demo"))return"";
   const pasos=inApp()?`Estás dentro de otra app (WhatsApp, Instagram…). Tocá <b>⋯</b> y elegí <b>“Abrir en ${isIOS()?"Safari":"Chrome"}”</b>. Después:`:"";
   const ins=isIOS()?`En <b>Safari</b> tocá <b>Compartir</b> (el cuadrado con la flecha ↑) → <b>“Agregar a inicio”</b>.`:`En <b>Chrome</b> tocá <b>⋮</b> → <b>“Instalar app”</b> o <b>“Agregar a la pantalla principal”</b>.`;
