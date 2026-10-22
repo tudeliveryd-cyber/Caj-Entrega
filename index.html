@@ -719,6 +719,8 @@ function showVerify(u){hideLogin();blockScreen("Verificá tu e-mail",`Te mandamo
 {const c=lsGet(LSC,null);if(c&&c.pct)S.cfg={pct:c.pct,por:c.por||{}}}
 loadLocal();setSync("Conectando…");netBanner();
 /* ---------- MODO DEMO (?demo): base en memoria, vista de delivery, datos de ejemplo ---------- */
+/* igual que Firestore: no acepta listas dentro de listas */
+function nestedArr(v,inArr){if(Array.isArray(v)){if(inArr)return true;return v.some(x=>nestedArr(x,true))}if(v&&typeof v==="object")return Object.values(v).some(x=>nestedArr(x,false));return false}
 function startDemo(modo){
   const store=new Map(),cols=[],docsL=[];
   const parent=p=>p.split("/").slice(0,-1).join("/");
@@ -734,8 +736,8 @@ function startDemo(modo){
       doc(id){return docRef(path+"/"+(id||uid()))},add(d){const r=docRef(path+"/"+uid());return r.set(d).then(()=>r)}}}
   function docRef(path){return{id:path.split("/").pop(),path,
     get(){return Promise.resolve(snapDoc(path))},
-    set(d,o){store.set(path,o&&o.merge?{...(store.get(path)||{}),...d}:{...d});notify();return Promise.resolve()},
-    update(d){if(!store.has(path))return Promise.reject({code:"not-found"});store.set(path,{...store.get(path),...d});notify();return Promise.resolve()},
+    set(d,o){if(nestedArr(d))return Promise.reject({code:"invalid-argument",message:"Nested arrays are not supported"});store.set(path,o&&o.merge?{...(store.get(path)||{}),...d}:{...d});notify();return Promise.resolve()},
+    update(d){if(nestedArr(d))return Promise.reject({code:"invalid-argument"});if(!store.has(path))return Promise.reject({code:"not-found"});store.set(path,{...store.get(path),...d});notify();return Promise.resolve()},
     delete(){store.delete(path);notify();return Promise.resolve()},
     onSnapshot(cb){const l={run:()=>cb(snapDoc(path))};docsL.push(l);setTimeout(l.run,0);return()=>{}},
     collection(c){return query(path+"/"+c,[])}}}
@@ -1226,7 +1228,7 @@ const rgTxt=rs=>rs.map(r=>r[0]+"–"+r[1]).join(" y ");
 const tfTxt=x=>rgTxt(tfRanges(x));
 const pRanges=p=>p?[[p[0],p[1]],[p[2],p[3]]].filter(r=>r[0]&&r[1]):[];
 function resolveSem(sem,p){const res={};for(const d of ORD){const v=sem[d];if(!v)continue;if(v==="libre"){res[d]="libre";continue}
-  if(v==="p"){const r=pRanges(p);if(r.length)res[d]=r;continue}const x=tfById(v);if(x&&x.a&&x.b)res[d]=tfRanges(x)}return res}
+  if(v==="p"){const r=pRanges(p);if(r.length)res[d]=r.map(x=>x.join("|"));continue}const x=tfById(v);if(x&&x.a&&x.b)res[d]=tfRanges(x).map(x=>x.join("|"))}return res}
 function semLabel(h){const g=new Map();for(const d of ORD){const v=h.sem[d];if(!v)continue;const n=v==="libre"?"Libre":v==="p"?(h.p?rgTxt(pRanges(h.p)):"Propio"):((tfById(v)||{}).n||"Turno");if(!g.has(n))g.set(n,[]);g.get(n).push(DIAS[d])}
   return[...g.entries()].map(([n,ds])=>n+": "+(ds.length===7?"todos los días":ds.join(" "))).join(" · ")}
 let HS=null;
@@ -1249,7 +1251,7 @@ const toMin=t=>{const[a,b]=String(t||"0:0").split(":").map(Number);return a*60+(
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
 const msMin=ms=>{const d=new Date(ms);return d.getHours()*60+d.getMinutes()};
 function turnosHoy(u){const h=(S.people.get(u)||{}).horario;if(!h)return null;
-  if(h.res){const r=h.res[new Date().getDay()];if(r==="libre")return"libre";return Array.isArray(r)&&r.length?r:null}if((h.libres||[]).includes(new Date().getDay()))return"libre";
+  if(h.res){const r=h.res[new Date().getDay()];if(r==="libre")return"libre";return Array.isArray(r)&&r.length?r.map(x=>typeof x==="string"?x.split("|"):x):null}if((h.libres||[]).includes(new Date().getDay()))return"libre";
   const ts=[h.t1,h.t2].filter(t=>t&&t[0]&&t[1]);return ts.length?ts:null}
 const minTxt=m=>m>=60?Math.floor(m/60)+" h"+(m%60?" "+(m%60)+" min":""):m+" min";
 const horTxt=ts=>ts.map(t=>t[0]+"–"+t[1]).join(" y ");
