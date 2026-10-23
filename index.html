@@ -792,7 +792,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="87";
+const APPV="88";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1518,7 +1518,7 @@ function cajaCalc(u,dia){const l=allItems().filter(([,d])=>d._u===u&&d.dia===dia
   const gas=[...S.gastos.values(),...(u===S.me?S.priv.values():[])].filter(g=>g._u===u&&g.dia===dia).reduce((a,g)=>a+(g.valor||0),0);
   const c=cajaOf(u,dia)||{};const ab=c.abre||0;return{ab,ef,prod,pago,diar,gas,esp:ab+ef+prod+pago+diar-gas,c}}
 function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u=S.filter==="all"?S.me:S.filter;const yo=u===S.me;const K=cajaCalc(u,S.dia);const c=K.c;
-  if(!c.abreEm){return yo?`<button type="button" class="caja-open" data-cajaabrir><span class="caja-ic">💰</span><span><b>Abrir caja</b><small>Anotá con cuánta plata empezás hoy (cambio)</small></span><span class="caja-go">›</span></button>`:""}
+  if(!c.abreEm){const h=new Date().getHours();if(h<4||h>=12)return"";return yo?`<button type="button" class="caja-open" data-cajaabrir><span class="caja-ic">💰</span><span><b>Abrir caja</b><small>Anotá con cuánta plata empezás hoy (cambio) · solo a la mañana</small></span><span class="caja-go">›</span></button>`:""}
   const dif=c.cierraEm?(c.cierra-K.esp):0;
   return `<section class="caja ${c.cierraEm?"cerrada":""}"><div class="caja-h"><b>💰 Caja ${c.cierraEm?"cerrada":"abierta"}</b><small>${yo?"":esc(personName(u))+" · "}abrió ${hhmm(c.abreEm)}${c.cierraEm?" · cerró "+hhmm(c.cierraEm):""}</small></div>
     <div class="caja-rows"><div><span>Empezó con</span><b class="num">${gs(K.ab)}</b></div>
