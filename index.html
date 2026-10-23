@@ -661,6 +661,11 @@ details.sec.fold{display:grid;gap:10px}
 .caja-dif.ok{background:color-mix(in srgb,#2e9e5b 16%,transparent);color:#2e9e5b}.caja-dif.falta{background:var(--due-bg);color:var(--due)}.caja-dif.sobra{background:color-mix(in srgb,#4a8fe0 14%,transparent);color:#4a8fe0}
 .caja-act{display:flex;gap:12px;align-items:center}
 .caja-lock{color:var(--muted);font-size:13px}
+.caja-fuera{display:grid;gap:5px;font-size:14px;border:1px dashed var(--line);border-radius:12px;padding:10px 12px}
+.caja-fuera>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.caja-fuera b{white-space:nowrap}.caja-fuera span{color:var(--muted)}
+.cf-h{font-size:11.5px!important;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700}
+.caja-fuera small{color:var(--muted);font-size:12px}
+.cf-tot{border-top:1px solid var(--line);padding-top:6px;margin-top:2px}.cf-tot span{color:var(--ink)!important;font-weight:600}
 .caja-reset{justify-self:start;color:var(--due)!important}.caja-reset.armed{font-weight:800}.caja-act .primary{flex:1}
 .cta-mine{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:15px var(--body);cursor:pointer}
 .cta-mine small{display:block;color:var(--muted);font-size:12.5px}.cta-mine.due{border-color:var(--due)}.cta-mine.due b.num{color:var(--due)}.cta-mine.cash b.num{color:#2e9e5b}
@@ -796,7 +801,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="91";
+const APPV="92";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1517,10 +1522,13 @@ function netoStrip(s){
 var cajas=new Map();
 const cajaOf=(u,dia)=>cajas.get(u+"|"+dia)||null;
 function cajaCalc(u,dia){const l=allItems().filter(([,d])=>d._u===u&&d.dia===dia&&!isCamino(d));
-  let ef=0,prod=0,pago=0,diar=0;
-  for(const[,d]of l){if(d.metodo==="efectivo"){ef+=d.valor||0;prod+=prodCobra(d)}else if(d.metodo==="pagado")pago+=d.valor||0;else if(d.metodo==="fijo"&&d.diario&&d.via!=="transferencia"&&d.via!=="empresa")diar+=d.valor||0}
+  let ef=0,prod=0,pago=0,diar=0,tr=0,ntr=0,emp=0,nemp=0;
+  for(const[,d]of l){if(d.metodo==="efectivo"){ef+=d.valor||0;prod+=prodCobra(d)}else if(d.metodo==="pagado")pago+=d.valor||0;
+    else if(d.metodo==="transferencia"){tr+=(d.valor||0)+prodCobra(d);ntr+=d.cant||1}
+    else if(d.metodo==="anotado"){emp+=(d.valor||0)+prodCobra(d);nemp+=d.cant||1}
+    else if(d.metodo==="fijo"&&d.diario){if(d.via==="transferencia")tr+=d.valor||0;else if(d.via==="empresa")emp+=d.valor||0;else diar+=d.valor||0}}
   const gas=[...S.gastos.values(),...(u===S.me?S.priv.values():[])].filter(g=>g._u===u&&g.dia===dia).reduce((a,g)=>a+(g.valor||0),0);
-  const c=cajaOf(u,dia)||{};const ab=c.abre||0;return{ab,ef,prod,pago,diar,gas,esp:ab+ef+prod+pago+diar-gas,c}}
+  const c=cajaOf(u,dia)||{};const ab=c.abre||0;return{ab,ef,prod,pago,diar,gas,tr,ntr,emp,nemp,esp:ab+ef+prod+pago+diar-gas,c}}
 function cajaPuedeAbrir(u){return isRealOwner||!allItems().some(([,d])=>d._u===u&&d.dia===today()&&!isCamino(d))}
 function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u=S.filter==="all"?S.me:S.filter;const yo=u===S.me;const K=cajaCalc(u,S.dia);const c=K.c;
   if(!c.abreEm){if(cajaPuedeAbrir(u))return yo?`<button type="button" class="caja-open" data-cajaabrir><span class="caja-ic">💰</span><span><b>Abrir caja</b><small>Al empezar el día, antes de la primera entrega: anotá con cuánto empezás</small></span><span class="caja-go">›</span></button>`
@@ -1535,8 +1543,12 @@ function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u
       <div class="caja-esp"><span>${c.cierraEm?"Tenía que haber":"Ahora tendría que haber"}</span><b class="num">${gs(K.esp)}</b></div>
       ${c.cierraEm?`<div><span>Contó al cerrar</span><b class="num">${gs(c.cierra)}</b></div>
       <div class="caja-dif ${dif===0?"ok":dif<0?"falta":"sobra"}"><span>${dif===0?"✅ La caja cuadra":dif<0?"⚠️ Falta":"➕ Sobra"}</span><b class="num">${dif?gs(Math.abs(dif)):""}</b></div>`:""}</div>
+    <div class="caja-fuera"><div class="cf-h">Fuera de la caja (no es efectivo)</div>
+      <div><span>📲 Transferencias ${yo?"a tu cuenta":"al delivery"}${K.ntr?" · "+plural(K.ntr,"entrega"):""}</span><b class="num c-transfer">${gs(K.tr)}</b></div>
+      <div><span>🏢 A la cuenta de Tú Delivery (anotado)${K.nemp?" · "+plural(K.nemp,"entrega"):""}</span><b class="num c-due">${gs(K.emp)}</b></div>
+      ${K.emp?`<small>Lo que entra a la empresa ya se descuenta de la comisión en la liquidación.</small>`:""}
+      <div class="cf-tot"><span>Total cobrado hoy</span><b class="num">${gs(K.ef+K.prod+K.pago+K.diar+K.tr+K.emp)}</b></div></div>
     ${yo?(c.cierraEm?(isRealOwner?`<button type="button" class="linkbtn small-link" data-cajacerrar style="justify-self:start">Corregir cierre</button>`:`<small class="caja-lock">🔒 Caja cerrada · mañana la abrís de nuevo al empezar</small>`):`<div class="caja-act"><button type="button" class="primary" data-cajacerrar>Cerrar caja · terminé el trabajo</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajaabrir>Cambiar inicio</button>`:""}</div>`):""}
-    <small class="hint" style="margin:0">Transferencias no entran: van a la cuenta, no a la caja.</small>
     ${isRealOwner?`<button type="button" class="linkbtn small-link caja-reset" data-cajareset="${esc(u)}">🗑️ Borrar la caja de hoy${yo?"":" de "+esc((personName(u)||"").split(" ")[0])} y empezar de nuevo</button>`:""}</section>`}
 function openCaja(modo){edit=null;const K=cajaCalc(S.me,today());const ab=modo==="abrir";const cur=ab?(K.c.abre||""):(K.c.cierra||"");
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Caja">${sheetHead(ab?"💰 Abrir caja":"🔒 Cerrar caja")}
