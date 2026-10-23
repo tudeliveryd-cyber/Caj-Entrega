@@ -683,6 +683,8 @@ details.sec.fold{display:grid;gap:10px}
 .caja-dif.ok{background:color-mix(in srgb,#2e9e5b 16%,transparent);color:#2e9e5b}.caja-dif.falta{background:var(--due-bg);color:var(--due)}.caja-dif.sobra{background:color-mix(in srgb,#4a8fe0 14%,transparent);color:#4a8fe0}
 .caja-act{display:flex;gap:12px;align-items:center}
 .caja-lock{color:var(--muted);font-size:13px}
+.direct-link{border:0!important;background:none!important;color:var(--muted)!important;text-decoration:underline;font-size:14px!important;padding:6px!important;box-shadow:none!important}
+.cierre-cam{display:grid;gap:4px}.cierre-cam small{font-weight:500}
 .caja-fuera{display:grid;gap:5px;font-size:14px;border:1px dashed var(--line);border-radius:12px;padding:10px 12px}
 .caja-fuera>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.caja-fuera b{white-space:nowrap}.caja-fuera span{color:var(--muted)}
 .cf-h{font-size:11.5px!important;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700}
@@ -862,7 +864,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="111";
+const APPV="112";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1485,11 +1487,12 @@ function drawLoteVals(){const el=document.getElementById("lote-vals");if(!el)ret
   else{LV.forEach((v,i)=>{const x=document.getElementById("lv-"+i);if(x&&document.activeElement!==x)x.value=v?fmtInput(v):""});const t=document.getElementById("lv-tot");if(t)t.textContent=gs(S.val)}}
 function refreshForm(){drawLoteVals();
   {const pw=document.getElementById("pend-wrap");if(pw){pw.hidden=S.metodo!=="transferencia"||S.mode!=="db";const c=pw.querySelector("[data-pend]");if(c)c.classList.toggle("on",S.pend)}}
-  const sv=document.getElementById("save");if(sv){const fx=S.metodo==="fijo";sv.disabled=(!S.val&&!fx)||saving;sv.textContent=fx?(S.cant>1?"Registrar "+S.cant+" entregas · cliente fijo":"Registrar entrega · cliente fijo"):S.lote&&S.cant>1?"Registrar "+S.cant+" entregas · "+(S.val?gs(S.val):""):"Registrar "+(S.val?gs(S.val):"entrega")}
+  const camDef=!!document.getElementById("save")&&S.dia===today()&&S.metodo!=="fijo"&&!S.pend;
+  const sv=document.getElementById("save");if(sv){const fx=S.metodo==="fijo";sv.disabled=(!S.val&&!fx)||saving;sv.dataset.cam=camDef?"1":"";sv.textContent=camDef?(S.lote&&S.cant>1?"Guardar "+S.cant+" pedidos en camino · "+gs(S.val):"Guardar en camino"+(S.val?" · "+gs(S.val):"")):fx?(S.cant>1?"Registrar "+S.cant+" entregas · cliente fijo":"Registrar entrega · cliente fijo"):S.lote&&S.cant>1?"Registrar "+S.cant+" entregas · "+(S.val?gs(S.val):""):"Registrar "+(S.val?gs(S.val):"entrega")}
   {const lw=document.getElementById("lote-wrap");if(lw){const cmF=!document.getElementById("save");const fx=cmF?S.cmMet==="fijo":S.metodo==="fijo";lw.hidden=fx;if(cmF&&fx&&S.lote){S.lote=false;S.cant=1}const c=lw.querySelector("[data-lote]");if(c)c.classList.toggle("on",S.lote);
     const li=document.getElementById("lote-info");if(li){li.hidden=!S.lote;li.innerHTML=S.lote?(S.cant>1?`<b>${S.cant} entregas</b> · cuentan como ${S.cant} en el día y el ranking`:"Poné la <b>cantidad</b> de entregas."):""}
     const vl=document.querySelector('label[for="val"]');if(vl)vl.textContent=S.lote?"Valor TOTAL de todas las entregas":cmF?"Valor del delivery":"Monto del delivery (tocá un atajo o escribí el precio)"
-    const pc=document.querySelector("#money-block > .chips");if(pc)pc.hidden=false;const scb=document.getElementById("savecamino");if(scb&&!fx&&!cmF){scb.hidden=false;scb.textContent=S.lote&&S.cant>1?"Guardar "+S.cant+" pedidos “en camino” (todavía no entregué)":"Guardar “en camino” (todavía no entregué)"}
+    const pc=document.querySelector("#money-block > .chips");if(pc)pc.hidden=false;const scb=document.getElementById("savecamino");if(scb&&!fx&&!cmF){scb.hidden=!camDef;scb.dataset.direct="1";scb.classList.add("direct-link");scb.textContent=S.lote&&S.cant>1?"Ya las entregué · registrar directo":"Ya la entregué · registrar directo"}
     if(cmF){const fq=document.getElementById("fijo-cant");if(fq)fq.hidden=!S.lote;const ci=document.getElementById("cant");if(ci&&document.activeElement!==ci)ci.value=S.cant;
       if(scb){const nm=S.pasar&&S.asig?" a "+(personName(S.asig)||"").split(" ")[0]:"";const many=S.lote&&S.cant>1;scb.textContent=S.pasar?(many?"📦 Enviar "+S.cant+" pedidos"+nm:"📦 Enviar pedido"+nm):(many?"Guardar "+S.cant+" pedidos":"Guardar pedido")}
       {const li=document.getElementById("lote-info");if(li&&S.lote)li.innerHTML=S.cant>1?`Se crean <b>${S.cant} pedidos</b> en “En camino”. Finalizás cada uno al entregar.`:"Poné la <b>cantidad</b> de entregas."}}}}
@@ -2059,7 +2062,7 @@ function vistoTxt(u){const v=(S.people.get(u)||{}).visto;if(!v)return"";const d=
 function openCierre(){edit=null;const list=listDay(today()).filter(([,d])=>d._u===S.me);const s=stats(list);const cam=caminoList().filter(([,d])=>d._u===S.me);const g=gStats(gastosRange(today(),today()));
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Cerrar el día">
     ${sheetHead("🏁 Cerrar mi día")}
-    ${cam.length?`<p class="err" style="margin:0">Tenés ${plural(cam.length,"pedido")} en camino. Marcalos como entregados o borralos antes de cerrar.</p>`:""}
+    ${cam.length?`<div class="err cierre-cam" style="margin:0"><b>⚠ Tenés ${plural(cam.length,"pedido")} en camino sin finalizar</b><small>${cam.slice(0,6).map(([,d])=>esc(d.cliente||"Sin cliente")+" "+gs(d.valor)).join(" · ")}${cam.length>6?" …":""}</small><small>Si ya los entregaste, tocá <b>✓ Entregado</b> en cada uno para que cuenten en el día.</small></div>`:""}
     <div class="acerto"><div class="ac-row"><span>Entregas</span><b class="num">${s.n}</b></div>
       <div class="ac-row"><span>Total cobrado</span><b class="num">${gs(s.total)}</b></div>
       <div class="ac-row"><span>Efectivo</span><b class="num">${gs(s.efectivo)}</b></div>
@@ -2672,7 +2675,7 @@ async function save(camino){
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
   if(S.prod)d.producto=S.prod;{const planM=document.getElementById("save")?S.metodo:S.cmMet;if(camino&&planM&&M[planM]&&planM!=="fijo"){d.metPlan=planM;if(planM==="pagado")d.pagoTipo="todo"}}if(S.pagoTipo&&d.metodo!=="pagado"&&!d.pagoTipo)d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li;const r={};if(retN.trim())r.n=retN.trim();if(retU.trim())r.ubic=retU.trim();if(retT.trim())r.tel=retT.trim();if(Object.keys(r).length)d.ret=r;if(cliTel.trim())d.tel=cliTel.trim()}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true;d.vals=LV.slice(0,S.cant)}
-  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";retN="";retU="";retT="";cliTel="";S.err="";S.pend=false;S.lote=false;S.pagoTipo="";const _cm=S.cmMet;S.cmMet="";closeSheet();
+  const label=camino?"En camino · tocá Entregado al entregar":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";retN="";retU="";retT="";cliTel="";S.err="";S.pend=false;S.lote=false;S.pagoTipo="";const _cm=S.cmMet;S.cmMet="";closeSheet();
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
   const pasarA=camino&&S.pasar?S.asig:"";if(pasarA){d.central={por:S.me,em:Date.now()}}S.pasar=false;
@@ -2704,8 +2707,8 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.metodo){S.metodo=t.dataset.metodo;if(!["efectivo","transferencia"].includes(S.metodo)&&S.pagoTipo==="prod")S.pagoTipo="";S.err="";refreshForm()}
   else if(t.hasAttribute("data-solodel")){S.pagoTipo=S.pagoTipo==="prod"?"":"prod";if(S.pagoTipo==="prod"){if(document.getElementById("save")){if(!["efectivo","transferencia"].includes(S.metodo))S.metodo="efectivo"}else if(!["efectivo","transferencia"].includes(S.cmMet))S.cmMet="efectivo"}S.err="";refreshForm()}
   else if(t.hasAttribute("data-other")){S.val=0;S.err="";refreshForm();const v=document.getElementById("val");v.value="";v.focus()}
-  else if(t.id==="save")save();
-  else if(t.id==="savecamino")save(true);
+  else if(t.id==="save")save(t.dataset.cam==="1");
+  else if(t.id==="savecamino")save(t.dataset.direct!=="1");
   else if(t.hasAttribute("data-demoaprobar")){if(window.__demoAprobar)window.__demoAprobar()}
   else if(t.hasAttribute("data-msg"))openMsg();
   else if(t.hasAttribute("data-hoy")){S.dia=today();render(true)}
