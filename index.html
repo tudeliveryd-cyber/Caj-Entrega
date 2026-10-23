@@ -659,7 +659,8 @@ details.sec.fold{display:grid;gap:10px}
 .caja-rows.mini .caja-esp{border:0;padding:0}
 .caja-dif{border-radius:10px;padding:8px 10px;margin-top:4px;font-weight:700}.caja-dif span{color:inherit!important}
 .caja-dif.ok{background:color-mix(in srgb,#2e9e5b 16%,transparent);color:#2e9e5b}.caja-dif.falta{background:var(--due-bg);color:var(--due)}.caja-dif.sobra{background:color-mix(in srgb,#4a8fe0 14%,transparent);color:#4a8fe0}
-.caja-act{display:flex;gap:12px;align-items:center}.caja-act .primary{flex:1}
+.caja-act{display:flex;gap:12px;align-items:center}
+.caja-lock{color:var(--muted);font-size:13px}.caja-act .primary{flex:1}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -792,7 +793,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="88";
+const APPV="89";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1517,8 +1518,11 @@ function cajaCalc(u,dia){const l=allItems().filter(([,d])=>d._u===u&&d.dia===dia
   for(const[,d]of l){if(d.metodo==="efectivo"){ef+=d.valor||0;prod+=prodCobra(d)}else if(d.metodo==="pagado")pago+=d.valor||0;else if(d.metodo==="fijo"&&d.diario&&d.via!=="transferencia"&&d.via!=="empresa")diar+=d.valor||0}
   const gas=[...S.gastos.values(),...(u===S.me?S.priv.values():[])].filter(g=>g._u===u&&g.dia===dia).reduce((a,g)=>a+(g.valor||0),0);
   const c=cajaOf(u,dia)||{};const ab=c.abre||0;return{ab,ef,prod,pago,diar,gas,esp:ab+ef+prod+pago+diar-gas,c}}
+function cajaPuedeAbrir(u){return isRealOwner||!allItems().some(([,d])=>d._u===u&&d.dia===today()&&!isCamino(d))}
 function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u=S.filter==="all"?S.me:S.filter;const yo=u===S.me;const K=cajaCalc(u,S.dia);const c=K.c;
-  if(!c.abreEm){const h=new Date().getHours();if(h<4||h>=12)return"";return yo?`<button type="button" class="caja-open" data-cajaabrir><span class="caja-ic">💰</span><span><b>Abrir caja</b><small>Anotá con cuánta plata empezás hoy (cambio) · solo a la mañana</small></span><span class="caja-go">›</span></button>`:""}
+  if(!c.abreEm){if(cajaPuedeAbrir(u))return yo?`<button type="button" class="caja-open" data-cajaabrir><span class="caja-ic">💰</span><span><b>Abrir caja</b><small>Al empezar el día, antes de la primera entrega: anotá con cuánto empezás</small></span><span class="caja-go">›</span></button>`
+      :`<section class="caja cerrada"><div class="caja-h"><b>💰 Caja sin abrir</b><small>${esc(personName(u))}</small></div><small class="hint" style="margin:0">Todavía no empezó el día.</small></section>`;
+    return `<section class="caja cerrada"><div class="caja-h"><b>💰 Caja · no se abrió hoy</b><small>🔒</small></div><small class="hint" style="margin:0">La caja se abre al empezar el día, antes de la primera entrega. ${yo?"Mañana la abrís al empezar.":""}</small></section>`}
   const dif=c.cierraEm?(c.cierra-K.esp):0;
   return `<section class="caja ${c.cierraEm?"cerrada":""}"><div class="caja-h"><b>💰 Caja ${c.cierraEm?"cerrada":"abierta"}</b><small>${yo?"":esc(personName(u))+" · "}abrió ${hhmm(c.abreEm)}${c.cierraEm?" · cerró "+hhmm(c.cierraEm):""}</small></div>
     <div class="caja-rows"><div><span>Empezó con</span><b class="num">${gs(K.ab)}</b></div>
@@ -1528,7 +1532,7 @@ function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u
       <div class="caja-esp"><span>${c.cierraEm?"Tenía que haber":"Ahora tendría que haber"}</span><b class="num">${gs(K.esp)}</b></div>
       ${c.cierraEm?`<div><span>Contó al cerrar</span><b class="num">${gs(c.cierra)}</b></div>
       <div class="caja-dif ${dif===0?"ok":dif<0?"falta":"sobra"}"><span>${dif===0?"✅ La caja cuadra":dif<0?"⚠️ Falta":"➕ Sobra"}</span><b class="num">${dif?gs(Math.abs(dif)):""}</b></div>`:""}</div>
-    ${yo?(c.cierraEm?`<button type="button" class="linkbtn small-link" data-cajacerrar style="justify-self:start">Corregir cierre</button>`:`<div class="caja-act"><button type="button" class="primary" data-cajacerrar>Cerrar caja</button><button type="button" class="linkbtn small-link" data-cajaabrir>Cambiar inicio</button></div>`):""}
+    ${yo?(c.cierraEm?(isRealOwner?`<button type="button" class="linkbtn small-link" data-cajacerrar style="justify-self:start">Corregir cierre</button>`:`<small class="caja-lock">🔒 Caja cerrada · mañana la abrís de nuevo al empezar</small>`):`<div class="caja-act"><button type="button" class="primary" data-cajacerrar>Cerrar caja · terminé el trabajo</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajaabrir>Cambiar inicio</button>`:""}</div>`):""}
     <small class="hint" style="margin:0">Transferencias no entran: van a la cuenta, no a la caja.</small></section>`}
 function openCaja(modo){edit=null;const K=cajaCalc(S.me,today());const ab=modo==="abrir";const cur=ab?(K.c.abre||""):(K.c.cierra||"");
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Caja">${sheetHead(ab?"💰 Abrir caja":"🔒 Cerrar caja")}
@@ -1539,6 +1543,7 @@ function openCaja(modo){edit=null;const K=cajaCalc(S.me,today());const ab=modo==
     <button type="button" class="primary" data-cajasave="${ab?"abrir":"cerrar"}">${ab?"Abrir caja":"Cerrar caja"}</button></div></div>`;
   setTimeout(()=>{const i=document.getElementById("caja-v");if(i)i.focus()},80)}
 async function saveCaja(modo,v){const dia=today();const cur=cajaOf(S.me,dia)||{dia};const n={...cur,dia};
+  if(!isRealOwner&&((modo==="abrir"&&(cur.abreEm||!cajaPuedeAbrir(S.me)))||(modo==="cerrar"&&cur.cierraEm))){toast("🔒 No se puede cambiar la caja de hoy");return"ok"}
   if(modo==="abrir"){n.abre=v;n.abreEm=cur.abreEm||Date.now()}else{n.cierra=v;n.cierraEm=Date.now();if(!n.abreEm){n.abreEm=Date.now();n.abre=0}}
   delete n._u;delete n._id;cajas.set(S.me+"|"+dia,{...n,_u:S.me,_id:dia});render(true);
   const w=await sendW(db.collection("turnos/"+S.me+"/caja").doc(dia).set(n));return w}
