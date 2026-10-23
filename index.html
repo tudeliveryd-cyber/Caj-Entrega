@@ -701,8 +701,7 @@ details.sec.fold{display:grid;gap:10px}
 .ic{width:1.15em;height:1.15em;vertical-align:-.2em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;display:inline-block}
 .ic-checkc,.ic-dot{color:#2e9e5b}.ic-star{color:#d9a93a}.ic-flame{color:#e8743b}.ic-alert{color:var(--due)}.ic-gift{color:#d9a93a}
 /* app fijo: sin zoom ni desplazamiento lateral en el iPhone */
-html,body{overflow-x:hidden;width:100%;max-width:100%;overscroll-behavior-x:none}
-body{position:relative;touch-action:pan-y}
+body{touch-action:pan-y}
 .chat-seg,.filter{touch-action:pan-x pan-y}
 input:not(.money input):not(.nt-title):not(.stepper input),textarea,select{font-size:16px!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
@@ -837,7 +836,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="102";
+const APPV="103";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
