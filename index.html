@@ -868,7 +868,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="118";
+const APPV="119";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1679,11 +1679,11 @@ const cajaOf=(u,dia)=>cajas.get(u+"|"+dia)||null;
 function cajaCalc(u,dia){const l=allItems().filter(([,d])=>d._u===u&&d.dia===dia&&!isCamino(d));
   let ef=0,prod=0,prodOut=0,pago=0,diar=0,tr=0,ntr=0,emp=0,nemp=0;
   for(const[,d]of l){if(d.metodo==="efectivo"){ef+=d.valor||0;prod+=prodCobra(d)}else if(d.metodo==="pagado")pago+=d.valor||0;
-    else if(d.metodo==="transferencia"){tr+=(d.valor||0)+prodCobra(d);prodOut+=prodCobra(d);ntr+=d.cant||1}
-    else if(d.metodo==="anotado"){emp+=(d.valor||0)+prodCobra(d);prodOut+=prodCobra(d);nemp+=d.cant||1}
+    else if(d.metodo==="transferencia"){tr+=d.valor||0;ntr+=d.cant||1}
+    else if(d.metodo==="anotado"){emp+=d.valor||0;nemp+=d.cant||1}
     else if(d.metodo==="fijo"&&d.diario){if(d.via==="transferencia")tr+=d.valor||0;else if(d.via==="empresa")emp+=d.valor||0;else diar+=d.valor||0}}
   const gas=[...S.gastos.values(),...(u===S.me?S.priv.values():[])].filter(g=>g._u===u&&g.dia===dia).reduce((a,g)=>a+(g.valor||0),0);
-  const c=cajaOf(u,dia)||{};const ab=c.abre||0;return{ab,ef,prod,prodOut,pago,diar,gas,tr,ntr,emp,nemp,esp:ab+ef+pago+diar-gas-prodOut,c}}
+  const c=cajaOf(u,dia)||{};const ab=c.abre||0;return{ab,ef,prod,prodOut,pago,diar,gas,tr,ntr,emp,nemp,esp:ab+ef+pago+diar-gas,c}}
 function cajaPuedeAbrir(u){return isRealOwner||!allItems().some(([,d])=>d._u===u&&d.dia===today()&&!isCamino(d))}
 function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u=S.filter==="all"?S.me:S.filter;const yo=u===S.me;const K=cajaCalc(u,S.dia);const c=K.c;
   if(!c.abreEm){if(cajaPuedeAbrir(u))return yo?`<button type="button" class="caja-open" data-cajaabrir><span class="caja-ic">💰</span><span><b>Abrir caja</b><small>Al empezar el día, antes de la primera entrega: anotá con cuánto empezás</small></span><span class="caja-go">›</span></button>`
@@ -1692,18 +1692,16 @@ function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u
   const dif=c.cierraEm?(c.cierra-K.esp):0;
   return `<section class="caja ${c.cierraEm?"cerrada":""}"><div class="caja-h"><b>💰 Caja ${c.cierraEm?"cerrada":"abierta"}</b><small>${yo?"":esc(personName(u))+" · "}abrió ${hhmm(c.abreEm)}${c.cierraEm?" · cerró "+hhmm(c.cierraEm):""}</small></div>
     <div class="caja-rows"><div><span>Empezó con</span><b class="num">${gs(K.ab)}</b></div>
-      <div><span>+ Efectivo cobrado</span><b class="num">${gs(K.ef+K.pago+K.diar)}</b></div>
-      ${K.prodOut?`<div><span>− Productos pagados con tu plata (cobrados por transferencia o anotado)</span><b class="num c-due">${gs(K.prodOut)}</b></div>`:""}
+      <div><span>+ Delivery cobrado en efectivo</span><b class="num">${gs(K.ef+K.pago+K.diar)}</b></div>
       <div><span>− Gastos</span><b class="num c-due">${gs(K.gas)}</b></div>
       <div class="caja-esp"><span>${c.cierraEm?"Tenía que haber":"Ahora tendría que haber"}</span><b class="num">${gs(K.esp)}</b></div>
-      ${K.prod?`<small class="caja-note">Productos ${gs(K.prod)}: los pagaste con tu plata y los cobraste en efectivo, por eso no cambian la caja.</small>`:""}
       ${c.cierraEm?`<div><span>Contó al cerrar</span><b class="num">${gs(c.cierra)}</b></div>
       <div class="caja-dif ${dif===0?"ok":dif<0?"falta":"sobra"}"><span>${dif===0?"✅ La caja cuadra":dif<0?"⚠️ Falta":"➕ Sobra"}</span><b class="num">${dif?gs(Math.abs(dif)):""}</b></div>`:""}</div>
     <div class="caja-fuera"><div class="cf-h">Fuera de la caja (no es efectivo)</div>
       <div><span>📲 Transferencias ${yo?"a tu cuenta":"al delivery"}${K.ntr?" · "+plural(K.ntr,"entrega"):""}</span><b class="num c-transfer">${gs(K.tr)}</b></div>
       <div><span>🏢 A la cuenta de Tú Delivery (anotado)${K.nemp?" · "+plural(K.nemp,"entrega"):""}</span><b class="num c-due">${gs(K.emp)}</b></div>
       ${K.emp?`<small>Lo que entra a la empresa ya se descuenta de la comisión en la liquidación.</small>`:""}
-      <div class="cf-tot"><span>Total cobrado hoy</span><b class="num">${gs(K.ef+K.prod+K.pago+K.diar+K.tr+K.emp)}</b></div></div>
+      <div class="cf-tot"><span>Total de delivery hoy</span><b class="num">${gs(K.ef+K.pago+K.diar+K.tr+K.emp)}</b></div><small>Los productos no entran: los pagás con la plata de la caja y el cliente te los devuelve.</small></div>
     ${yo?(c.cierraEm?(isRealOwner?`<button type="button" class="linkbtn small-link" data-cajacerrar style="justify-self:start">Corregir cierre</button>`:`<small class="caja-lock">🔒 Caja cerrada · mañana la abrís de nuevo al empezar</small>`):`<div class="caja-act"><button type="button" class="primary" data-cajacerrar>Cerrar caja · terminé el trabajo</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajaabrir>Cambiar inicio</button>`:""}</div>`):""}
     ${isRealOwner?`<button type="button" class="linkbtn small-link caja-reset" data-cajareset="${esc(u)}">🗑️ Borrar la caja de hoy${yo?"":" de "+esc((personName(u)||"").split(" ")[0])} y empezar de nuevo</button>`:""}</section>`}
 function openCaja(modo){edit=null;const K=cajaCalc(S.me,today());const ab=modo==="abrir";const cur=ab?(K.c.abre||""):(K.c.cierra||"");
