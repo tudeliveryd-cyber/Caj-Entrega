@@ -503,7 +503,8 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .pend-chip{margin-top:2px}
 .pend-chip.on{background:var(--due);color:#fff;border-color:var(--due)}
 .pend-big{width:100%;border-style:dashed}
-.vp-bar{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
+.vp-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.tools-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:-8px}.tools-row .nt-open{padding:8px 14px;font-size:14px}
 .vp-btn b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vp-btn{display:flex;align-items:center;gap:8px;min-width:0;border:1px solid var(--accent);background:var(--surface);color:var(--ink);border-radius:14px;padding:12px 14px;font:16px var(--body);cursor:pointer;text-align:left}
 .vp-btn b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -674,7 +675,9 @@ details.sec.fold{display:grid;gap:10px}
 .cf-row{display:grid;gap:8px;padding:12px 14px;border-top:1px solid var(--line)}.cf-row:first-child{border-top:0}
 .cf-row .who{display:grid;gap:2px;min-width:0}.cf-row b{font-size:16px}.cf-dir{font-size:13.5px;color:var(--ink)}.cf-row small{color:var(--muted);font-size:12.5px}
 .cf-act{display:flex;gap:8px;flex-wrap:wrap}.cf-act .map-btn{text-decoration:none}
-.cf-chips{display:grid;gap:4px}.cf-chips small{color:var(--muted);font-size:12.5px}
+.cf-chips{display:grid;gap:4px}
+.cf-row mark{background:#d9a93a;color:#1a1422;border-radius:3px;padding:0 1px}
+.cf-count{font-size:12.5px;color:var(--muted);margin:0}.cf-chips small{color:var(--muted);font-size:12.5px}
 .who-bar .wb-act{flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
@@ -808,7 +811,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="94";
+const APPV="95";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1311,8 +1314,8 @@ function whoBar(){
   const ids=activos();
   const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
   return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
-    <button type="button" class="vp-team vp-notas" data-notas aria-label="Mis notas">📝</button>
-    <button type="button" class="vp-team" data-equipo>👥 Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
+    <button type="button" class="vp-team" data-equipo>👥 Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button></div>
+    <div class="tools-row"><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
 }
 function openViewPick(){edit=null;const ids=activos();const t=today();
   const nOf=u=>stats(allItems().filter(([,d])=>d._u===u&&d.dia===t&&!isCamino(d))).n;const tot=stats(allItems().filter(([,d])=>d.dia===t&&!isCamino(d))).n;
@@ -1452,7 +1455,7 @@ function viewDiaShell(){
   <section class="sec camino-sec" id="camino-list" hidden></section>
   <div id="pend-box"></div>
   <div id="cta-box"></div>
-  ${showEmp()&&S.mode==="db"?`<button type="button" class="cf-open" data-clientesf><span>🏪 <b>Nuestros clientes fijos</b><small>Nombre, ubicación y teléfono · lo ven todos los deliverys</small></span><span class="caja-go">›</span></button>`:""}
+
   ${showEmp()?`<section class="sec" id="cierre-box" hidden></section>`:""}
   <div id="caja-box"></div>
   <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
@@ -1950,9 +1953,10 @@ function openClientesF(){edit=null;const adm=S.mode==="db"&&S.owner;
     <div class="nt-top"><input id="cf-q" type="search" placeholder="Buscar cliente…" value="${esc(CFQ)}" autocomplete="off">${adm?`<button type="button" class="primary nt-new" data-cfnew>+ Agregar</button>`:""}</div>
     <div id="cf-list"></div>
     <p class="hint nt-priv">${adm?"Los deliverys ven esta lista para saber dónde queda cada cliente.":"Tocá 📍 para ver dónde queda y 📞 para llamar."}</p></div></div>`;
-  drawClientesF();const q=document.getElementById("cf-q");if(q)q.addEventListener("input",()=>{CFQ=q.value;drawClientesF()})}
+  drawClientesF();const q=document.getElementById("cf-q");if(q){q.addEventListener("input",()=>{CFQ=q.value;drawClientesF()});if(clisF.length>4)setTimeout(()=>q.focus(),120)}}
+function hiQ(txt,q){txt=String(txt||"");q=norm(q).trim();if(!q)return esc(txt);const n=norm(txt);const i=n.indexOf(q);if(i<0)return esc(txt);return esc(txt.slice(0,i))+"<mark>"+esc(txt.slice(i,i+q.length))+"</mark>"+esc(txt.slice(i+q.length))}
 function drawClientesF(){const el=document.getElementById("cf-list");if(!el)return;const l=cliFSorted();const adm=S.mode==="db"&&S.owner;
-  el.innerHTML=l.length?`<div class="list">${l.map(c=>`<div class="cf-row"><div class="who"><b>${esc(c.n)}</b>${c.dir?`<span class="cf-dir">📍 ${esc(c.dir)}</span>`:""}${c.nota?`<small>${esc(c.nota)}</small>`:""}${c.tel?`<small class="num">📞 ${esc(c.tel)}</small>`:""}</div>
+  el.innerHTML=l.length?`${CFQ?`<p class="cf-count">${plural(l.length,"resultado")}</p>`:""}<div class="list">${l.map(c=>`<div class="cf-row"><div class="who"><b>${hiQ(c.n,CFQ)}</b>${c.dir?`<span class="cf-dir">📍 ${hiQ(c.dir,CFQ)}</span>`:""}${c.nota?`<small>${esc(c.nota)}</small>`:""}${c.tel?`<small class="num">📞 ${esc(c.tel)}</small>`:""}</div>
     <div class="cf-act">${c.ubic||c.dir||c.n?`<a class="map-btn" href="${esc(mapUrl(c.n,c.ubic||c.dir))}" target="_blank" rel="noopener">📍 Mapa</a>`:""}${c.tel?`<button type="button" class="map-btn" data-cftel="${esc(c.id)}">📞</button>`:""}${adm?`<button type="button" class="map-btn" data-cfedit="${esc(c.id)}">✏️</button>`:""}</div></div>`).join("")}</div>`
     :`<div class="empty nt-empty">${CFQ?"No hay clientes con “"+esc(CFQ)+"”.":adm?"🏪 Todavía no cargaste clientes fijos.<br><small>Tocá <b>+ Agregar</b> y poné nombre, ubicación y teléfono.</small>":"Todavía no hay clientes fijos cargados."}</div>`}
 function openCfEdit(id){edit=null;const c=id?clisF.find(x=>x.id===id)||{}:{};
