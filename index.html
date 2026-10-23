@@ -669,6 +669,13 @@ details.sec.fold{display:grid;gap:10px}
 .caja-reset{justify-self:start;color:var(--due)!important}.caja-reset.armed{font-weight:800}.caja-act .primary{flex:1}
 .cta-mine{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:15px var(--body);cursor:pointer}
 .cta-mine small{display:block;color:var(--muted);font-size:12.5px}.cta-mine.due{border-color:var(--due)}.cta-mine.due b.num{color:var(--due)}.cta-mine.cash b.num{color:#2e9e5b}
+.cf-open{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:15px var(--body);cursor:pointer}
+.cf-open small{display:block;color:var(--muted);font-size:12.5px}
+.cf-row{display:grid;gap:8px;padding:12px 14px;border-top:1px solid var(--line)}.cf-row:first-child{border-top:0}
+.cf-row .who{display:grid;gap:2px;min-width:0}.cf-row b{font-size:16px}.cf-dir{font-size:13.5px;color:var(--ink)}.cf-row small{color:var(--muted);font-size:12.5px}
+.cf-act{display:flex;gap:8px;flex-wrap:wrap}.cf-act .map-btn{text-decoration:none}
+.cf-chips{display:grid;gap:4px}.cf-chips small{color:var(--muted);font-size:12.5px}
+.who-bar .wb-act{flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -801,7 +808,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="93";
+const APPV="94";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1039,6 +1046,7 @@ function startDemo(modo){
    put("ranking/r2",{nome:"Juan",dias:{[t]:11,[y]:9},pd:{...pd(40),[t]:11,[y]:9},cier:ci(40)});
    put("ranking/r3",{nome:"Pedro",dias:{[t]:6,[y]:12},pd:{...pd(20),[t]:6,[y]:12},cier:ci(10)});
    window.__demoPts={pd,ci}}
+  put("ranking/_clientes",{list:[{id:"c1",n:"Divina Mesa",ubic:"https://maps.google.com/?q=-25.7935,-55.0870",dir:"Av. Santa Rita c/ Mallorquín",tel:"0981 555 111",nota:"Entregar por la cocina"},{id:"c2",n:"Bom Corte Bar & Grill",ubic:"https://maps.google.com/?q=-25.7912,-55.0851",dir:"Ruta PY06, frente a la estación",tel:"0983 222 333",nota:""}]});
   put("ranking/_mensaje",{texto:"Bienvenidos a la app de Tú Delivery. Registren todas las entregas del día y no se olviden de anotar los pedidos.",criadoEm:at(t,7,0)});};
   const seedFull=()=>{
   put("turnos/demo",{nome:"Carlos Demo",aprobado:true,baja:false});
@@ -1154,7 +1162,7 @@ function startData(me){setTimeout(()=>{try{subNotas()}catch(e){}},400);
     cfgRef.onSnapshot(s=>{if(s.exists){const d=s.data();S.cfg={pct:d.pct||30,por:d.por||{}};lsSet(LSC,S.cfg);render(true)}},()=>{})}
   subscribeUser(me);
   if(S.owner)egCol().where("dia",">=",addDays(today(),-WINDOW)).limit(1000).onSnapshot(snap=>{S.egastos=new Map(snap.docs.map(d=>[d.id,{...d.data(),_id:d.id}]));render()},()=>{});
-  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;metaDia=0;const hadG=chatG.length;chatG=[];for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}if(d.id==="_meta"){metaDia=Number(d.data().n)||0;continue}if(d.id==="_puntos"){ptsCfg=d.data();continue}if(d.id==="_chat"){chatG=(d.data().msgs||[]);continue}rank.set(d.id,d.data())}if(!snap.docs.some(d=>d.id==="_puntos"))ptsCfg=null;render();{const sig=JSON.stringify(msgDia)+"|"+metaDia;if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(chatG.length!==hadG){chatNotify();render()}if(S.tab==="rank")render(true)},()=>{});
+  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;metaDia=0;const hadG=chatG.length;chatG=[];for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}if(d.id==="_meta"){metaDia=Number(d.data().n)||0;continue}if(d.id==="_puntos"){ptsCfg=d.data();continue}if(d.id==="_clientes"){clisF=Array.isArray(d.data().list)?d.data().list:[];if(document.getElementById("cf-list"))drawClientesF();continue}if(d.id==="_chat"){chatG=(d.data().msgs||[]);continue}rank.set(d.id,d.data())}if(!snap.docs.some(d=>d.id==="_puntos"))ptsCfg=null;render();{const sig=JSON.stringify(msgDia)+"|"+metaDia;if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(chatG.length!==hadG){chatNotify();render()}if(S.tab==="rank")render(true)},()=>{});
   if(S.owner){let first=true;db.collection("turnos").limit(200).onSnapshot(snap=>{for(const d of snap.docs){const prev=S.people.get(d.id),nd=d.data();
     if(!first&&d.id!==S.me&&nd.cierre&&nd.cierre.dia===today()&&!(prev&&prev.cierre&&prev.cierre.em===nd.cierre.em))toast("🏁 "+(nd.nome||"Un delivery")+" cerró su día");
     if(!first&&d.id!==S.me&&nd.inicio&&nd.inicio.dia===today()&&!(prev&&prev.inicio&&prev.inicio.em===nd.inicio.em))toast("▶️ "+(nd.nome||"Un delivery")+" empezó a trabajar");
@@ -1299,7 +1307,7 @@ function ntBack(){const e=NE;if(e){clearTimeout(ntTimer);if(e.titulo.trim()||e.t
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
-  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b></span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
+  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b></span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
   const ids=activos();
   const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
   return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
@@ -1444,6 +1452,7 @@ function viewDiaShell(){
   <section class="sec camino-sec" id="camino-list" hidden></section>
   <div id="pend-box"></div>
   <div id="cta-box"></div>
+  ${showEmp()&&S.mode==="db"?`<button type="button" class="cf-open" data-clientesf><span>🏪 <b>Nuestros clientes fijos</b><small>Nombre, ubicación y teléfono · lo ven todos los deliverys</small></span><span class="caja-go">›</span></button>`:""}
   ${showEmp()?`<section class="sec" id="cierre-box" hidden></section>`:""}
   <div id="caja-box"></div>
   <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
@@ -1601,10 +1610,10 @@ function setF(id,v){const el=document.getElementById(id);if(el){el.value=v;el.di
 async function doPaste(target){let txt="";
   try{txt=await navigator.clipboard.readText()}catch(e){}
   if(!txt){const el=document.getElementById(target);if(el)el.focus();toast("Mantené apretado el campo y tocá “Pegar”");return}
-  const isTel=target==="cli-tel"||target==="ret-t";const telT=isTel?target:target==="ret-u"?"ret-t":"cli-tel";
+  const isTel=["cli-tel","ret-t","cf-t"].includes(target);const telT=isTel?target:({"ret-u":"ret-t","cf-u":"cf-t"}[target]||"cli-tel");
   const u=ubicIn(txt),tel=telIn(txt);const got=[];
   if(isTel){if(tel){setF(target,tel);got.push("teléfono")}else{toast("No encontré un número en lo que copiaste");return}
-    if(u){setF(target==="ret-t"?"ret-u":"ubic",u);got.push("ubicación")}}
+    if(u){setF({"ret-t":"ret-u","cf-t":"cf-u"}[target]||"ubic",u);got.push("ubicación")}}
   else{if(u){setF(target,u);got.push("ubicación")}else if(!tel){setF(target,txt.trim().slice(0,300));got.push("dirección")}
     const te=document.getElementById(telT);if(tel&&te&&!te.value.trim()){setF(telT,tel);got.push("teléfono")}}
   toast(got.length?"✓ Pegado: "+got.join(" y "):"No reconocí nada en lo que copiaste")}
@@ -1933,6 +1942,35 @@ function centralSeen(cl){if(S.mode!=="db"||isRealOwner)return;let seen={};try{se
     if(!seen[d._id]){seen[d._id]=Date.now();ch=true;toast("📦 Nuevo pedido de la central: "+(d.cliente||"sin nombre"));try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}
     if(!d.visto&&!document.hidden){d.visto=Date.now();patchItem(k,{visto:d.visto}).catch(()=>{})}}
   if(ch){const keep={};const lim=Date.now()-7*864e5;for(const[k,v]of Object.entries(seen))if(v>lim)keep[k]=v;try{localStorage.setItem(LSCS,JSON.stringify(keep))}catch(e){}}}
+/* ---------- nuestros clientes fijos: ranking/_clientes {list:[{id,n,ubic,tel,nota}]} · lo edita el dueño, lo ven todos ---------- */
+var clisF=[],CFQ="";
+const cliFSorted=()=>{const q=norm(CFQ);return clisF.filter(c=>!q||norm([c.n,c.nota,c.dir].join(" ")).includes(q)).sort((a,b)=>(a.n||"").localeCompare(b.n||""))};
+function openClientesF(){edit=null;const adm=S.mode==="db"&&S.owner;
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet nt-sheet" role="dialog" aria-label="Clientes fijos">${sheetHead("🏪 Nuestros clientes fijos")}
+    <div class="nt-top"><input id="cf-q" type="search" placeholder="Buscar cliente…" value="${esc(CFQ)}" autocomplete="off">${adm?`<button type="button" class="primary nt-new" data-cfnew>+ Agregar</button>`:""}</div>
+    <div id="cf-list"></div>
+    <p class="hint nt-priv">${adm?"Los deliverys ven esta lista para saber dónde queda cada cliente.":"Tocá 📍 para ver dónde queda y 📞 para llamar."}</p></div></div>`;
+  drawClientesF();const q=document.getElementById("cf-q");if(q)q.addEventListener("input",()=>{CFQ=q.value;drawClientesF()})}
+function drawClientesF(){const el=document.getElementById("cf-list");if(!el)return;const l=cliFSorted();const adm=S.mode==="db"&&S.owner;
+  el.innerHTML=l.length?`<div class="list">${l.map(c=>`<div class="cf-row"><div class="who"><b>${esc(c.n)}</b>${c.dir?`<span class="cf-dir">📍 ${esc(c.dir)}</span>`:""}${c.nota?`<small>${esc(c.nota)}</small>`:""}${c.tel?`<small class="num">📞 ${esc(c.tel)}</small>`:""}</div>
+    <div class="cf-act">${c.ubic||c.dir||c.n?`<a class="map-btn" href="${esc(mapUrl(c.n,c.ubic||c.dir))}" target="_blank" rel="noopener">📍 Mapa</a>`:""}${c.tel?`<button type="button" class="map-btn" data-cftel="${esc(c.id)}">📞</button>`:""}${adm?`<button type="button" class="map-btn" data-cfedit="${esc(c.id)}">✏️</button>`:""}</div></div>`).join("")}</div>`
+    :`<div class="empty nt-empty">${CFQ?"No hay clientes con “"+esc(CFQ)+"”.":adm?"🏪 Todavía no cargaste clientes fijos.<br><small>Tocá <b>+ Agregar</b> y poné nombre, ubicación y teléfono.</small>":"Todavía no hay clientes fijos cargados."}</div>`}
+function openCfEdit(id){edit=null;const c=id?clisF.find(x=>x.id===id)||{}:{};
+  layer.innerHTML=`<div class="scrim"><div class="sheet" role="dialog" aria-label="Cliente fijo">
+    <div class="sheet-h"><button type="button" class="linkbtn nt-back" data-cfback>‹ Clientes</button><button type="button" class="x" data-cfback aria-label="Cerrar">✕</button></div>
+    <h3 style="margin:0">${id?"Editar cliente fijo":"Nuevo cliente fijo"}</h3>
+    <div class="field"><label for="cf-n">Nombre</label><input id="cf-n" autocomplete="off" placeholder="Ej.: Divina Mesa" value="${esc(c.n||"")}"></div>
+    <div class="field"><label for="cf-u">Ubicación (link del mapa)</label><div class="ub-row ub3"><input id="cf-u" autocomplete="off" placeholder="Pegá la ubicación del WhatsApp" value="${esc(c.ubic||"")}"><button type="button" class="ub-btn paste-btn" data-paste="cf-u">📋 Pegar</button><a class="ub-btn" id="cflink" href="#" target="_blank" rel="noopener" aria-label="Ver en el mapa">📍</a></div></div>
+    <div class="field"><label for="cf-d">Dirección o referencia</label><input id="cf-d" autocomplete="off" placeholder="Ej.: Av. Santa Rita c/ Mallorquín, frente a la plaza" value="${esc(c.dir||"")}"></div>
+    <div class="field"><label for="cf-t">Teléfono</label><div class="ub-row"><input id="cf-t" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej.: 0981 123 456" value="${esc(c.tel||"")}"><button type="button" class="ub-btn paste-btn" data-paste="cf-t">📋 Pegar</button></div></div>
+    <div class="field"><label for="cf-x">Nota para los deliverys (opcional)</label><input id="cf-x" autocomplete="off" placeholder="Ej.: entregar por la cocina, preguntar por Ana" value="${esc(c.nota||"")}"></div>
+    <button type="button" class="primary" data-cfsave="${esc(id||"")}">Guardar cliente</button>
+    ${id?`<button type="button" class="danger" data-cfdel="${esc(id)}">Eliminar cliente</button>`:""}</div></div>`;
+  const upd=()=>{const a=document.getElementById("cflink");const n=document.getElementById("cf-n").value,u=document.getElementById("cf-u").value,d=document.getElementById("cf-d").value;if(a)a.href=n||u||d?mapUrl(n,u||d):"#"};
+  ["cf-n","cf-u","cf-d"].forEach(i=>{const e=document.getElementById(i);if(e)e.addEventListener("input",upd)});upd();
+  if(!id)setTimeout(()=>{const n=document.getElementById("cf-n");if(n)n.focus()},80)}
+async function saveClientesF(){await sendW(db.doc("ranking/_clientes").set({list:clisF,upd:Date.now()}))}
+function cfChips(){if(!clisF.length)return"";return `<div class="cf-chips"><small>Elegir de clientes fijos:</small><div class="chips">${clisF.slice().sort((a,b)=>(a.n||"").localeCompare(b.n||"")).map(c=>`<button type="button" class="chip" data-cfpick="${esc(c.id)}">${esc(c.n)}</button>`).join("")}</div></div>`}
 function telPy(t){let n=String(t||"").replace(/\D/g,"");if(!n)return"";if(n.startsWith("595"))return n;if(n.startsWith("0"))n=n.slice(1);return "595"+n}
 function openTel(num,nombre){edit=null;const w=telPy(num);
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Llamar">${sheetHead("📞 "+esc(nombre))}
@@ -2346,6 +2384,7 @@ function openEntry(cm,pasar){edit=null;sinCliOk=false;S.pend=false;S.lote=false;
     <div class="money"><span>₲</span><input id="val" inputmode="numeric" autocomplete="off" placeholder="Escribí el monto" value="${fmtInput(S.val)}"></div></div>`;
   const obs=`<div class="field"><label for="obs">${cm?"Dirección o detalle (opcional)":"Observación (opcional)"}</label><input id="obs" autocomplete="off" placeholder="Ej.: Barrio San Blas" value="${esc(S.obs)}"></div>`;
   const retF=`<details class="ret-box" ${retN||retU||retT?"open":""}><summary>🏪 <b>Dónde retirar</b> <small>(opcional · comercio o persona)</small><span class="ret-arr">▾</span></summary>
+    ${cfChips()}
     <div class="field"><label for="ret-n">Nombre</label><input id="ret-n" autocomplete="off" placeholder="Ej.: Farmacia Central" value="${esc(retN)}"></div>
     <div class="field"><label for="ret-u">Ubicación para retirar</label><div class="ub-row ub3"><input id="ret-u" autocomplete="off" placeholder="Ubicación, link o dirección" value="${esc(retU)}"><button type="button" class="ub-btn paste-btn" data-paste="ret-u">📋 Pegar</button><a class="ub-btn" id="retlink" href="${esc(retU||retN?mapUrl(retN,retU):"#")}" target="_blank" rel="noopener" aria-label="Ver en el mapa">📍</a></div></div>
     <div class="field"><label for="ret-t">Teléfono para retirar</label><div class="ub-row"><input id="ret-t" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej.: 0981 123 456" value="${esc(retT)}"><button type="button" class="ub-btn paste-btn" data-paste="ret-t">📋 Pegar</button></div></div></details>
@@ -2465,6 +2504,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.tel&&!t.closest("#layer"))openTel(t.dataset.tel,t.dataset.teln||"");
   else if(t.dataset.paste){doPaste(t.dataset.paste)}
   else if(t.hasAttribute("data-micuenta"))openCuenta(S.me);
+  else if(t.hasAttribute("data-clientesf")&&!t.closest("#layer"))openClientesF();
   else if(t.dataset.cajareset&&!t.closest("#layer")){const u=t.dataset.cajareset;
     if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Seguro? Tocá de nuevo para borrar";setTimeout(()=>{if(t.isConnected){t.classList.remove("armed");const cb=document.getElementById("caja-box");if(cb)cb.dataset.h="";render(true)}},3000);return}
     const dia=today();cajas.delete(u+"|"+dia);render(true);try{await sendW(db.collection("turnos/"+u+"/caja").doc(dia).delete());toast("Caja de hoy borrada · ya podés abrirla de nuevo")}catch(err){toast("No se pudo borrar")}}
@@ -2554,6 +2594,16 @@ layer.addEventListener("click",async e=>{
     if(md==="cerrar"&&!raw.trim()){toast("Escribí cuánto contaste");return}
     closeSheet();try{const w=await saveCaja(md,v);if(md==="abrir")toast(w==="wait"?"Caja abierta · se envía al volver la señal":"💰 Caja abierta con "+gs(v));
       else{const K=cajaCalc(S.me,today());const d=v-K.esp;toast(d===0?"✅ Caja cerrada · cuadra justo":d<0?"⚠️ Caja cerrada · falta "+gs(-d):"Caja cerrada · sobra "+gs(d))}}catch(err){toast("No se guardó.")}return}
+  if(t.hasAttribute("data-cfnew")){openCfEdit(null);return}
+  if(t.dataset.cfedit){openCfEdit(t.dataset.cfedit);return}
+  if(t.hasAttribute("data-cfback")){openClientesF();return}
+  if(t.dataset.cftel){const c=clisF.find(x=>x.id===t.dataset.cftel);if(c)openTel(c.tel,c.n);return}
+  if(t.dataset.cfpick){const c=clisF.find(x=>x.id===t.dataset.cfpick);if(c){setF("ret-n",c.n||"");setF("ret-u",c.ubic||c.dir||"");setF("ret-t",c.tel||"");toast("🏪 "+c.n)}return}
+  if(t.dataset.cfsave!==undefined){const g=i=>(document.getElementById(i)||{}).value||"";const n=g("cf-n").trim();if(!n){toast("Poné el nombre del cliente");return}
+    const c={id:t.dataset.cfsave||uid(),n,ubic:g("cf-u").trim(),dir:g("cf-d").trim(),tel:g("cf-t").trim(),nota:g("cf-x").trim()};
+    clisF=[...clisF.filter(x=>x.id!==c.id),c];openClientesF();try{const w=await saveClientesF();toast(w==="wait"?"Guardado · se envía al volver la señal":"🏪 Cliente guardado")}catch(err){toast("No se guardó.")}return}
+  if(t.dataset.cfdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo para eliminar";return}
+    clisF=clisF.filter(x=>x.id!==t.dataset.cfdel);openClientesF();try{await saveClientesF();toast("Cliente eliminado")}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-ntnew")){openNota(null);return}
   if(t.dataset.ntopen){openNota(t.dataset.ntopen);return}
   if(t.hasAttribute("data-ntback")){ntBack();return}
