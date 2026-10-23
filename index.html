@@ -867,7 +867,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="114";
+const APPV="115";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1587,7 +1587,7 @@ function viewDiaShell(){
       <input type="date" id="dpick" value="${S.dia}" max="${today()}" aria-label="Elegir día"></label>
     <button data-day="1" aria-label="Día siguiente" ${isToday?"disabled":""}>›</button></div>
   ${showEmp()&&S.mode==="db"&&isToday?`<button type="button" class="anotar pasar" data-pasar><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7h11v10H3z"/><path d="M14 10h4l3 3v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg><span><b>Pasar pedido a un delivery</b><small>Elegís quién lo lleva y le aparece en su app</small></span></button>`:""}
-  ${lockReason(S.dia)||(showEmp()&&S.mode==="db")?"":`<button type="button" class="anotar" data-anotar><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg><span><b>Anotar pedido</b><small>Producto + delivery = cuánto cobrar</small></span></button>`}
+  ${lockReason(S.dia)||S.dia!==today()||(showEmp()&&S.mode==="db")?"":`<button type="button" class="anotar" data-anotar><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg><span><b>Anotar pedido</b><small>Producto + delivery = cuánto cobrar</small></span></button>`}
   ${S.dia!==today()?`<button type="button" class="linkbtn today-link" data-hoy>Volver a hoy</button>`:""}
   <section class="sec camino-sec" id="camino-list" hidden></section>
   <div id="pend-box"></div>
@@ -1614,7 +1614,8 @@ function viewDiaShell(){
 const hideMoney=()=>false;/* desde v90 los deliverys ven su comisión y liquidación (lo mismo que ve el dueño de ellos) */
 /* Deliverys solo cambian el día de hoy y mientras no esté liquidado; el dueño cambia todo */
 function lockReason(dia){if(S.mode!=="db"||S.owner)return"";
-  if(dia!==today())return"Solo podés registrar o cambiar entregas y gastos de hoy. Si hay que corregir otro día, pedíselo al dueño.";
+  if(dia>today())return"No se puede registrar en días que todavía no llegaron.";
+  if(dia<weekStart(today()))return"Solo podés cargar entregas y gastos de esta semana (desde el lunes "+ddmm(weekStart(today()))+"). Para días anteriores, pedíselo al dueño.";
   if(pagoOf(S.me,dia))return"Este día ya fue liquidado. Si hay que corregir algo, pedíselo al dueño.";return""}
 function lockedMsg(r){edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Día cerrado">
   ${sheetHead("Día cerrado")}<p class="hint" style="margin:0">${r}</p><button class="primary" data-cancel>Entendido</button></div></div>`}
