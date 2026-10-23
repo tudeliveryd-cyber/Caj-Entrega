@@ -838,7 +838,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="104";
+const APPV="105";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1707,6 +1707,11 @@ async function doPaste(target){let txt="";
     if(u){setF({"ret-t":"ret-u","cf-t":"cf-u"}[target]||"ubic",u);got.push("ubicación")}}
   else{if(u){setF(target,u);got.push("ubicación")}else if(!tel){setF(target,txt.trim().slice(0,300));got.push("dirección")}
     const te=document.getElementById(telT);if(tel&&te&&!te.value.trim()){setF(telT,tel);got.push("teléfono")}}
+  if(target==="cf-u"){const extra=String(txt).split(/\n+/).map(l=>l.replace(/https?:\/\/\S+/g,"").trim()).filter(l=>l&&!telIn(l)&&!/^(compart|ver en|google maps)/i.test(l));
+    const nEl=document.getElementById("cf-n"),dEl=document.getElementById("cf-d");
+    if(extra.length&&nEl&&!nEl.value.trim()&&extra.length>1){setF("cf-n",extra[0]);got.push("nombre")}
+    const addr=extra.filter(l=>!nEl||norm(l)!==norm(nEl.value)).join(", ");if(addr&&dEl&&!dEl.value.trim()){setF("cf-d",addr.slice(0,160));got.push("dirección")}
+    if(u)geoDir(u)}
   toast(got.length?"✓ Pegado: "+got.join(" y "):"No reconocí nada en lo que copiaste")}
 function mapUrl(q,ub){const l=linkIn(ub);if(l)return l;{const c=coordsIn(ub);if(c)return "https://maps.google.com/?q="+c}const txt=[ub&&String(ub).trim(),q&&String(q).trim()].filter(Boolean).join(" ");
   return "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent((txt||"")+", "+CIUDAD)}
@@ -2072,8 +2077,12 @@ function geoPrev(u){const el=document.getElementById("cf-prev");if(!el)return;co
   const d=.004;const k=p.lat.toFixed(5)+","+p.lon.toFixed(5);if(el.dataset.k===k){el.hidden=false;return}el.dataset.k=k;el.hidden=false;
   el.innerHTML=`<iframe title="Mapa" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=${p.lon-d},${p.lat-d},${p.lon+d},${p.lat+d}&layer=mapnik&marker=${p.lat},${p.lon}"></iframe><small>Fijate que el punto esté en el lugar correcto.</small>`}
 function geoSet(lat,lon,dir){const u="https://maps.google.com/?q="+(+lat).toFixed(6)+","+(+lon).toFixed(6);setF("cf-u",u);
-  const d=document.getElementById("cf-d");if(dir&&d&&!d.value.trim())setF("cf-d",dir);const r=document.getElementById("cf-res");if(r){r.hidden=true;r.innerHTML=""}}
+  const d=document.getElementById("cf-d");if(dir&&d&&!d.value.trim())setF("cf-d",dir);else if(d&&!d.value.trim())geoDir(u);const r=document.getElementById("cf-res");if(r){r.hidden=true;r.innerHTML=""}}
 var geoHits=[];
+async function geoDir(u){const p=llFrom(u);const dEl=document.getElementById("cf-d");if(!p||!dEl||dEl.value.trim())return;
+  try{const r=await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=es&lat="+p.lat+"&lon="+p.lon,{headers:{"Accept":"application/json"}});if(!r.ok)return;const h=await r.json();const a=h.address||{};
+    const t=[a.road&&a.house_number?a.road+" "+a.house_number:a.road,a.suburb||a.neighbourhood||a.quarter].filter(Boolean).join(", ");
+    if(t&&!dEl.value.trim()){setF("cf-d",t);toast("Dirección completada: "+t)}}catch(e){}}
 async function geoBuscar(){const n=(document.getElementById("cf-n")||{}).value||"";const d=(document.getElementById("cf-d")||{}).value||"";const q=(n.trim()||d.trim());
   const r=document.getElementById("cf-res");if(!q){toast("Escribí primero el nombre de la empresa");const e=document.getElementById("cf-n");if(e)e.focus();return}
   r.hidden=false;r.innerHTML=`<div class="geo-msg">Buscando “${esc(q)}”…</div>`;
