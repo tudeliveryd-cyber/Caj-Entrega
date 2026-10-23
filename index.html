@@ -867,7 +867,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="115";
+const APPV="116";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -921,11 +921,11 @@ function subscribeUser(u){
 /* ---------- puntos y premios ----------
    1 punto por entrega · 5 por cerrar el día · 20 cada 7 días seguidos cerrando (los días sin entregas no cortan la racha).
    Ganados: ranking/<uid> {pd:{dia:entregas}, cier:[dias]} · Canjes: liq/<uid>/premios (solo dueño/socios) · Config: ranking/_puntos */
-var PTS_INI="2026-10-22";
+var PTS_INI="2026-10-19";
 var PREM_DEF=[{p:600,n:"Recarga de celular ₲ 50.000"},{p:1500,n:"Tanque lleno de nafta"},{p:2000,n:"₲ 150.000"}];
 var ptsCfg=null,canjes=new Map(),pEdit=null;
 function premiosL(){const l=ptsCfg&&Array.isArray(ptsCfg.premios)&&ptsCfg.premios.length?ptsCfg.premios:PREM_DEF;return l.filter(x=>x&&x.p>0&&x.n).slice().sort((a,b)=>a.p-b.p)}
-function ptsIni(){return (ptsCfg&&ptsCfg.inicio)||PTS_INI}
+function ptsIni(){const c=ptsCfg&&ptsCfg.inicio;return c&&c<PTS_INI?c:PTS_INI}
 function sinPuntos(u){return roles.socios.includes(u)||(u===S.me&&isRealOwner)}
 function livePts(u){const ini=ptsIni(),pd={},cier=[];if(!subs.has(u))return{pd,cier,mt:[],ok:false};const wf=addDays(today(),-WINDOW);
   for(const[,d]of S.items)if(d._u===u&&d.dia>=ini&&d.dia>=wf&&!isCamino(d)&&!d.diario)pd[d.dia]=(pd[d.dia]||0)+(d.cant||1);
@@ -1613,9 +1613,13 @@ function viewDiaShell(){
 /* Deliverys (no dueño) no ven comisión ni liquidación: solo entregas, montos cobrados y gastos */
 const hideMoney=()=>false;/* desde v90 los deliverys ven su comisión y liquidación (lo mismo que ve el dueño de ellos) */
 /* Deliverys solo cambian el día de hoy y mientras no esté liquidado; el dueño cambia todo */
+var CARGA_DESDE="2026-10-19",CARGA_HASTA="2026-10-23";
 function lockReason(dia){if(S.mode!=="db"||S.owner)return"";
   if(dia>today())return"No se puede registrar en días que todavía no llegaron.";
-  if(dia<weekStart(today()))return"Solo podés cargar entregas y gastos de esta semana (desde el lunes "+ddmm(weekStart(today()))+"). Para días anteriores, pedíselo al dueño.";
+  /* liberado solo al empezar a usar la app: hasta el 23/10 se puede cargar desde el lunes 19/10; después, solo el día de hoy */
+  const libre=today()<=CARGA_HASTA&&dia>=CARGA_DESDE;
+  if(dia!==today()&&!libre)return"Solo podés registrar o cambiar entregas y gastos de hoy. Si hay que corregir otro día, pedíselo al dueño.";
+  {const c=(S.people.get(S.me)||{}).cierre;if(c&&c.dia===dia)return"Ya cerraste este día. Si te faltó registrar algo, pedíselo al dueño.";}
   if(pagoOf(S.me,dia))return"Este día ya fue liquidado. Si hay que corregir algo, pedíselo al dueño.";return""}
 function lockedMsg(r){edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Día cerrado">
   ${sheetHead("Día cerrado")}<p class="hint" style="margin:0">${r}</p><button class="primary" data-cancel>Entendido</button></div></div>`}
