@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#331A5B">
+<script>try{var __t=JSON.parse(localStorage.getItem("caixa_tema")||"{}");if(__t.mode&&__t.mode!=="auto")document.documentElement.dataset.theme=__t.mode;if(__t.accent&&__t.accent!=="morado")document.documentElement.dataset.accent=__t.accent}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -34,6 +35,21 @@
   --accent:#B9A2E6; --accent-ink:#1A0F2E; --road:#2A1550;
   --cash:#5FCB8F; --transfer:#86AEEB; --due:#F0935A;
   --cash-bg:#17301F; --transfer-bg:#1A2638; --due-bg:#36221A; color-scheme:dark}
+:root[data-accent="azul"]{--accent:#1F4E8C;--road:#1F4E8C}
+:root[data-accent="verde"]{--accent:#1E6B47;--road:#1E6B47}
+:root[data-accent="naranja"]{--accent:#B44E12;--road:#9A4210}
+:root[data-accent="rosa"]{--accent:#9C2560;--road:#8A1F55}
+:root[data-accent="grafito"]{--accent:#2B2B33;--road:#2B2B33}
+@media (prefers-color-scheme:dark){:root[data-accent="azul"]:not([data-theme="light"]){--accent:#8FB4F0;--road:#16325A}}
+:root[data-theme="dark"][data-accent="azul"]{--accent:#8FB4F0;--road:#16325A}
+@media (prefers-color-scheme:dark){:root[data-accent="verde"]:not([data-theme="light"]){--accent:#6FCF97;--road:#15402B}}
+:root[data-theme="dark"][data-accent="verde"]{--accent:#6FCF97;--road:#15402B}
+@media (prefers-color-scheme:dark){:root[data-accent="naranja"]:not([data-theme="light"]){--accent:#F2A365;--road:#4A2410}}
+:root[data-theme="dark"][data-accent="naranja"]{--accent:#F2A365;--road:#4A2410}
+@media (prefers-color-scheme:dark){:root[data-accent="rosa"]:not([data-theme="light"]){--accent:#EE8FB9;--road:#4A1530}}
+:root[data-theme="dark"][data-accent="rosa"]{--accent:#EE8FB9;--road:#4A1530}
+@media (prefers-color-scheme:dark){:root[data-accent="grafito"]:not([data-theme="light"]){--accent:#C9C9D1;--road:#1E1E24}}
+:root[data-theme="dark"][data-accent="grafito"]{--accent:#C9C9D1;--road:#1E1E24}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--road)}
@@ -592,6 +608,12 @@ details.sec.fold{display:grid;gap:10px}
 .cr-brand b{font-weight:800;letter-spacing:.2px}
 .cr-brand i{font-style:normal;font-weight:700;color:var(--accent);text-transform:uppercase;font-size:12px;letter-spacing:1.5px;border:1px solid var(--accent);border-radius:999px;padding:1px 8px;margin-left:2px}
 .credit small{font-size:12px;color:var(--muted)}
+.cr-tema{margin-top:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 16px;font:600 13.5px var(--body);cursor:pointer}
+.tema-seg{grid-template-columns:repeat(3,1fr)!important}
+.tema-ac{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tema-sw{display:grid;justify-items:center;gap:6px;padding:10px 6px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:600 13.5px var(--body);cursor:pointer}
+.tema-sw span{width:34px;height:34px;border-radius:50%;border:2px solid var(--line)}
+.tema-sw.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
 .cr-lema{font:italic 600 15px var(--body);color:#d9a93a;letter-spacing:.2px}
 .credit .cr-v{opacity:.75;font-size:11.5px}
 .anotar.pasar{border-style:solid;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
@@ -868,7 +890,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="119";
+const APPV="120";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1318,12 +1340,28 @@ function deEmoji(root){if(!root)return;if(root.nodeType===3){deEmojiNode(root);r
 try{new MutationObserver(ms=>{for(const m of ms){if(m.type==="characterData")deEmoji(m.target);else m.addedNodes.forEach(deEmoji)}}).observe(document.body,{childList:true,subtree:true,characterData:true});setTimeout(()=>deEmoji(document.body),0)}catch(e){}
 /* evita zoom con dos dedos o doble toque (iOS ignora user-scalable) */
 try{document.addEventListener("gesturestart",e=>e.preventDefault(),{passive:false});document.addEventListener("gesturechange",e=>e.preventDefault(),{passive:false})}catch(e){}
+/* colores y tema (preferencia de cada celular) */
+const TEMA_AC=[["morado","Morado","#331A5B","#B9A2E6"],["azul","Azul","#1F4E8C","#8FB4F0"],["verde","Verde","#1E6B47","#6FCF97"],["naranja","Naranja","#B44E12","#F2A365"],["rosa","Rosa","#9C2560","#EE8FB9"],["grafito","Grafito","#2B2B33","#C9C9D1"]];
+function temaGet(){try{return JSON.parse(localStorage.getItem("caixa_tema")||"{}")}catch(e){return{}}}
+function temaApply(t){const r=document.documentElement;if(t.mode&&t.mode!=="auto")r.dataset.theme=t.mode;else delete r.dataset.theme;if(t.accent&&t.accent!=="morado")r.dataset.accent=t.accent;else delete r.dataset.accent;
+  setTimeout(()=>{const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=getComputedStyle(r).getPropertyValue("--road").trim()||"#331A5B"},30)}
+function openTema(){edit=null;const t=temaGet();const mode=t.mode||"auto",ac=t.accent||"morado";
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Colores y tema">${sheetHead("Colores y tema")}
+    <div class="lbl">Tema</div>
+    <div class="seg tema-seg" role="group">${[["auto","Automático"],["light","Claro"],["dark","Oscuro"]].map(([k,l])=>`<button type="button" data-temamode="${k}" aria-pressed="${mode===k}">${l}</button>`).join("")}</div>
+    <small class="hint" style="margin:0">Automático sigue el modo claro u oscuro del celular.</small>
+    <div class="lbl">Color principal</div>
+    <div class="tema-ac">${TEMA_AC.map(([k,n,l,d])=>`<button type="button" class="tema-sw ${ac===k?"on":""}" data-temaac="${k}"><span style="background:linear-gradient(135deg,${l} 50%,${d} 50%)"></span>${n}</button>`).join("")}</div>
+    <small class="hint" style="margin:0">Se guarda solo en este celular. Cada uno elige el suyo.</small>
+    <button type="button" class="primary" data-cancel>Listo</button></div></div>`}
+temaApply(temaGet());
 /* rodapé con la firma del sistema */
 function addCredit(){if(!main||document.getElementById("credit"))return;if(main.querySelector(".block"))return;
   main.insertAdjacentHTML("beforeend",`<footer class="credit" id="credit"><span class="cr-line"></span>
     <div class="cr-brand"><img src="icon-192.png" alt="" width="26" height="26"><span><b>Tú Delivery</b> <i>Sistemas</i></span></div>
     <em class="cr-lema">Cada entrega cuenta.</em>
-    <small class="cr-v">Santa Rita, Paraguay • © ${new Date().getFullYear()}</small></footer>`)}
+    <small class="cr-v">Santa Rita, Paraguay • © ${new Date().getFullYear()}</small>
+    <button type="button" class="cr-tema" data-tema>Colores y tema</button></footer>`)}
 function render(full){if(full)builtKey="";if(raf)return;raf=setTimeout(()=>{raf=0;try{paint();addCredit()}catch(e){console.error(e)}},0)}
 /* ---------- notas privadas: turnos/<uid>/privado (tipo "nota", sin "dia") · solo las ve quien las escribe ---------- */
 var notas=new Map(),NQ="",NE=null,ntTimer=0,ntSubbed=false;
@@ -2740,6 +2778,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.tel&&!t.closest("#layer"))openTel(t.dataset.tel,t.dataset.teln||"");
   else if(t.dataset.paste){doPaste(t.dataset.paste)}
   else if(t.hasAttribute("data-micuenta"))openCuenta(S.me);
+  else if(t.hasAttribute("data-tema")&&!t.closest("#layer"))openTema();
   else if(t.hasAttribute("data-clientesf")&&!t.closest("#layer"))openClientesF();
   else if(t.dataset.cajareset&&!t.closest("#layer")){const u=t.dataset.cajareset;
     if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Seguro? Tocá de nuevo para borrar";setTimeout(()=>{if(t.isConnected){t.classList.remove("armed");const cb=document.getElementById("caja-box");if(cb)cb.dataset.h="";render(true)}},3000);return}
@@ -2847,6 +2886,8 @@ layer.addEventListener("click",async e=>{
     clisF=[...clisF.filter(x=>x.id!==c.id),c];openClientesF(true);try{const w=await saveClientesF();toast(w==="wait"?"Guardado · se envía al volver la señal":"🏪 Cliente guardado")}catch(err){toast("No se guardó.")}return}
   if(t.dataset.cfdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo para eliminar";return}
     clisF=clisF.filter(x=>x.id!==t.dataset.cfdel);openClientesF();try{await saveClientesF();toast("Cliente eliminado")}catch(err){toast("No se guardó.")}return}
+  if(t.dataset.temamode){const x=temaGet();x.mode=t.dataset.temamode;try{localStorage.setItem("caixa_tema",JSON.stringify(x))}catch(e){}temaApply(x);document.querySelectorAll("[data-temamode]").forEach(b=>b.setAttribute("aria-pressed",b===t));return}
+  if(t.dataset.temaac){const x=temaGet();x.accent=t.dataset.temaac;try{localStorage.setItem("caixa_tema",JSON.stringify(x))}catch(e){}temaApply(x);document.querySelectorAll("[data-temaac]").forEach(b=>b.classList.toggle("on",b===t));return}
   if(t.hasAttribute("data-ntnew")){openNota(null);return}
   if(t.dataset.ntopen){openNota(t.dataset.ntopen);return}
   if(t.hasAttribute("data-ntback")){ntBack();return}
