@@ -631,6 +631,17 @@ details.sec.fold{display:grid;gap:10px}
 .nt-dot.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface) inset}
 .nt-act{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center}
 .nt-act .wa-btn{padding:12px 14px;text-align:center}
+.ret-box{border:1px solid var(--line);border-radius:14px;padding:0 12px;background:var(--surface)}
+.ret-box[open]{padding-bottom:12px;display:grid;gap:10px}
+.ret-box summary{list-style:none;display:flex;align-items:center;gap:6px;padding:13px 0;cursor:pointer;font-size:15px;flex-wrap:wrap}
+.ret-box summary::-webkit-details-marker{display:none}
+.ret-box summary small{color:var(--muted);font-size:12.5px}
+.ret-arr{margin-left:auto;color:var(--muted);transition:transform .2s}.ret-box[open] .ret-arr{transform:rotate(180deg)}
+.ent-lbl{margin-top:4px}
+.ret-line{display:block;font-size:13px;color:var(--ink);margin:2px 0}
+.tel-num{font-size:26px;font-weight:800;text-align:center;letter-spacing:.5px}
+.tel-a{display:block;text-align:center;text-decoration:none;padding:15px!important;font-size:17px!important}
+.entry-sheet .primary:disabled{opacity:1;background:color-mix(in srgb,var(--accent) 40%,var(--surface));color:color-mix(in srgb,var(--ink) 60%,transparent)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -718,6 +729,7 @@ const norm=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[̀-�
 const WINDOW=31;
 const LS="caixa_entregas_v1",LSC="caixa_config_v2",LSP="caixa_pagos_v1";
 
+var retN="",retU="",retT="",cliTel="";
 let chatSel=null,chatDraft="",chatG=[],chatSeen=null,listaTxt="",LL=null,ubicTxt="",sinCliOk=false,builtKey="",raf=0,db=null,cfgRef=null,downloads=null,edit=null,saving=false,tt=null,anotRange=7,rankRange=7,infoMode="semana",mesOff=0,cliFocus=false;
 const subs=new Map(),rank=new Map(),rankTimers=new Map();
 const S={tab:"dia",dia:today(),val:0,prod:0,cant:1,metodo:"efectivo",cliente:"",obs:"",items:new Map(),old:new Map(),oldG:new Map(),oldE:new Map(),gastos:new Map(),priv:new Map(),egastos:new Map(),people:new Map(),pagos:new Map(),
@@ -762,7 +774,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="84";
+const APPV="85";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1184,7 +1196,7 @@ function pendientes(from,to){
   return out.sort((a,b)=>(b.debe+b.recibe)-(a.debe+a.recibe))}
 /* frequent customers from visible history */
 function clientes(){const m=new Map();for(const[,d]of visible()){const c=(d.cliente||"").trim();if(!c)continue;const k=norm(c);
-  if(!m.has(k))m.set(k,{nome:c,n:0,vals:new Map(),last:0,total:0});const r=m.get(k);r.n++;r.total+=d.valor;r.vals.set(d.valor,(r.vals.get(d.valor)||0)+1);if((d.criadoEm||0)>r.last){r.last=d.criadoEm||0;r.nome=c;if(d.ubic)r.ubic=d.ubic}else if(d.ubic&&!r.ubic)r.ubic=d.ubic}
+  if(!m.has(k))m.set(k,{nome:c,n:0,vals:new Map(),last:0,total:0});const r=m.get(k);r.n++;r.total+=d.valor;r.vals.set(d.valor,(r.vals.get(d.valor)||0)+1);if((d.criadoEm||0)>r.last){r.last=d.criadoEm||0;r.nome=c;if(d.ubic)r.ubic=d.ubic;if(d.tel)r.tel=d.tel}else{if(d.ubic&&!r.ubic)r.ubic=d.ubic;if(d.tel&&!r.tel)r.tel=d.tel}}
   for(const r of m.values())r.val=[...r.vals.entries()].sort((a,b)=>b[1]-a[1])[0][0];
   return[...m.values()].sort((a,b)=>b.n-a.n)}
 
@@ -1342,7 +1354,7 @@ function drawSug(){
   else if(!cliFocus){box.innerHTML="";box.hidden=true;return}
   list=list.slice(0,5);
   box.hidden=!list.length;
-  box.innerHTML=list.map(c=>`<button type="button" class="sug" data-cli="${esc(c.nome)}" data-cval="${c.val}" data-cubic="${esc(c.ubic||"")}"><b>${esc(c.nome)}</b><span class="num">${gs(c.val)} · ${plural(c.n,"vez")}</span></button>`).join("").replace(/vezs/g,"veces");
+  box.innerHTML=list.map(c=>`<button type="button" class="sug" data-cli="${esc(c.nome)}" data-cval="${c.val}" data-cubic="${esc(c.ubic||"")}" data-ctel="${esc(c.tel||"")}"><b>${esc(c.nome)}</b><span class="num">${gs(c.val)} · ${plural(c.n,"vez")}</span></button>`).join("").replace(/vezs/g,"veces");
 }
 const methodBtns=(attr,cur)=>Object.keys(M).map(k=>`<button type="button" class="method m-${M[k].c}" ${attr}="${k}" aria-pressed="${cur===k}">${ICON[k]}${M[k].n}<small>${M[k].sub}</small></button>`+(k==="pagado"&&(attr==="data-metodo"||attr==="data-cmet")?`<button type="button" class="method m-paid" data-solodel aria-pressed="${S.pagoTipo==="prod"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M8 17h7.5l2.5-7h-5"/><path d="M14.5 4h2.5l2 6"/><path d="M4 13l3-5h6"/></svg>Solo el delivery<small>producto ya pagado</small></button>`:"")).join("")+(attr==="data-metodo"||attr==="data-cmet"?`<p class="hint solodel-hint" id="solodel-hint" hidden>Producto ya pagado. Ahora tocá cómo ${attr==="data-cmet"?"va a pagar":"te pagó"} el delivery: <b>Efectivo</b> o <b>Transferencia</b>.</p>`:"");
 
@@ -1502,6 +1514,7 @@ function mapUrl(q,ub){const l=linkIn(ub);if(l)return l;const txt=[ub&&String(ub)
   return "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent((txt||"")+", "+CIUDAD)}
 function mapQ(){return (S.cliente||"").trim()||(S.obs||"").trim()}
 function updMapLink(){const a=document.getElementById("maplink");if(a)a.href=mapUrl(mapQ(),ubicTxt)}
+document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("#retlink");if(a&&!retN.trim()&&!retU.trim()){e.preventDefault();toast("Escribí primero el nombre o la ubicación de donde se retira");const c=document.getElementById("ret-n");if(c)c.focus()}},true);
 document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("#maplink");if(!a)return;updMapLink();
   if(!mapQ()&&!linkIn(ubicTxt)){e.preventDefault();toast("Escribí primero el nombre del comercio o cliente");const c=document.getElementById("cli");if(c)c.focus()}},true);
 /* ---------- chat: privado dueño↔delivery (turnos/<uid>/chat) y comunicados para todos (ranking/_chat, solo escribe el dueño) ---------- */
@@ -1820,13 +1833,20 @@ function centralSeen(cl){if(S.mode!=="db"||isRealOwner)return;let seen={};try{se
     if(!seen[d._id]){seen[d._id]=Date.now();ch=true;toast("📦 Nuevo pedido de la central: "+(d.cliente||"sin nombre"));try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}
     if(!d.visto&&!document.hidden){d.visto=Date.now();patchItem(k,{visto:d.visto}).catch(()=>{})}}
   if(ch){const keep={};const lim=Date.now()-7*864e5;for(const[k,v]of Object.entries(seen))if(v>lim)keep[k]=v;try{localStorage.setItem(LSCS,JSON.stringify(keep))}catch(e){}}}
+function telPy(t){let n=String(t||"").replace(/\D/g,"");if(!n)return"";if(n.startsWith("595"))return n;if(n.startsWith("0"))n=n.slice(1);return "595"+n}
+function openTel(num,nombre){edit=null;const w=telPy(num);
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Llamar">${sheetHead("📞 "+esc(nombre))}
+    <div class="tel-num num">${esc(num)}</div>
+    <a class="primary tel-a" href="tel:${esc(String(num).replace(/[^\d+]/g,""))}">📞 Llamar</a>
+    <a class="wa-btn tel-a" href="https://wa.me/${w}" target="_blank" rel="noopener">💬 WhatsApp</a>
+    <button type="button" class="ghost" data-cancel>Cerrar</button></div></div>`}
 function viewCamino(cl){
   const showWho=S.mode==="db"&&S.owner&&S.filter==="all";
   return `<div class="sec-h"><h2>En camino</h2><span>${plural(cl.length,"pedido")}</span></div><div class="list">
   ${cl.map(([k,d])=>`<div class="cam-row"><div class="cam-info">
-      <div class="who"><b>${d.central?'<span class="pill p-central">📦 Central</span> ':""}${esc(d.cliente)||"Sin cliente"}</b><small>${[showWho&&("🛵 "+esc(personName(d._u))+(d.central?(d.visto?" · 👀 vio "+hhmm(d.visto):" · ⏳ todavía no lo vio"):"")),d.lote&&d.cant>1?"📦 "+d.cant+" entregas":"",d.metPlan&&d.metPlan!=="pagado"?"Paga: "+M[d.metPlan].n:"",d.pagoTipo==="todo"?"✅ Pedido pago · no cobrar":d.pagoTipo==="prod"?"Producto ya pagado · solo delivery":d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
+      <div class="who"><b>${d.central?'<span class="pill p-central">📦 Central</span> ':""}${esc(d.cliente)||"Sin cliente"}</b>${d.ret?`<span class="ret-line">🏪 Retirar en <strong>${esc(d.ret.n||"ubicación")}</strong></span>`:""}<small>${[showWho&&("🛵 "+esc(personName(d._u))+(d.central?(d.visto?" · 👀 vio "+hhmm(d.visto):" · ⏳ todavía no lo vio"):"")),d.lote&&d.cant>1?"📦 "+d.cant+" entregas":"",d.metPlan&&d.metPlan!=="pagado"?"Paga: "+M[d.metPlan].n:"",d.pagoTipo==="todo"?"✅ Pedido pago · no cobrar":d.pagoTipo==="prod"?"Producto ya pagado · solo delivery":d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
       <div class="amt"><small>Cobrar</small><b class="num">${gs(cobrarDe(d))}</b></div></div>
-    <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>!x.nota&&x.ok!==null&&x.ok!==undefined).length}/${d.lista.filter(x=>!x.nota).length}</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${linkIn(d.ubic)?"Ubicación":"Mapa"}</a><button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
+    <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>!x.nota&&x.ok!==null&&x.ok!==undefined).length}/${d.lista.filter(x=>!x.nota).length}</button>`:""}${d.ret&&(d.ret.n||d.ret.ubic)?`<a class="map-btn" href="${esc(mapUrl(d.ret.n||"",d.ret.ubic))}" target="_blank" rel="noopener">🏪 Retirar</a>`:""}${d.ret&&d.ret.tel?`<button type="button" class="map-btn" data-tel="${esc(d.ret.tel)}" data-teln="${esc(d.ret.n||"Retiro")}">📞 Retiro</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${d.ret?"Entregar":linkIn(d.ubic)?"Ubicación":"Mapa"}</a>${d.tel?`<button type="button" class="map-btn" data-tel="${esc(d.tel)}" data-teln="${esc(d.cliente||"Cliente")}">📞 Cliente</button>`:""}<button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
 function fijosBlock(list){
   const m=new Map();for(const[,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0});const r=m.get(k);if(d.diario){r.diario+=d.valor;if(d.via==="empresa")r.emp=1}else r.n+=(d.cant||1)}
   if(!m.size)return"";const can=!lockReason(S.dia);
@@ -2213,24 +2233,30 @@ function asigPicker(){const ids=activos().filter(u=>u!==S.me);
   const info=u=>{let cls="off",st="";try{const e=estadoDe(u);cls=e.cls==="cz-work"?"work":e.cls==="cz-ok"?"done":e.cls==="cz-late"?"late":"off";st=e.st.replace(/<[^>]+>/g,"").replace(/^[^A-Za-zÁÉÍÓÚáéíóúÑñ0-9¿¡]+/,"")}catch(x){}const c=[...S.items.values()].filter(d=>d._u===u&&isCamino(d)).length;return{cls,st:st+(c?" · "+c+" en camino":"")}};
   const rows=ids.map(u=>({u,...info(u)})).sort((a,b)=>(a.cls==="work"?0:1)-(b.cls==="work"?0:1)||personName(a.u).localeCompare(personName(b.u)));
   return `<div class="lbl">¿Quién lo lleva?</div><div class="asig-list">${rows.map(r=>`<button type="button" class="asig ${S.asig===r.u?"on":""}" data-asig="${esc(r.u)}"><span class="vp-dot ${r.cls}"></span><span class="who"><b>${esc(personName(r.u))}${roles.socios.includes(r.u)?' <span class="pill p-fijo">Socia/o</span>':""}</b><small>${esc(r.st)}</small></span></button>`).join("")||`<div class="empty">No hay deliverys activos.</div>`}</div>`}
-function openEntry(cm,pasar){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pagoTipo="";S.cmMet="efectivo";S.pasar=!!pasar;if(!pasar)S.asig="";if(!S.cliente){ubicTxt="";listaTxt=""}const isToday=S.dia===today();
+function openEntry(cm,pasar){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pagoTipo="";S.cmMet="efectivo";S.pasar=!!pasar;if(!pasar)S.asig="";if(!S.cliente){ubicTxt="";listaTxt="";retN="";retU="";retT="";cliTel=""}const isToday=S.dia===today();
   const forWho=S.pasar?"":S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
-  const cliente=`<div class="field"><label for="cli">${cm?"Pedido / cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
+  const cliente=`<div class="field"><label for="cli">${cm?"Nombre del cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
       <div class="sugs" id="cli-sug" hidden></div></div>
-    <div class="field"><label for="ubic">Ubicación (opcional)</label><div class="ub-row"><input id="ubic" autocomplete="off" placeholder="Pegá la ubicación del WhatsApp" value="${esc(ubicTxt)}"><a class="ub-btn" id="maplink" href="#" target="_blank" rel="noopener">📍 Buscar</a></div>
+    <div class="field"><label for="ubic">${cm?"Ubicación del cliente (opcional)":"Ubicación (opcional)"}</label><div class="ub-row"><input id="ubic" autocomplete="off" placeholder="Pegá la ubicación del WhatsApp" value="${esc(ubicTxt)}"><a class="ub-btn" id="maplink" href="#" target="_blank" rel="noopener">📍 Buscar</a></div>
       <small class="hint" style="margin:0">Tocá <b>📍 Buscar</b> para ver el comercio en el mapa, o pegá acá la ubicación que te mandó el cliente.</small></div>`;
   const prod=`<div class="field"><label for="prod">${cm?"Valor del producto (lo que pagaste o dice el tique)":"Valor del producto (opcional, para saber cuánto cobrar)"}</label>
     <div class="money ${cm?"":"small-money"}"><span>₲</span><input id="prod" inputmode="numeric" autocomplete="off" placeholder="Ej.: 30.000" value="${fmtInput(S.prod)}"></div></div>`;
   const val=`<div class="field"><label for="val">${cm?"Valor del delivery":"Monto del delivery (tocá un atajo o escribí el precio)"}</label>
     <div class="money"><span>₲</span><input id="val" inputmode="numeric" autocomplete="off" placeholder="Escribí el monto" value="${fmtInput(S.val)}"></div></div>`;
   const obs=`<div class="field"><label for="obs">${cm?"Dirección o detalle (opcional)":"Observación (opcional)"}</label><input id="obs" autocomplete="off" placeholder="Ej.: Barrio San Blas" value="${esc(S.obs)}"></div>`;
+  const retF=`<details class="ret-box" ${retN||retU||retT?"open":""}><summary>🏪 <b>Dónde retirar</b> <small>(opcional · comercio o persona)</small><span class="ret-arr">▾</span></summary>
+    <div class="field"><label for="ret-n">Nombre</label><input id="ret-n" autocomplete="off" placeholder="Ej.: Farmacia Central" value="${esc(retN)}"></div>
+    <div class="field"><label for="ret-u">Ubicación para retirar</label><div class="ub-row"><input id="ret-u" autocomplete="off" placeholder="Pegá la ubicación del WhatsApp" value="${esc(retU)}"><a class="ub-btn" id="retlink" href="${esc(retU||retN?mapUrl(retN,retU):"#")}" target="_blank" rel="noopener">📍 Buscar</a></div></div>
+    <div class="field"><label for="ret-t">Teléfono para retirar</label><input id="ret-t" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej.: 0981 123 456" value="${esc(retT)}"></div></details>
+    <div class="lbl ent-lbl">🏠 Entregar a</div>`;
+  const telF=`<div class="field"><label for="cli-tel">Teléfono del cliente (opcional)</label><input id="cli-tel" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej.: 0985 654 321" value="${esc(cliTel)}"></div>`;
   const listaF=`<div class="field"><label for="lista">🛒 Lista de compras (opcional)</label><textarea id="lista" rows="3" placeholder="Pegá la lista que mandó el cliente. Un producto por línea.">${esc(listaTxt)}</textarea>
     <small class="hint" style="margin:0">En el mercado abrís la lista desde “En camino” y vas marcando cada producto.</small></div>`;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet entry-sheet" role="dialog" aria-label="${cm?"Anotar pedido":"Nueva entrega"}">
     ${sheetHead((S.pasar?"📦 Pasar pedido":cm?"Anotar pedido":"Nueva entrega")+(isToday?"":" · "+ddmm(S.dia))+forWho)}
     ${S.pasar?`<div id="asig-box">${asigPicker()}</div>`:""}
-    ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${methodBtns("data-cmet",S.cmMet)}</div>`+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+cliente+listaF+prod+presets+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
+    ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${methodBtns("data-cmet",S.cmMet)}</div>`+retF+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+cliente+telF+listaF+prod+presets+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
        :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+`<div id="pend-wrap" hidden><button type="button" class="chip pend-chip" data-pend>⏳ El cliente me transfiere después</button></div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
     <p class="err" id="err" ${S.err?"":"hidden"}>${esc(S.err)}</p>
     ${cm?`<button type="button" class="primary" id="savecamino" ${S.val?"":"disabled"}>${S.pasar?"Enviar pedido":"Guardar pedido"}</button>`
@@ -2271,6 +2297,9 @@ document.addEventListener("input",e=>{const id=e.target.id;
   if(id==="gval"){G.val=parseVal(e.target.value);e.target.value=fmtInput(G.val);refreshG()}
   if(id==="gobs")G.obs=e.target.value;
   if(id==="ubic"){ubicTxt=e.target.value;updMapLink()}
+  if(id==="ret-n"||id==="ret-u"){if(id==="ret-n")retN=e.target.value;else retU=e.target.value;const a=document.getElementById("retlink");if(a)a.href=retN.trim()||retU.trim()?mapUrl(retN,retU):"#"}
+  if(id==="ret-t")retT=e.target.value;
+  if(id==="cli-tel")cliTel=e.target.value;
   if(id==="lista")listaTxt=e.target.value;
   if(id==="chat-txt"){chatDraft=e.target.value;e.target.style.height="auto";e.target.style.height=Math.min(120,e.target.scrollHeight)+"px"}
   if(id==="cli"){S.cliente=e.target.value;sinCliOk=false;if(S.err&&S.err.startsWith("¿Sin nombre")){S.err="";refreshForm()}drawSug()}if(id==="obs")S.obs=e.target.value});
@@ -2297,8 +2326,8 @@ async function save(camino){
   sinCliOk=false;
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
-  if(S.prod)d.producto=S.prod;if(camino&&S.cmMet&&M[S.cmMet]){d.metPlan=S.cmMet;if(S.cmMet==="pagado")d.pagoTipo="todo"}if(S.pagoTipo&&d.metodo!=="pagado"&&!d.pagoTipo)d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true}
-  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";S.err="";S.pend=false;S.lote=false;S.pagoTipo="";const _cm=S.cmMet;S.cmMet="";closeSheet();
+  if(S.prod)d.producto=S.prod;if(camino&&S.cmMet&&M[S.cmMet]){d.metPlan=S.cmMet;if(S.cmMet==="pagado")d.pagoTipo="todo"}if(S.pagoTipo&&d.metodo!=="pagado"&&!d.pagoTipo)d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li;const r={};if(retN.trim())r.n=retN.trim();if(retU.trim())r.ubic=retU.trim();if(retT.trim())r.tel=retT.trim();if(Object.keys(r).length)d.ret=r;if(cliTel.trim())d.tel=cliTel.trim()}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true}
+  const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";retN="";retU="";retT="";cliTel="";S.err="";S.pend=false;S.lote=false;S.pagoTipo="";const _cm=S.cmMet;S.cmMet="";closeSheet();
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
   const pasarA=camino&&S.pasar?S.asig:"";if(pasarA){d.central={por:S.me,em:Date.now()}}S.pasar=false;
@@ -2320,7 +2349,7 @@ document.addEventListener("click",async e=>{
     try{await db.doc("turnos/"+S.me+"/solicitudes/"+t.dataset.sdel).delete();toast("Solicitud cancelada")}catch(err){toast("No se eliminó.")}}
   else if(t.hasAttribute("data-equipo"))openEquipo();
   else if(t.hasAttribute("data-logout"))logout();
-  else if(t.dataset.cli!==undefined){S.cliente=t.dataset.cli;if(t.dataset.cubic){ubicTxt=t.dataset.cubic;const ui=document.getElementById("ubic");if(ui)ui.value=ubicTxt}const v=Number(t.dataset.cval);if(v)S.val=v;S.err="";cliFocus=false;refreshForm();drawSug();const c=document.getElementById("cli");if(c)c.value=S.cliente}
+  else if(t.dataset.cli!==undefined){S.cliente=t.dataset.cli;if(t.dataset.cubic){ubicTxt=t.dataset.cubic;const ui=document.getElementById("ubic");if(ui)ui.value=ubicTxt}if(t.dataset.ctel){cliTel=t.dataset.ctel;const ti=document.getElementById("cli-tel");if(ti)ti.value=cliTel}const v=Number(t.dataset.cval);if(v)S.val=v;S.err="";cliFocus=false;refreshForm();drawSug();const c=document.getElementById("cli");if(c)c.value=S.cliente}
   else if(t.dataset.preset){S.val=Number(t.dataset.preset);S.err="";refreshForm()}
   else if(t.dataset.metodo){S.metodo=t.dataset.metodo;if(!["efectivo","transferencia"].includes(S.metodo)&&S.pagoTipo==="prod")S.pagoTipo="";S.err="";refreshForm()}
   else if(t.hasAttribute("data-solodel")){S.pagoTipo=S.pagoTipo==="prod"?"":"prod";if(S.pagoTipo==="prod"){if(document.getElementById("save")){if(!["efectivo","transferencia"].includes(S.metodo))S.metodo="efectivo"}else if(!["efectivo","transferencia"].includes(S.cmMet))S.cmMet="efectivo"}S.err="";refreshForm()}
@@ -2333,6 +2362,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.cant){S.cant=Math.min(200,Math.max(1,S.cant+Number(t.dataset.cant)));refreshForm()}
   else if(t.dataset.fijocli){S.cliente=t.dataset.fijocli;S.err="";const c=document.getElementById("cli");if(c)c.value=S.cliente;refreshForm()}
   else if(t.dataset.diario){const r=lockReason(S.dia);if(r){lockedMsg(r);return}openDiario(t.dataset.diario)}
+  else if(t.dataset.tel&&!t.closest("#layer"))openTel(t.dataset.tel,t.dataset.teln||"");
   else if(t.hasAttribute("data-pasar")){S.asig="";openEntry(true,true)}
   else if(t.dataset.asig){S.asig=t.dataset.asig;const b=document.getElementById("asig-box");if(b)b.innerHTML=asigPicker();if(S.err&&S.err.startsWith("Elegí arriba")){S.err=""}refreshForm();const c=document.getElementById("cli");if(c&&!c.value)c.focus()}
   else if(t.hasAttribute("data-anotar")){if(S.mode==="db"&&!S.owner&&S.canWrite===false){noPerm();return}openEntry(true);setTimeout(()=>{const c=document.getElementById("cli");if(c)c.focus()},60)}
