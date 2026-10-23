@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#331A5B">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -700,6 +700,11 @@ details.sec.fold{display:grid;gap:10px}
 .who-bar .wb-act{flex-wrap:wrap}
 .ic{width:1.15em;height:1.15em;vertical-align:-.2em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;display:inline-block}
 .ic-checkc,.ic-dot{color:#2e9e5b}.ic-star{color:#d9a93a}.ic-flame{color:#e8743b}.ic-alert{color:var(--due)}.ic-gift{color:#d9a93a}
+/* app fijo: sin zoom ni desplazamiento lateral en el iPhone */
+html,body{overflow-x:hidden;width:100%;max-width:100%;overscroll-behavior-x:none}
+body{position:relative;touch-action:pan-y}
+.chat-seg,.filter{touch-action:pan-x pan-y}
+input:not(.money input):not(.nt-title):not(.stepper input),textarea,select{font-size:16px!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -832,7 +837,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="101";
+const APPV="102";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1280,6 +1285,8 @@ function deEmojiNode(tn){const p=tn.parentNode;if(!p||EMSKIP[p.nodeName]||p.clos
 function deEmoji(root){if(!root)return;if(root.nodeType===3){deEmojiNode(root);return}if(root.nodeType!==1||EMSKIP[root.nodeName])return;
   const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const l=[];let n;while((n=w.nextNode()))l.push(n);l.forEach(deEmojiNode)}
 try{new MutationObserver(ms=>{for(const m of ms){if(m.type==="characterData")deEmoji(m.target);else m.addedNodes.forEach(deEmoji)}}).observe(document.body,{childList:true,subtree:true,characterData:true});setTimeout(()=>deEmoji(document.body),0)}catch(e){}
+/* evita zoom con dos dedos o doble toque (iOS ignora user-scalable) */
+try{document.addEventListener("gesturestart",e=>e.preventDefault(),{passive:false});document.addEventListener("gesturechange",e=>e.preventDefault(),{passive:false})}catch(e){}
 /* rodapé con la firma del sistema */
 function addCredit(){if(!main||document.getElementById("credit"))return;if(main.querySelector(".block"))return;
   main.insertAdjacentHTML("beforeend",`<footer class="credit" id="credit"><span class="cr-line"></span>
