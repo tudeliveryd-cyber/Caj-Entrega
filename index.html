@@ -862,7 +862,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="110";
+const APPV="111";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1489,7 +1489,7 @@ function refreshForm(){drawLoteVals();
   {const lw=document.getElementById("lote-wrap");if(lw){const cmF=!document.getElementById("save");const fx=cmF?S.cmMet==="fijo":S.metodo==="fijo";lw.hidden=fx;if(cmF&&fx&&S.lote){S.lote=false;S.cant=1}const c=lw.querySelector("[data-lote]");if(c)c.classList.toggle("on",S.lote);
     const li=document.getElementById("lote-info");if(li){li.hidden=!S.lote;li.innerHTML=S.lote?(S.cant>1?`<b>${S.cant} entregas</b> · cuentan como ${S.cant} en el día y el ranking`:"Poné la <b>cantidad</b> de entregas."):""}
     const vl=document.querySelector('label[for="val"]');if(vl)vl.textContent=S.lote?"Valor TOTAL de todas las entregas":cmF?"Valor del delivery":"Monto del delivery (tocá un atajo o escribí el precio)"
-    const pc=document.querySelector("#money-block > .chips");if(pc)pc.hidden=false;const scb=document.getElementById("savecamino");if(scb&&!fx&&!cmF)scb.hidden=S.lote;
+    const pc=document.querySelector("#money-block > .chips");if(pc)pc.hidden=false;const scb=document.getElementById("savecamino");if(scb&&!fx&&!cmF){scb.hidden=false;scb.textContent=S.lote&&S.cant>1?"Guardar "+S.cant+" pedidos “en camino” (todavía no entregué)":"Guardar “en camino” (todavía no entregué)"}
     if(cmF){const fq=document.getElementById("fijo-cant");if(fq)fq.hidden=!S.lote;const ci=document.getElementById("cant");if(ci&&document.activeElement!==ci)ci.value=S.cant;
       if(scb){const nm=S.pasar&&S.asig?" a "+(personName(S.asig)||"").split(" ")[0]:"";const many=S.lote&&S.cant>1;scb.textContent=S.pasar?(many?"📦 Enviar "+S.cant+" pedidos"+nm:"📦 Enviar pedido"+nm):(many?"Guardar "+S.cant+" pedidos":"Guardar pedido")}
       {const li=document.getElementById("lote-info");if(li&&S.lote)li.innerHTML=S.cant>1?`Se crean <b>${S.cant} pedidos</b> en “En camino”. Finalizás cada uno al entregar.`:"Poné la <b>cantidad</b> de entregas."}}}}
@@ -2671,7 +2671,7 @@ async function save(camino){
   sinCliOk=false;
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
-  if(S.prod)d.producto=S.prod;if(camino&&S.cmMet&&M[S.cmMet]){d.metPlan=S.cmMet;if(S.cmMet==="pagado")d.pagoTipo="todo"}if(S.pagoTipo&&d.metodo!=="pagado"&&!d.pagoTipo)d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li;const r={};if(retN.trim())r.n=retN.trim();if(retU.trim())r.ubic=retU.trim();if(retT.trim())r.tel=retT.trim();if(Object.keys(r).length)d.ret=r;if(cliTel.trim())d.tel=cliTel.trim()}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true;d.vals=LV.slice(0,S.cant)}
+  if(S.prod)d.producto=S.prod;{const planM=document.getElementById("save")?S.metodo:S.cmMet;if(camino&&planM&&M[planM]&&planM!=="fijo"){d.metPlan=planM;if(planM==="pagado")d.pagoTipo="todo"}}if(S.pagoTipo&&d.metodo!=="pagado"&&!d.pagoTipo)d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li;const r={};if(retN.trim())r.n=retN.trim();if(retU.trim())r.ubic=retU.trim();if(retT.trim())r.tel=retT.trim();if(Object.keys(r).length)d.ret=r;if(cliTel.trim())d.tel=cliTel.trim()}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true;d.vals=LV.slice(0,S.cant)}
   const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";retN="";retU="";retT="";cliTel="";S.err="";S.pend=false;S.lote=false;S.pagoTipo="";const _cm=S.cmMet;S.cmMet="";closeSheet();
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
