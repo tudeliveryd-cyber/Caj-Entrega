@@ -504,7 +504,7 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .pend-chip.on{background:var(--due);color:#fff;border-color:var(--due)}
 .pend-big{width:100%;border-style:dashed}
 .vp-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
-.tools-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:-8px}.tools-row .nt-open{padding:8px 14px;font-size:14px}
+.tools-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:-8px;justify-content:center}.tools-row .nt-open{padding:8px 14px;font-size:14px}
 .vp-btn b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vp-btn{display:flex;align-items:center;gap:8px;min-width:0;border:1px solid var(--accent);background:var(--surface);color:var(--ink);border-radius:14px;padding:12px 14px;font:16px var(--body);cursor:pointer;text-align:left}
 .vp-btn b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -698,7 +698,18 @@ details.sec.fold{display:grid;gap:10px}
 .cat-back{justify-self:start;font-weight:700}.cat-title{font:800 15px var(--body);margin:4px 0 8px}
 .cf-cat{font-size:11.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.4px}
 .cf-cats .chip{font-size:14px}
-.geo-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}.geo-b{padding:12px 8px!important;font-size:14.5px!important}
+.geo-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.geo-main{width:100%;padding:13px!important;margin-bottom:8px;font-size:15.5px!important;border-color:var(--accent)!important;background:color-mix(in srgb,var(--accent) 14%,var(--surface))!important}
+#mappick{position:fixed;inset:0;z-index:9999;background:var(--bg);display:grid;grid-template-rows:auto 1fr auto}
+#mappick .mp-top{padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 10px;display:grid;gap:2px;background:var(--surface);border-bottom:1px solid var(--line)}
+#mappick .mp-top b{font-size:15px}#mappick .mp-top small{color:var(--muted);font-size:12.5px}
+#mappick .mp-wrap{position:relative;min-height:0}#mp-map{position:absolute;inset:0}
+#mappick .mp-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);color:#e0443e;pointer-events:none;z-index:500}
+#mappick .mp-pin .ic{width:44px;height:44px;stroke-width:2.2;fill:color-mix(in srgb,#e0443e 25%,transparent);filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))}
+#mappick .mp-layers{position:absolute;right:12px;top:12px;z-index:600;display:flex;border-radius:10px;overflow:hidden;border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.25)}
+#mappick .mp-layers button{border:0;padding:8px 12px;background:var(--surface);color:var(--ink);font:600 13.5px var(--body)}#mappick .mp-layers button.on{background:var(--accent);color:#1a1422}
+#mappick .mp-me{position:absolute;right:12px;bottom:16px;z-index:600;width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+#mappick .mp-bot{display:grid;grid-template-columns:1fr 1.6fr;gap:10px;padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 12px);background:var(--surface);border-top:1px solid var(--line)}.geo-b{padding:12px 8px!important;font-size:14.5px!important}
 .geo-res{display:grid;gap:6px;margin-bottom:8px}.geo-msg{font-size:13.5px;color:var(--muted)}
 .geo-hit{display:grid;gap:2px;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:15px var(--body);cursor:pointer}.geo-hit small{color:var(--muted);font-size:12.5px}
 .gm-btn{display:block;text-align:center;padding:12px;border-radius:12px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface));color:var(--ink)!important;text-decoration:none;font:700 15px var(--body)}
@@ -845,7 +856,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="107";
+const APPV="108";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2077,7 +2088,8 @@ function openCfEdit(id){edit=null;const c=id?clisF.find(x=>x.id===id)||{}:{};
     <div class="field"><label>Categoría</label><div class="chips cf-cats">${CF_CATS.map(k=>`<button type="button" class="chip ${catOf(c)===k&&(c.cat||k==="Otros")?"on":""}" data-cfcatpick="${esc(k)}">${icSvg(CAT_IC[k])} ${esc(k)}</button>`).join("")}</div>
       <input id="cf-cat" autocomplete="off" placeholder="U otra categoría (ej.: Lavaderos)" value="${esc(c.cat&&!CF_CATS.includes(c.cat)?c.cat:"")}" style="margin-top:6px"><input type="hidden" id="cf-catv" value="${esc(c.cat||(cfCat&&cfCat!=="*"?cfCat:""))}"></div>
     <div class="field"><label for="cf-u">Ubicación</label>
-      <div class="geo-btns"><button type="button" class="ub-btn geo-b" data-geobuscar>🔎 Buscar en el mapa</button><button type="button" class="ub-btn geo-b" data-geoaqui>📍 Estoy acá</button></div>
+      <button type="button" class="ub-btn geo-main" data-geomapa>🗺 Elegir en el mapa</button>
+      <div class="geo-btns"><button type="button" class="ub-btn geo-b" data-geobuscar>🔎 Buscar por nombre</button><button type="button" class="ub-btn geo-b" data-geoaqui>📍 Estoy acá</button></div>
       <div id="cf-res" class="geo-res" hidden></div>
       <div class="ub-row ub3"><input id="cf-u" autocomplete="off" placeholder="O pegá el link de la ubicación" value="${esc(c.ubic||"")}"><button type="button" class="ub-btn paste-btn" data-paste="cf-u">📋 Pegar</button><a class="ub-btn" id="cflink" href="#" target="_blank" rel="noopener" aria-label="Ver en el mapa">📍</a></div>
       <div id="cf-prev" class="geo-prev" hidden></div></div>
@@ -2098,7 +2110,30 @@ function geoPrev(u){const el=document.getElementById("cf-prev");if(!el)return;co
   el.innerHTML=`<iframe title="Mapa" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=${p.lon-d},${p.lat-d},${p.lon+d},${p.lat+d}&layer=mapnik&marker=${p.lat},${p.lon}"></iframe><small>Fijate que el punto esté en el lugar correcto.</small>`}
 function geoSet(lat,lon,dir){const u="https://maps.google.com/?q="+(+lat).toFixed(6)+","+(+lon).toFixed(6);setF("cf-u",u);
   const d=document.getElementById("cf-d");if(dir&&d&&!d.value.trim())setF("cf-d",dir);else if(d&&!d.value.trim())geoDir(u);const r=document.getElementById("cf-res");if(r){r.hidden=true;r.innerHTML=""}}
-var geoHits=[];
+var geoHits=[],mpMap=null;
+/* elegir la ubicación tocando un mapa (OpenStreetMap / satélite, gratis) */
+async function openMapPick(){const cur=llFrom((document.getElementById("cf-u")||{}).value||"");
+  let ov=document.getElementById("mappick");if(ov)ov.remove();ov=document.createElement("div");ov.id="mappick";
+  ov.innerHTML=`<div class="mp-top"><b>Mové el mapa hasta que el pin quede sobre el lugar</b><small>También podés tocar el lugar en el mapa</small></div>
+    <div class="mp-wrap"><div id="mp-map"></div><div class="mp-pin">${icSvg("pin")}</div>
+    <div class="mp-layers"><button type="button" class="on" data-mplayer="calles">Mapa</button><button type="button" data-mplayer="sat">Satélite</button></div>
+    <button type="button" class="mp-me" data-mpme aria-label="Mi ubicación">${icSvg("target")}</button></div>
+    <div class="mp-bot"><button type="button" class="ghost" data-mpcancel>Cancelar</button><button type="button" class="primary" data-mpok>Usar esta ubicación</button></div>`;
+  document.body.appendChild(ov);
+  try{await loadLeaflet()}catch(e){ov.querySelector("#mp-map").innerHTML='<div class="empty" style="margin:40px 16px">No se pudo cargar el mapa. Revisá la señal o pegá el link.</div>';return}
+  const start=cur?[cur.lat,cur.lon]:[-25.7935,-55.0875];
+  mpMap=L.map("mp-map",{zoomControl:false,attributionControl:true}).setView(start,cur?18:15);
+  const calles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"});
+  const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"© Esri"});
+  calles.addTo(mpMap);mpMap._lyr={calles,sat};
+  mpMap.on("click",e=>mpMap.panTo(e.latlng));
+  setTimeout(()=>mpMap&&mpMap.invalidateSize(),120)}
+function closeMapPick(){const ov=document.getElementById("mappick");if(ov)ov.remove();if(mpMap){try{mpMap.remove()}catch(e){}mpMap=null}}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("#mappick button");if(!t)return;
+  if(t.hasAttribute("data-mpcancel"))closeMapPick();
+  else if(t.hasAttribute("data-mpok")&&mpMap){const c=mpMap.getCenter();closeMapPick();geoSet(c.lat,c.lng,"");toast("Ubicación elegida en el mapa")}
+  else if(t.dataset.mplayer&&mpMap){const k=t.dataset.mplayer;const o=k==="sat"?"calles":"sat";mpMap.removeLayer(mpMap._lyr[o]);mpMap._lyr[k].addTo(mpMap);t.parentNode.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b===t))}
+  else if(t.hasAttribute("data-mpme")&&mpMap&&navigator.geolocation){navigator.geolocation.getCurrentPosition(p=>{if(mpMap)mpMap.setView([p.coords.latitude,p.coords.longitude],18)},()=>toast("No se pudo tomar tu ubicación"),{enableHighAccuracy:true,timeout:12000})}});
 async function geoDir(u){const p=llFrom(u);const dEl=document.getElementById("cf-d");if(!p||!dEl||dEl.value.trim())return;
   try{const r=await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=es&lat="+p.lat+"&lon="+p.lon,{headers:{"Accept":"application/json"}});if(!r.ok)return;const h=await r.json();const a=h.address||{};
     const t=[a.road&&a.house_number?a.road+" "+a.house_number:a.road,a.suburb||a.neighbourhood||a.quarter].filter(Boolean).join(", ");
@@ -2747,6 +2782,7 @@ layer.addEventListener("click",async e=>{
       else{const K=cajaCalc(S.me,today());const d=v-K.esp;toast(d===0?"✅ Caja cerrada · cuadra justo":d<0?"⚠️ Caja cerrada · falta "+gs(-d):"Caja cerrada · sobra "+gs(d))}}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-cfnew")){openCfEdit(null);return}
   if(t.hasAttribute("data-geobuscar")){geoBuscar();return}
+  if(t.hasAttribute("data-geomapa")){openMapPick();return}
   if(t.hasAttribute("data-geoaqui")){geoAqui();return}
   if(t.dataset.geohit!==undefined){const h=geoHits[+t.dataset.geohit];if(h){const a=h.address||{};geoSet(h.lat,h.lon,[a.road&&a.house_number?a.road+" "+a.house_number:a.road,a.suburb||a.neighbourhood].filter(Boolean).join(", "));toast("Ubicación elegida · revisá el mapa")}return}
   if(t.dataset.cfedit){openCfEdit(t.dataset.cfedit);return}
