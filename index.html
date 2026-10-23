@@ -691,6 +691,11 @@ details.sec.fold{display:grid;gap:10px}
 .cf-row .who{display:grid;gap:2px;min-width:0}.cf-row b{font-size:16px}.cf-dir{font-size:13.5px;color:var(--ink)}.cf-row small{color:var(--muted);font-size:12.5px}
 .cf-act{display:flex;gap:8px;flex-wrap:wrap}.cf-act .map-btn{text-decoration:none}
 .cf-chips{display:grid;gap:4px}
+.cat-row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:14px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);font:16px var(--body);text-align:left;cursor:pointer}.cat-row:first-child{border-top:0}
+.cat-row span{display:grid;gap:2px}.cat-row small{color:var(--muted);font-size:12.5px}.cat-go{color:var(--muted);font-size:22px}.cat-all b{color:var(--accent)}
+.cat-back{justify-self:start;font-weight:700}.cat-title{font:800 15px var(--body);margin:4px 0 8px}
+.cf-cat{font-size:11.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.4px}
+.cf-cats .chip{font-size:14px}
 .geo-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}.geo-b{padding:12px 8px!important;font-size:14.5px!important}
 .geo-res{display:grid;gap:6px;margin-bottom:8px}.geo-msg{font-size:13.5px;color:var(--muted)}
 .geo-hit{display:grid;gap:2px;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:15px var(--body);cursor:pointer}.geo-hit small{color:var(--muted);font-size:12.5px}
@@ -838,7 +843,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="105";
+const APPV="106";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1076,7 +1081,7 @@ function startDemo(modo){
    put("ranking/r2",{nome:"Juan",dias:{[t]:11,[y]:9},pd:{...pd(40),[t]:11,[y]:9},cier:ci(40)});
    put("ranking/r3",{nome:"Pedro",dias:{[t]:6,[y]:12},pd:{...pd(20),[t]:6,[y]:12},cier:ci(10)});
    window.__demoPts={pd,ci}}
-  put("ranking/_clientes",{list:[{id:"c1",n:"Divina Mesa",ubic:"https://maps.google.com/?q=-25.7935,-55.0870",dir:"Av. Santa Rita c/ Mallorquín",tel:"0981 555 111",nota:"Entregar por la cocina"},{id:"c2",n:"Bom Corte Bar & Grill",ubic:"https://maps.google.com/?q=-25.7912,-55.0851",dir:"Ruta PY06, frente a la estación",tel:"0983 222 333",nota:""}]});
+  put("ranking/_clientes",{list:[{id:"c1",n:"Divina Mesa",cat:"Restaurantes",ubic:"https://maps.google.com/?q=-25.7935,-55.0870",dir:"Av. Santa Rita c/ Mallorquín",tel:"0981 555 111",nota:"Entregar por la cocina"},{id:"c2",n:"Bom Corte Bar & Grill",cat:"Restaurantes",ubic:"https://maps.google.com/?q=-25.7912,-55.0851",dir:"Ruta PY06, frente a la estación",tel:"0983 222 333",nota:""}]});
   put("ranking/_mensaje",{texto:"Bienvenidos a la app de Tú Delivery. Registren todas las entregas del día y no se olviden de anotar los pedidos.",criadoEm:at(t,7,0)});};
   const seedFull=()=>{
   put("turnos/demo",{nome:"Carlos Demo",aprobado:true,baja:false});
@@ -2040,23 +2045,33 @@ function centralSeen(cl){if(S.mode!=="db"||isRealOwner)return;let seen={};try{se
   if(ch){const keep={};const lim=Date.now()-7*864e5;for(const[k,v]of Object.entries(seen))if(v>lim)keep[k]=v;try{localStorage.setItem(LSCS,JSON.stringify(keep))}catch(e){}}}
 /* ---------- nuestros clientes fijos: ranking/_clientes {list:[{id,n,ubic,tel,nota}]} · lo edita el dueño, lo ven todos ---------- */
 var clisF=[],CFQ="";
-const cliFSorted=()=>{const q=norm(CFQ);return clisF.filter(c=>!q||norm([c.n,c.nota,c.dir].join(" ")).includes(q)).sort((a,b)=>(a.n||"").localeCompare(b.n||""))};
-function openClientesF(){edit=null;const adm=S.mode==="db"&&S.owner;
+var CF_CATS=["Restaurantes","Farmacias","Supermercados","Panaderías","Heladerías","Bebidas","Tiendas","Otros"],cfCat=null;
+const catOf=c=>(c.cat||"").trim()||"Otros";
+function cfCatsUsed(){const m=new Map();for(const c of clisF){const k=catOf(c);m.set(k,(m.get(k)||0)+1)}const order=[...CF_CATS,...[...m.keys()].filter(k=>!CF_CATS.includes(k)).sort()];return order.filter(k=>m.has(k)).map(k=>[k,m.get(k)])}
+const cliFSorted=()=>{const q=norm(CFQ);return clisF.filter(c=>!q||norm([c.n,c.nota,c.dir,c.cat].join(" ")).includes(q)).sort((a,b)=>(a.n||"").localeCompare(b.n||""))};
+function openClientesF(keep){edit=null;if(!keep)cfCat=null;const adm=S.mode==="db"&&S.owner;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet nt-sheet" role="dialog" aria-label="Clientes fijos">${sheetHead("🏪 Nuestros clientes fijos")}
     <div class="nt-top"><input id="cf-q" type="search" placeholder="Buscar cliente…" value="${esc(CFQ)}" autocomplete="off">${adm?`<button type="button" class="primary nt-new" data-cfnew>+ Agregar</button>`:""}</div>
     <div id="cf-list"></div>
     <p class="hint nt-priv">${adm?"Los deliverys ven esta lista para saber dónde queda cada cliente.":"Tocá 📍 para ver dónde queda y 📞 para llamar."}</p></div></div>`;
   drawClientesF();const q=document.getElementById("cf-q");if(q){q.addEventListener("input",()=>{CFQ=q.value;drawClientesF()});if(clisF.length>4)setTimeout(()=>q.focus(),120)}}
 function hiQ(txt,q){txt=String(txt||"");q=norm(q).trim();if(!q)return esc(txt);const n=norm(txt);const i=n.indexOf(q);if(i<0)return esc(txt);return esc(txt.slice(0,i))+"<mark>"+esc(txt.slice(i,i+q.length))+"</mark>"+esc(txt.slice(i+q.length))}
-function drawClientesF(){const el=document.getElementById("cf-list");if(!el)return;const l=cliFSorted();const adm=S.mode==="db"&&S.owner;
-  el.innerHTML=l.length?`${CFQ?`<p class="cf-count">${plural(l.length,"resultado")}</p>`:""}<div class="list">${l.map(c=>`<div class="cf-row"><div class="who"><b>${hiQ(c.n,CFQ)}</b>${c.dir?`<span class="cf-dir">📍 ${hiQ(c.dir,CFQ)}</span>`:""}${c.nota?`<small>${esc(c.nota)}</small>`:""}${c.tel?`<small class="num">📞 ${esc(c.tel)}</small>`:""}</div>
+function drawClientesF(){const el=document.getElementById("cf-list");if(!el)return;const adm=S.mode==="db"&&S.owner;const cats=cfCatsUsed();
+  const useCats=!CFQ&&cats.length>1;
+  if(useCats&&!cfCat){el.innerHTML=`<div class="list">${cats.map(([k,n])=>`<button type="button" class="cat-row" data-cfcatopen="${esc(k)}"><span><b>${esc(k)}</b><small>${plural(n,"cliente")}</small></span><span class="cat-go">›</span></button>`).join("")}
+    <button type="button" class="cat-row cat-all" data-cfcatopen="*"><span><b>Ver todos</b><small>${plural(clisF.length,"cliente")}</small></span><span class="cat-go">›</span></button></div>`;return}
+  let l=cliFSorted();if(useCats&&cfCat&&cfCat!=="*")l=l.filter(c=>catOf(c)===cfCat);
+  const head=useCats&&cfCat?`<button type="button" class="linkbtn cat-back" data-cfcatopen="">‹ Categorías</button><div class="cat-title">${cfCat==="*"?"Todos los clientes":esc(cfCat)} · ${l.length}</div>`:"";
+  el.innerHTML=l.length?`${head}${CFQ?`<p class="cf-count">${plural(l.length,"resultado")}</p>`:""}<div class="list">${l.map(c=>`<div class="cf-row"><div class="who"><b>${hiQ(c.n,CFQ)}</b>${(CFQ||cfCat==="*")&&c.cat?`<span class="cf-cat">${esc(c.cat)}</span>`:""}${c.dir?`<span class="cf-dir">📍 ${hiQ(c.dir,CFQ)}</span>`:""}${c.nota?`<small>${esc(c.nota)}</small>`:""}${c.tel?`<small class="num">📞 ${esc(c.tel)}</small>`:""}</div>
     <div class="cf-act">${c.ubic||c.dir||c.n?`<a class="map-btn" href="${esc(mapUrl(c.n,c.ubic||c.dir))}" target="_blank" rel="noopener">📍 Mapa</a>`:""}${c.tel?`<button type="button" class="map-btn" data-cftel="${esc(c.id)}">📞</button>`:""}${adm?`<button type="button" class="map-btn" data-cfedit="${esc(c.id)}">✏️</button>`:""}</div></div>`).join("")}</div>`
-    :`<div class="empty nt-empty">${CFQ?"No hay clientes con “"+esc(CFQ)+"”.":adm?"🏪 Todavía no cargaste clientes fijos.<br><small>Tocá <b>+ Agregar</b> y poné nombre, ubicación y teléfono.</small>":"Todavía no hay clientes fijos cargados."}</div>`}
+    :head+`<div class="empty nt-empty">${CFQ?"No hay clientes con “"+esc(CFQ)+"”.":adm?"🏪 Todavía no cargaste clientes fijos.<br><small>Tocá <b>+ Agregar</b> y poné nombre, ubicación y teléfono.</small>":"Todavía no hay clientes fijos cargados."}</div>`}
 function openCfEdit(id){edit=null;const c=id?clisF.find(x=>x.id===id)||{}:{};
   layer.innerHTML=`<div class="scrim"><div class="sheet" role="dialog" aria-label="Cliente fijo">
     <div class="sheet-h"><button type="button" class="linkbtn nt-back" data-cfback>‹ Clientes</button><button type="button" class="x" data-cfback aria-label="Cerrar">✕</button></div>
     <h3 style="margin:0">${id?"Editar cliente fijo":"Nuevo cliente fijo"}</h3>
     <div class="field"><label for="cf-n">Nombre</label><input id="cf-n" autocomplete="off" placeholder="Ej.: Divina Mesa" value="${esc(c.n||"")}"></div>
+    <div class="field"><label>Categoría</label><div class="chips cf-cats">${CF_CATS.map(k=>`<button type="button" class="chip ${catOf(c)===k&&(c.cat||k==="Otros")?"on":""}" data-cfcatpick="${esc(k)}">${esc(k)}</button>`).join("")}</div>
+      <input id="cf-cat" autocomplete="off" placeholder="U otra categoría (ej.: Lavaderos)" value="${esc(c.cat&&!CF_CATS.includes(c.cat)?c.cat:"")}" style="margin-top:6px"><input type="hidden" id="cf-catv" value="${esc(c.cat||(cfCat&&cfCat!=="*"?cfCat:""))}"></div>
     <div class="field"><label for="cf-u">Ubicación</label>
       <div class="geo-btns"><button type="button" class="ub-btn geo-b" data-geobuscar>🔎 Buscar en el mapa</button><button type="button" class="ub-btn geo-b" data-geoaqui>📍 Estoy acá</button></div>
       <div id="cf-res" class="geo-res" hidden></div>
@@ -2069,6 +2084,7 @@ function openCfEdit(id){edit=null;const c=id?clisF.find(x=>x.id===id)||{}:{};
     ${id?`<button type="button" class="danger" data-cfdel="${esc(id)}">Eliminar cliente</button>`:""}</div></div>`;
   const upd=()=>{const a=document.getElementById("cflink");const n=document.getElementById("cf-n").value,u=document.getElementById("cf-u").value,d=document.getElementById("cf-d").value;if(a)a.href=n||u||d?mapUrl(n,u||d):"#";geoPrev(u)};
   ["cf-n","cf-u","cf-d"].forEach(i=>{const e=document.getElementById(i);if(e)e.addEventListener("input",upd)});upd();
+  {const v=(document.getElementById("cf-catv")||{}).value;if(v)document.querySelectorAll("[data-cfcatpick]").forEach(b=>b.classList.toggle("on",b.dataset.cfcatpick===v))}
   if(!id)setTimeout(()=>{const n=document.getElementById("cf-n");if(n)n.focus()},80)}
 /* ubicación: buscar por nombre (OpenStreetMap, gratis) o tomar el GPS del celular */
 const SR_BOX="-55.25,-25.68,-54.95,-25.92";
@@ -2730,12 +2746,15 @@ layer.addEventListener("click",async e=>{
   if(t.hasAttribute("data-geoaqui")){geoAqui();return}
   if(t.dataset.geohit!==undefined){const h=geoHits[+t.dataset.geohit];if(h){const a=h.address||{};geoSet(h.lat,h.lon,[a.road&&a.house_number?a.road+" "+a.house_number:a.road,a.suburb||a.neighbourhood].filter(Boolean).join(", "));toast("Ubicación elegida · revisá el mapa")}return}
   if(t.dataset.cfedit){openCfEdit(t.dataset.cfedit);return}
-  if(t.hasAttribute("data-cfback")){openClientesF();return}
+  if(t.hasAttribute("data-cfback")){openClientesF(true);return}
+  if(t.dataset.cfcatopen!==undefined){cfCat=t.dataset.cfcatopen||null;drawClientesF();return}
+  if(t.dataset.cfcatpick){const v=t.dataset.cfcatpick;document.getElementById("cf-catv").value=v;const o=document.getElementById("cf-cat");if(o)o.value="";document.querySelectorAll("[data-cfcatpick]").forEach(b=>b.classList.toggle("on",b===t));return}
   if(t.dataset.cftel){const c=clisF.find(x=>x.id===t.dataset.cftel);if(c)openTel(c.tel,c.n);return}
   if(t.dataset.cfpick){const c=clisF.find(x=>x.id===t.dataset.cfpick);if(c){setF("ret-n",c.n||"");setF("ret-u",c.ubic||c.dir||"");setF("ret-t",c.tel||"");toast("🏪 "+c.n)}return}
   if(t.dataset.cfsave!==undefined){const g=i=>(document.getElementById(i)||{}).value||"";const n=g("cf-n").trim();if(!n){toast("Poné el nombre del cliente");return}
-    const c={id:t.dataset.cfsave||uid(),n,ubic:g("cf-u").trim(),dir:g("cf-d").trim(),tel:g("cf-t").trim(),nota:g("cf-x").trim()};
-    clisF=[...clisF.filter(x=>x.id!==c.id),c];openClientesF();try{const w=await saveClientesF();toast(w==="wait"?"Guardado · se envía al volver la señal":"🏪 Cliente guardado")}catch(err){toast("No se guardó.")}return}
+    const cat=g("cf-cat").trim()||g("cf-catv").trim();
+    const c={id:t.dataset.cfsave||uid(),n,cat,ubic:g("cf-u").trim(),dir:g("cf-d").trim(),tel:g("cf-t").trim(),nota:g("cf-x").trim()};
+    clisF=[...clisF.filter(x=>x.id!==c.id),c];openClientesF(true);try{const w=await saveClientesF();toast(w==="wait"?"Guardado · se envía al volver la señal":"🏪 Cliente guardado")}catch(err){toast("No se guardó.")}return}
   if(t.dataset.cfdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo para eliminar";return}
     clisF=clisF.filter(x=>x.id!==t.dataset.cfdel);openClientesF();try{await saveClientesF();toast("Cliente eliminado")}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-ntnew")){openNota(null);return}
