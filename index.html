@@ -694,6 +694,8 @@ details.sec.fold{display:grid;gap:10px}
 .geo-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}.geo-b{padding:12px 8px!important;font-size:14.5px!important}
 .geo-res{display:grid;gap:6px;margin-bottom:8px}.geo-msg{font-size:13.5px;color:var(--muted)}
 .geo-hit{display:grid;gap:2px;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:15px var(--body);cursor:pointer}.geo-hit small{color:var(--muted);font-size:12.5px}
+.gm-btn{display:block;text-align:center;padding:12px;border-radius:12px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface));color:var(--ink)!important;text-decoration:none;font:700 15px var(--body)}
+.gm-steps{margin:2px 0 0;padding-left:20px;font-size:13.5px;color:var(--muted);display:grid;gap:2px}.gm-steps b{color:var(--ink)}
 .geo-prev{display:grid;gap:4px;margin-top:8px}.geo-prev iframe{width:100%;height:190px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}.geo-prev small{color:var(--muted);font-size:12.5px}
 .cf-row mark{background:#d9a93a;color:#1a1422;border-radius:3px;padding:0 1px}
 .cf-count{font-size:12.5px;color:var(--muted);margin:0}.cf-chips small{color:var(--muted);font-size:12.5px}
@@ -836,7 +838,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="103";
+const APPV="104";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2078,10 +2080,13 @@ async function geoBuscar(){const n=(document.getElementById("cf-n")||{}).value||
   const go=async qq=>{const url="https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&accept-language=es&countrycodes=py&viewbox="+SR_BOX+"&bounded=1&q="+encodeURIComponent(qq);
     const res=await fetch(url,{headers:{"Accept":"application/json"}});if(!res.ok)throw new Error("http");return res.json()};
   try{let l=await go(q);if(!l.length&&d.trim()&&n.trim())l=await go(d.trim());geoHits=l;
-    if(!l.length){r.innerHTML=`<div class="geo-msg">No lo encontré en el mapa. Si estás en el lugar tocá <b>📍 Estoy acá</b>, o pegá el link de la ubicación.</div>`;return}
+    if(!l.length){r.innerHTML=`<div class="geo-msg">No está en el mapa gratuito. Buscalo en Google Maps:</div>${gmBox(q)}`;return}
     r.innerHTML=`<div class="geo-msg">Elegí el lugar correcto:</div>`+l.map((h,i)=>{const a=h.address||{};const t=h.name||a.amenity||a.shop||a.road||q;const sub=[a.road&&a.house_number?a.road+" "+a.house_number:a.road,a.suburb||a.neighbourhood,a.town||a.city||a.village].filter(Boolean).join(", ");
-      return `<button type="button" class="geo-hit" data-geohit="${i}"><b>${esc(t)}</b><small>${esc(sub||h.display_name||"")}</small></button>`}).join("")}
-  catch(e){r.innerHTML=`<div class="geo-msg">No se pudo buscar (¿sin señal?). Probá <b>📍 Estoy acá</b> o pegá el link.</div>`}}
+      return `<button type="button" class="geo-hit" data-geohit="${i}"><b>${esc(t)}</b><small>${esc(sub||h.display_name||"")}</small></button>`}).join("")+`<div class="geo-msg" style="margin-top:4px">¿No es ninguno?</div>${gmBox(q)}`}
+  catch(e){r.innerHTML=`<div class="geo-msg">No se pudo buscar en el mapa gratuito. Buscalo en Google Maps:</div>${gmBox(q)}`}}
+function gmBox(q){const u="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q+", "+CIUDAD);
+  return `<a class="gm-btn" href="${esc(u)}" target="_blank" rel="noopener">🔎 Buscar “${esc(q)}” en Google Maps</a>
+    <ol class="gm-steps"><li>Tocá el lugar correcto en Google Maps.</li><li>Tocá <b>Compartir</b> y después <b>Copiar enlace</b>.</li><li>Volvé acá y tocá <b>📋 Pegar</b>.</li></ol>`}
 function geoAqui(){const r=document.getElementById("cf-res");if(!navigator.geolocation){toast("Este celular no permite tomar la ubicación");return}
   if(r){r.hidden=false;r.innerHTML=`<div class="geo-msg">Tomando tu ubicación…</div>`}
   navigator.geolocation.getCurrentPosition(p=>{geoSet(p.coords.latitude,p.coords.longitude,"");toast("Ubicación tomada · precisión "+Math.round(p.coords.accuracy||0)+" m")},
