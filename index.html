@@ -856,7 +856,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="108";
+const APPV="109";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1474,7 +1474,8 @@ function refreshForm(){
     const vl=document.querySelector('label[for="val"]');if(vl)vl.textContent=S.lote?"Valor TOTAL de todas las entregas":cmF?"Valor del delivery":"Monto del delivery (tocá un atajo o escribí el precio)"
     const pc=document.querySelector("#money-block > .chips");if(pc)pc.hidden=S.lote;const scb=document.getElementById("savecamino");if(scb&&!fx&&!cmF)scb.hidden=S.lote;
     if(cmF){const fq=document.getElementById("fijo-cant");if(fq)fq.hidden=!S.lote;const ci=document.getElementById("cant");if(ci&&document.activeElement!==ci)ci.value=S.cant;
-      if(scb){const nm=S.pasar&&S.asig?" a "+(personName(S.asig)||"").split(" ")[0]:"";scb.textContent=(S.pasar?"📦 Enviar pedido"+nm:"Guardar pedido")+(S.lote&&S.cant>1?" · "+S.cant+" entregas":"")}}}}
+      if(scb){const nm=S.pasar&&S.asig?" a "+(personName(S.asig)||"").split(" ")[0]:"";const many=S.lote&&S.cant>1;scb.textContent=S.pasar?(many?"📦 Enviar "+S.cant+" pedidos"+nm:"📦 Enviar pedido"+nm):(many?"Guardar "+S.cant+" pedidos":"Guardar pedido")}
+      {const li=document.getElementById("lote-info");if(li&&S.lote)li.innerHTML=S.cant>1?`Se crean <b>${S.cant} pedidos</b> en “En camino”${S.val?" de "+gs(Math.floor(S.val/S.cant/1000)*1000)+" c/u":""}. Finalizás cada uno al entregar.`:"Poné la <b>cantidad</b> y el <b>valor total</b> de todos juntos."}}}}
   const sc=document.getElementById("savecamino");if(sc)sc.disabled=!S.val||saving;
   {const fx=S.metodo==="fijo";const mb=document.getElementById("money-block");
    if(mb){mb.hidden=fx;if(sc)sc.hidden=fx;
@@ -2657,6 +2658,11 @@ async function save(camino){
   saving=true;refreshForm();drawSug();
   const pasarA=camino&&S.pasar?S.asig:"";if(pasarA){d.central={por:S.me,em:Date.now()}}S.pasar=false;
   const nid=uid(),wt=pasarA||writeTarget();if(pendNow)addPend(wt,nid,d).catch(()=>{});
+  /* varias entregas juntas anotadas "en camino": se separan en pedidos individuales para finalizar uno por uno */
+  if(camino&&d.lote&&d.cant>1){const n=d.cant,tot=d.valor||0;const base=Math.floor(tot/n/1000)*1000;const first=tot-base*(n-1);const nm=d.cliente||"Pedido";
+    const ps=[];for(let i=0;i<n;i++){const x={...d,valor:i===0?first:base,cliente:nm+" · "+(i+1)+"/"+n,criadoEm:d.criadoEm+i};delete x.cant;delete x.lote;if(i>0){delete x.producto;delete x.lista}ps.push(addItem(x,wt,i===0?nid:uid()))}
+    try{const w=await sendW(Promise.all(ps));toast(w==="wait"?"Guardado en el celular · se envía al volver la señal":pasarA?`📦 ${n} pedidos enviados a ${personName(pasarA)}`:`${n} pedidos en camino · finalizá cada uno al entregar`)}catch(e){toast("No se guardó. Probá de nuevo.")}
+    saving=false;refreshForm();render();return}
   try{const w=await sendW(addItem(d,wt,nid));if(w==="wait"){toast("Guardado en el celular · se envía al volver la señal")}else if(pendNow)toast("Registrado · ⏳ transferencia por cobrar");else if(pasarA)toast("📦 Pedido enviado a "+personName(pasarA));else if(d.lote)toast(`Registradas ${d.cant} entregas · ${gs(d.valor)}`);else toast(d.metodo==="fijo"&&!camino?`Registrado${d.cant>1?" "+d.cant+" entregas":""} · cliente fijo (${d.cliente})`:`Registrado: ${gs(d.valor)} · ${label}`)}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast(e&&e.code==="quota_exceeded"?"Almacenamiento lleno":"No se guardó. Probá de nuevo.")}
   saving=false;refreshForm();render();
 }
