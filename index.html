@@ -660,7 +660,8 @@ details.sec.fold{display:grid;gap:10px}
 .caja-dif{border-radius:10px;padding:8px 10px;margin-top:4px;font-weight:700}.caja-dif span{color:inherit!important}
 .caja-dif.ok{background:color-mix(in srgb,#2e9e5b 16%,transparent);color:#2e9e5b}.caja-dif.falta{background:var(--due-bg);color:var(--due)}.caja-dif.sobra{background:color-mix(in srgb,#4a8fe0 14%,transparent);color:#4a8fe0}
 .caja-act{display:flex;gap:12px;align-items:center}
-.caja-lock{color:var(--muted);font-size:13px}.caja-act .primary{flex:1}
+.caja-lock{color:var(--muted);font-size:13px}
+.caja-reset{justify-self:start;color:var(--due)!important}.caja-reset.armed{font-weight:800}.caja-act .primary{flex:1}
 .cta-mine{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:15px var(--body);cursor:pointer}
 .cta-mine small{display:block;color:var(--muted);font-size:12.5px}.cta-mine.due{border-color:var(--due)}.cta-mine.due b.num{color:var(--due)}.cta-mine.cash b.num{color:#2e9e5b}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
@@ -795,7 +796,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="90";
+const APPV="91";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1535,7 +1536,8 @@ function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u
       ${c.cierraEm?`<div><span>Contó al cerrar</span><b class="num">${gs(c.cierra)}</b></div>
       <div class="caja-dif ${dif===0?"ok":dif<0?"falta":"sobra"}"><span>${dif===0?"✅ La caja cuadra":dif<0?"⚠️ Falta":"➕ Sobra"}</span><b class="num">${dif?gs(Math.abs(dif)):""}</b></div>`:""}</div>
     ${yo?(c.cierraEm?(isRealOwner?`<button type="button" class="linkbtn small-link" data-cajacerrar style="justify-self:start">Corregir cierre</button>`:`<small class="caja-lock">🔒 Caja cerrada · mañana la abrís de nuevo al empezar</small>`):`<div class="caja-act"><button type="button" class="primary" data-cajacerrar>Cerrar caja · terminé el trabajo</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajaabrir>Cambiar inicio</button>`:""}</div>`):""}
-    <small class="hint" style="margin:0">Transferencias no entran: van a la cuenta, no a la caja.</small></section>`}
+    <small class="hint" style="margin:0">Transferencias no entran: van a la cuenta, no a la caja.</small>
+    ${isRealOwner?`<button type="button" class="linkbtn small-link caja-reset" data-cajareset="${esc(u)}">🗑️ Borrar la caja de hoy${yo?"":" de "+esc((personName(u)||"").split(" ")[0])} y empezar de nuevo</button>`:""}</section>`}
 function openCaja(modo){edit=null;const K=cajaCalc(S.me,today());const ab=modo==="abrir";const cur=ab?(K.c.abre||""):(K.c.cierra||"");
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Caja">${sheetHead(ab?"💰 Abrir caja":"🔒 Cerrar caja")}
     <p class="hint" style="margin:0">${ab?"¿Con cuánta plata empezás hoy? (el cambio que llevás)":"Contá toda la plata en efectivo que tenés ahora y escribí el total."}</p>
@@ -2451,6 +2453,9 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.tel&&!t.closest("#layer"))openTel(t.dataset.tel,t.dataset.teln||"");
   else if(t.dataset.paste){doPaste(t.dataset.paste)}
   else if(t.hasAttribute("data-micuenta"))openCuenta(S.me);
+  else if(t.dataset.cajareset&&!t.closest("#layer")){const u=t.dataset.cajareset;
+    if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Seguro? Tocá de nuevo para borrar";setTimeout(()=>{if(t.isConnected){t.classList.remove("armed");const cb=document.getElementById("caja-box");if(cb)cb.dataset.h="";render(true)}},3000);return}
+    const dia=today();cajas.delete(u+"|"+dia);render(true);try{await sendW(db.collection("turnos/"+u+"/caja").doc(dia).delete());toast("Caja de hoy borrada · ya podés abrirla de nuevo")}catch(err){toast("No se pudo borrar")}}
   else if(t.hasAttribute("data-cajaabrir")&&!t.closest("#layer"))openCaja("abrir");
   else if(t.hasAttribute("data-cajacerrar")&&!t.closest("#layer"))openCaja("cerrar");
   else if(t.hasAttribute("data-pasar")){S.asig="";openEntry(true,true)}
