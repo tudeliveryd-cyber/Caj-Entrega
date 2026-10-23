@@ -661,6 +661,8 @@ details.sec.fold{display:grid;gap:10px}
 .caja-dif.ok{background:color-mix(in srgb,#2e9e5b 16%,transparent);color:#2e9e5b}.caja-dif.falta{background:var(--due-bg);color:var(--due)}.caja-dif.sobra{background:color-mix(in srgb,#4a8fe0 14%,transparent);color:#4a8fe0}
 .caja-act{display:flex;gap:12px;align-items:center}
 .caja-lock{color:var(--muted);font-size:13px}.caja-act .primary{flex:1}
+.cta-mine{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:15px var(--body);cursor:pointer}
+.cta-mine small{display:block;color:var(--muted);font-size:12.5px}.cta-mine.due{border-color:var(--due)}.cta-mine.due b.num{color:var(--due)}.cta-mine.cash b.num{color:#2e9e5b}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -793,7 +795,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="89";
+const APPV="90";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -831,7 +833,7 @@ function subscribeUser(u){
   db.collection("turnos/"+u+"/solicitudes").limit(200).onSnapshot(snap=>{
     for(const k of[...sols.keys()])if(k.startsWith(u+"|"))sols.delete(k);
     for(const d of snap.docs)sols.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
-  if(S.owner)db.collection("liq/"+u+"/movs").where("abierto","==",true).limit(300).onSnapshot(snap=>{
+  if(S.owner||u===S.me)db.collection("liq/"+u+"/movs").where("abierto","==",true).limit(300).onSnapshot(snap=>{
     for(const k of[...movs.keys()])if(k.startsWith(u+"|"))movs.delete(k);
     for(const d of snap.docs)movs.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
   db.collection("turnos/"+u+"/caja").where("dia",">=",from).limit(60).onSnapshot(snap=>{
@@ -1203,7 +1205,7 @@ function viewEGastosList(){
   return `<div class="list">${l.map(d=>`<div class="g-item"><div class="who"><b>${EGT[d.tipo]||"Otro"}</b><small>${[d.obs&&esc(d.obs),d.criadoEm&&hhmm(d.criadoEm)].filter(Boolean).join(" · ")}</small></div>
     <div class="r"><b class="num c-due">− ${gs(d.valor)}</b><button type="button" class="linkbtn small-link" data-egdel="${esc(d._id)}">${gDelArm==="e"+d._id?"¿eliminar?":"quitar"}</button></div></div>`).join("")}
     <div class="g-total"><span>Total empresa</span><b class="num">${gs(egStats(l).total)}</b></div></div>`}
-function saldoTxt(s){if(s.saldo>0)return{t:"Delivery paga a la empresa",v:s.saldo,c:"c-due"};if(s.saldo<0)return{t:"Empresa paga al delivery",v:-s.saldo,c:"c-cash"};return{t:"Liquidación en cero",v:0,c:""}}
+function saldoTxt(s){const dv=S.mode==="db"&&!S.owner;if(s.saldo>0)return{t:dv?"Tenés que pagar a la empresa":"Delivery paga a la empresa",v:s.saldo,c:"c-due"};if(s.saldo<0)return{t:dv?"La empresa te paga":"Empresa paga al delivery",v:-s.saldo,c:"c-cash"};return{t:"Liquidación en cero",v:0,c:""}}
 const writeTarget=()=>S.owner&&S.filter!=="all"?S.filter:S.me;
 const pctLabel=s=>s.pct?` (${s.pct}%)`:"";
 function pagoOf(u,dia){return S.pagos.get(u+"|"+dia)}
@@ -1321,7 +1323,7 @@ function paint(){
     document.getElementById("dia-list").innerHTML=viewDiaList(list);
     {loadClima();const cb=document.getElementById("clima-box");if(cb){const h=climaHtml();if(cb.dataset.h!==h){cb.innerHTML=h;cb.dataset.h=h}}}
     {const pb=document.getElementById("pend-box");if(pb)pb.innerHTML=cierreBanner()+pendBanner()}
-    {const cb=document.getElementById("cta-box");if(cb)cb.innerHTML=cuentasBox()}
+    {const cb=document.getElementById("cta-box");if(cb)cb.innerHTML=cuentasBox()+miCuentaBox()}
     {const cl=caminoList();const el=document.getElementById("camino-list");el.hidden=!cl.length;el.innerHTML=cl.length?viewCamino(cl):"";centralSeen(cl)}
     {const mb=document.getElementById("meta-box");if(mb){const h=viewMeta(list);mb.hidden=!h;mb.innerHTML=h}}
     {const cb=document.getElementById("caja-box");if(cb){let h="";try{h=cajaBox()}catch(e){}if(cb.dataset.h!==h){cb.innerHTML=h;cb.dataset.h=h}}}
@@ -1454,7 +1456,7 @@ function viewDiaShell(){
 }
 
 /* Deliverys (no dueño) no ven comisión ni liquidación: solo entregas, montos cobrados y gastos */
-const hideMoney=()=>S.mode==="db"&&!S.owner;
+const hideMoney=()=>false;/* desde v90 los deliverys ven su comisión y liquidación (lo mismo que ve el dueño de ellos) */
 /* Deliverys solo cambian el día de hoy y mientras no esté liquidado; el dueño cambia todo */
 function lockReason(dia){if(S.mode!=="db"||S.owner)return"";
   if(dia!==today())return"Solo podés registrar o cambiar entregas y gastos de hoy. Si hay que corregir otro día, pedíselo al dueño.";
@@ -1491,7 +1493,7 @@ function acertoBlock(s,label,pay,gt){
     <div class="ac-row"><span>Anotado, ya en la cuenta de la empresa</span><b class="num c-due">− ${gs(s.anotado)}</b></div>
     <div class="ac-res"><span>${r.t}</span><b class="num ${r.c}">${gs(r.v)}</b></div>
     ${pay?`<div class="ac-pay">${pay}</div>`:""}
-    <div class="ac-foot">Delivery queda con ${gs(s.fica)} · tiene en mano ${gs(s.efectivo+s.transferencia+s.pagado+s.fijo-s.fijoEmp)}${s.fijo?" (incluye diario de clientes fijos)":s.pagado?" entre efectivo, transferencia y pedidos pagos":" entre efectivo y transferencia"}</div>
+    <div class="ac-foot">${S.mode==="db"&&!S.owner?"Te quedan":"Delivery queda con"} ${gs(s.fica)} · ${S.mode==="db"&&!S.owner?"tenés":"tiene"} en mano ${gs(s.efectivo+s.transferencia+s.pagado+s.fijo-s.fijoEmp)}${s.fijo?" (incluye diario de clientes fijos)":s.pagado?" entre efectivo, transferencia y pedidos pagos":" entre efectivo y transferencia"}</div>
     ${gt!==undefined?`<div class="ac-net"><span>Gastos ${gs(gt)}</span><span>Le queda limpio <b class="num ${s.fica-gt<0?"c-due":"c-cash"}">${gs(s.fica-gt)}</b></span></div>`:""}
   </div>`}
 function driverTable(gr,dia){
@@ -1665,18 +1667,20 @@ function cuentasBox(){if(S.mode!=="db"||!S.owner||!showEmp())return"";const ids=
 function cuentaWa(u,c){const nm=(personName(u)||"").split(" ")[0];
   const ln=[...c.dias.map(x=>`• ${ddmm(x.dia)}: ${x.s.saldo>0?"liquidación":"la empresa te debe"} ${gs(Math.abs(x.s.saldo))}`),...c.ms.map(m=>`• ${ddmm(keyOf(new Date(m.em)))}: ${m.tipo==="deuda"?"deuda":"pagaste"} ${m.tipo==="deuda"?"":"− "}${gs(m.monto)}${m.nota?" ("+m.nota+")":""}`)].join("\n");
   return waOpen(`*Tú Delivery · Tu cuenta*\nHola ${nm} 👋\n\n${ln}\n\n*${c.saldo>0?"Saldo a pagar: "+gs(c.saldo):c.saldo<0?"La empresa te debe: "+gs(-c.saldo):"Cuenta al día ✅"}*`,u)}
-function openCuenta(u){edit=null;const c=cuentaDe(u);
-  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Cuenta">${sheetHead("💰 Cuenta de "+esc(personName(u)))}
-    <div class="cta-big ${c.saldo>0?"due":c.saldo<0?"cash":""}"><span>${c.saldo>0?"Debe a la empresa":c.saldo<0?"La empresa le debe":"Cuenta al día ✅"}</span><b class="num">${gs(Math.abs(c.saldo))}</b></div>
+function miCuentaBox(){if(S.mode!=="db"||S.owner||S.dia!==today())return"";const c=cuentaDe(S.me);if(!c.saldo)return"";
+  return `<button type="button" class="cta-mine ${c.saldo>0?"due":"cash"}" data-micuenta><span>💰 <b>Mi cuenta</b><small>${c.saldo>0?"Tenés que pagar a la empresa":"La empresa te debe"}${c.dias.length?" · "+plural(c.dias.length,"día")+" sin liquidar":""}</small></span><b class="num">${gs(Math.abs(c.saldo))} ›</b></button>`}
+function openCuenta(u){edit=null;const c=cuentaDe(u);const ro=!S.owner;
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Cuenta">${sheetHead(ro?"💰 Mi cuenta":"💰 Cuenta de "+esc(personName(u)))}
+    <div class="cta-big ${c.saldo>0?"due":c.saldo<0?"cash":""}"><span>${c.saldo>0?(ro?"Tenés que pagar":"Debe a la empresa"):c.saldo<0?(ro?"La empresa te debe":"La empresa le debe"):"Cuenta al día ✅"}</span><b class="num">${gs(Math.abs(c.saldo))}</b></div>
     <div class="list">
       ${c.dias.map(x=>`<div class="cta-it"><span>${ddmm(x.dia)} · liquidación del día</span><b class="num ${x.s.saldo>0?"c-due":"c-cash"}">${x.s.saldo>0?"":"− "}${gs(Math.abs(x.s.saldo))}</b></div>`).join("")}
-      ${c.ms.map(m=>`<div class="cta-it"><span>${ddmm(keyOf(new Date(m.em)))} · ${m.tipo==="deuda"?"Deuda":"Pagó"}${m.nota?" · "+esc(m.nota):""} <button type="button" class="linkbtn small-link" data-movdel="${esc(u)}|${esc(m._id)}">quitar</button></span><b class="num ${m.tipo==="deuda"?"c-due":"c-cash"}">${m.tipo==="deuda"?"":"− "}${gs(m.monto)}</b></div>`).join("")}
+      ${c.ms.map(m=>`<div class="cta-it"><span>${ddmm(keyOf(new Date(m.em)))} · ${m.tipo==="deuda"?"Deuda":"Pagó"}${m.nota?" · "+esc(m.nota):""} ${ro?"":`<button type="button" class="linkbtn small-link" data-movdel="${esc(u)}|${esc(m._id)}">quitar</button>`}</span><b class="num ${m.tipo==="deuda"?"c-due":"c-cash"}">${m.tipo==="deuda"?"":"− "}${gs(m.monto)}</b></div>`).join("")}
       ${!c.dias.length&&!c.ms.length?`<div class="empty">Sin movimientos pendientes.</div>`:""}
     </div>
-    <div class="cta-acts"><button type="button" class="small pay" data-movnew="${esc(u)}|abono">+ Registrar pago</button><button type="button" class="small" data-movnew="${esc(u)}|deuda">+ Deuda anterior / préstamo</button></div>
-    <a class="wa-big" href="${esc(cuentaWa(u,c))}" target="_blank" rel="noopener">📲 Enviar estado de cuenta</a>
-    ${c.dias.length||c.ms.length?`<button type="button" class="ghost" data-saldar="${esc(u)}">✓ Saldar todo (queda en cero)</button>`:""}
-    <p class="hint" style="margin:0">Pago parcial: registrá lo que pagó y el saldo baja. “Saldar todo” marca los días como pagados y cierra la cuenta.</p></div></div>`}
+    ${ro?`<p class="hint" style="margin:0">Para pagar, hablá con la empresa. Cuando registren tu pago, se descuenta acá.</p>`:""}<div class="cta-acts" ${ro?"hidden":""}><button type="button" class="small pay" data-movnew="${esc(u)}|abono">+ Registrar pago</button><button type="button" class="small" data-movnew="${esc(u)}|deuda">+ Deuda anterior / préstamo</button></div>
+    ${ro?"":`<a class="wa-big" href="${esc(cuentaWa(u,c))}" target="_blank" rel="noopener">📲 Enviar estado de cuenta</a>`}
+    ${!ro&&(c.dias.length||c.ms.length)?`<button type="button" class="ghost" data-saldar="${esc(u)}">✓ Saldar todo (queda en cero)</button>`:""}
+    ${ro?"":`<p class="hint" style="margin:0">Pago parcial: registrá lo que pagó y el saldo baja. “Saldar todo” marca los días como pagados y cierra la cuenta.</p>`}</div></div>`}
 function openMovNew(u,tipo){edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog">${sheetHead((tipo==="abono"?"💵 Registrar pago de ":"📌 Deuda de ")+esc(personName(u)))}
   <div class="money"><span>₲</span><input id="mv-val" inputmode="numeric" autocomplete="off" placeholder="Monto"></div>
   <div class="field"><label for="mv-nota">Detalle (opcional)</label><input id="mv-nota" autocomplete="off" placeholder="${tipo==="abono"?"Ej.: pagó en efectivo":"Ej.: deuda de septiembre, préstamo"}"></div>
@@ -2075,7 +2079,7 @@ function viewSemana(){
   return `${totTiles(T,myGt(days[6],t))}
   ${cmpBlock(wl,listRange(addDays(t,-13),addDays(t,-7)),"los 7 días anteriores")}
   ${cierreSemBlock()}
-  ${S.mode==="db"&&S.owner?pendBlock(days[6],t):""}
+  ${S.mode==="db"?pendBlock(days[6],t):""}
   <section class="summary">${acertoBlock(T,acertoLabel("Liquidación de la semana",gr),"",myGt(days[6],t))}${driverTable(gr)}${showEmp()?empresaBlock(T,egStats(egRange(days[6],t)).total,"Resultado de la empresa · 7 días"):""}
     <div class="sum-actions"><span></span><button type="button" class="linkbtn" data-copyweek>${hideMoney()?"Copiar resumen de la semana":"Copiar liquidación de la semana"}</button></div></section>
   <section class="sec"><div class="sec-h"><h2>Últimos 7 días</h2></div>
@@ -2127,7 +2131,7 @@ function viewMes(){
     </div>
     ${acertoBlock(T,acertoLabel("Liquidación del mes",gr),"",myGt(r.from,r.to))}${driverTable(gr)}${showEmp()?empresaBlock(T,egStats(egRange(r.from,r.to)).total,"Resultado de la empresa · "+r.label):""}
     <div class="sum-actions"><button type="button" class="linkbtn" data-excel>Descargar en Excel</button><button type="button" class="linkbtn" data-copymes>Copiar resumen del mes</button></div></section>
-  ${S.mode==="db"&&S.owner&&mesOff===0?pendBlock(r.from,r.to):""}
+  ${S.mode==="db"&&mesOff===0?pendBlock(r.from,r.to):""}
   ${showEmp()?egastosBlock(r.from,r.to):""}
   ${gastosBlock(r.from,r.to)}
   ${clientesBlock(ml)}`;
@@ -2446,6 +2450,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.diario){const r=lockReason(S.dia);if(r){lockedMsg(r);return}openDiario(t.dataset.diario)}
   else if(t.dataset.tel&&!t.closest("#layer"))openTel(t.dataset.tel,t.dataset.teln||"");
   else if(t.dataset.paste){doPaste(t.dataset.paste)}
+  else if(t.hasAttribute("data-micuenta"))openCuenta(S.me);
   else if(t.hasAttribute("data-cajaabrir")&&!t.closest("#layer"))openCaja("abrir");
   else if(t.hasAttribute("data-cajacerrar")&&!t.closest("#layer"))openCaja("cerrar");
   else if(t.hasAttribute("data-pasar")){S.asig="";openEntry(true,true)}
