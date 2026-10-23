@@ -684,7 +684,9 @@ details.sec.fold{display:grid;gap:10px}
 .caja-act{display:flex;gap:12px;align-items:center}
 .caja-lock{color:var(--muted);font-size:13px}
 .direct-link{border:0!important;background:none!important;color:var(--muted)!important;text-decoration:underline;font-size:14px!important;padding:6px!important;box-shadow:none!important}
-.cierre-cam{display:grid;gap:4px}.cierre-cam small{font-weight:500}
+.cierre-cam{display:grid;gap:4px}
+.cam-grp{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;background:color-mix(in srgb,var(--accent) 12%,transparent);border-top:1px solid var(--line);font-size:14.5px}.cam-grp:first-child{border-top:0}.cam-grp span{color:var(--muted);font-size:12.5px;margin-left:auto}
+.cam-old .who small{color:var(--due)}.cierre-cam small{font-weight:500}
 .caja-fuera{display:grid;gap:5px;font-size:14px;border:1px dashed var(--line);border-radius:12px;padding:10px 12px}
 .caja-fuera>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.caja-fuera b{white-space:nowrap}.caja-fuera span{color:var(--muted)}
 .cf-h{font-size:11.5px!important;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700}
@@ -864,7 +866,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="112";
+const APPV="113";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2187,9 +2189,13 @@ function openTel(num,nombre){edit=null;const w=telPy(num);
     <button type="button" class="ghost" data-cancel>Cerrar</button></div></div>`}
 function viewCamino(cl){
   const showWho=S.mode==="db"&&S.owner&&S.filter==="all";
-  return `<div class="sec-h"><h2>En camino</h2><span>${plural(cl.length,"pedido")}</span></div><div class="list">
-  ${cl.map(([k,d])=>`<div class="cam-row"><div class="cam-info">
-      <div class="who"><b>${d.central?'<span class="pill p-central">📦 Central</span> ':""}${esc(d.cliente)||"Sin cliente"}</b>${d.ret?`<span class="ret-line">🏪 Retirar en <strong>${esc(d.ret.n||"ubicación")}</strong></span>`:""}<small>${[showWho&&("🛵 "+esc(personName(d._u))+(d.central?(d.visto?" · 👀 vio "+hhmm(d.visto):" · ⏳ todavía no lo vio"):"")),d.lote&&d.cant>1?"📦 "+d.cant+" entregas":"",d.metPlan&&d.metPlan!=="pagado"?"Paga: "+M[d.metPlan].n:"",d.pagoTipo==="todo"?"✅ Pedido pago · no cobrar":d.pagoTipo==="prod"?"Producto ya pagado · solo delivery":d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
+  if(showWho)cl=cl.slice().sort((a,b)=>personName(a[1]._u).localeCompare(personName(b[1]._u))||(a[1].criadoEm||0)-(b[1].criadoEm||0));
+  const nDel=new Set(cl.map(([,d])=>d._u)).size;let lastU=null;
+  const minsAgo=ms=>{const m=Math.max(0,Math.round((Date.now()-(ms||Date.now()))/60000));return m<1?"recién":m<60?"hace "+m+" min":"hace "+Math.floor(m/60)+" h "+(m%60)+" min"};
+  const grp=d=>{if(!showWho||d._u===lastU)return"";lastU=d._u;const n=cl.filter(([,x])=>x._u===d._u).length;return `<div class="cam-grp">🛵 <b>${esc(personName(d._u))}</b><span>${plural(n,"pedido")} en camino</span></div>`};
+  return `<div class="sec-h"><h2>En camino</h2><span>${plural(cl.length,"pedido")}${showWho?" · "+plural(nDel,"delivery").replace("deliverys","deliverys"):""}</span></div><div class="list">
+  ${cl.map(([k,d])=>grp(d)+`<div class="cam-row ${d.criadoEm&&Date.now()-d.criadoEm>60*60000?"cam-old":""}"><div class="cam-info">
+      <div class="who"><b>${d.central?'<span class="pill p-central">📦 Central</span> ':""}${esc(d.cliente)||"Sin cliente"}</b>${d.ret?`<span class="ret-line">🏪 Retirar en <strong>${esc(d.ret.n||"ubicación")}</strong></span>`:""}<small>${[minsAgo(d.criadoEm),showWho&&d.central?(d.visto?"👀 vio "+hhmm(d.visto):"⏳ todavía no lo vio"):"",d.lote&&d.cant>1?"📦 "+d.cant+" entregas":"",d.metPlan&&d.metPlan!=="pagado"?"Paga: "+M[d.metPlan].n:"",d.pagoTipo==="todo"?"✅ Pedido pago · no cobrar":d.pagoTipo==="prod"?"Producto ya pagado · solo delivery":d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
       <div class="amt"><small>Cobrar</small><b class="num">${gs(cobrarDe(d))}</b></div></div>
     <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>!x.nota&&x.ok!==null&&x.ok!==undefined).length}/${d.lista.filter(x=>!x.nota).length}</button>`:""}${d.ret&&(d.ret.n||d.ret.ubic)?`<a class="map-btn" href="${esc(mapUrl(d.ret.n||"",d.ret.ubic))}" target="_blank" rel="noopener">🏪 Retirar</a>`:""}${d.ret&&d.ret.tel?`<button type="button" class="map-btn" data-tel="${esc(d.ret.tel)}" data-teln="${esc(d.ret.n||"Retiro")}">📞 Retiro</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${d.ret?"Entregar":linkIn(d.ubic)?"Ubicación":"Mapa"}</a>${d.tel?`<button type="button" class="map-btn" data-tel="${esc(d.tel)}" data-teln="${esc(d.cliente||"Cliente")}">📞 Cliente</button>`:""}<button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
 function fijosBlock(list){
