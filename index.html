@@ -587,7 +587,7 @@ details.sec.fold{display:grid;gap:10px}
 .cr-lema{font:italic 600 15px var(--body);color:#d9a93a;letter-spacing:.2px}
 .credit .cr-v{opacity:.75;font-size:11.5px}
 .anotar.pasar{border-style:solid;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
-.asig-list{display:grid;gap:6px;max-height:34vh;overflow:auto}
+.asig-list{display:grid;gap:6px}
 .asig{display:grid;grid-template-columns:12px minmax(0,1fr);gap:10px;align-items:center;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:none;color:var(--ink);font:15px var(--body);cursor:pointer}
 .asig .who{display:grid;gap:1px;min-width:0}.asig small{color:var(--muted);font-size:12.5px}
 .asig.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent);box-shadow:0 0 0 1px var(--accent)}
@@ -762,7 +762,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="83";
+const APPV="84";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1815,7 +1815,7 @@ function openCierre(){edit=null;const list=listDay(today()).filter(([,d])=>d._u=
     <p class="hint" style="margin:0">Al cerrar, el dueño recibe el aviso de que terminaste. Si después hacés otra entrega, la podés registrar igual.</p>
     <button type="button" class="primary" data-cierreok>${cam.length?"Cerrar igual":"Confirmar cierre"}</button></div></div>`}
 var LSCS="caixa_central_vistos";
-function centralSeen(cl){if(S.mode!=="db"||S.owner)return;let seen={};try{seen=JSON.parse(localStorage.getItem(LSCS)||"{}")}catch(e){}let ch=false;
+function centralSeen(cl){if(S.mode!=="db"||isRealOwner)return;let seen={};try{seen=JSON.parse(localStorage.getItem(LSCS)||"{}")}catch(e){}let ch=false;
   for(const[k,d]of cl){if(!d.central||d._u!==S.me)continue;
     if(!seen[d._id]){seen[d._id]=Date.now();ch=true;toast("📦 Nuevo pedido de la central: "+(d.cliente||"sin nombre"));try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}
     if(!d.visto&&!document.hidden){d.visto=Date.now();patchItem(k,{visto:d.visto}).catch(()=>{})}}
@@ -2208,11 +2208,11 @@ function openName(){edit=null;const cur=S.people.get(S.me);layer.innerHTML=`<div
   <div class="field"><label for="n-val">Tu nombre</label><input id="n-val" autocomplete="name" value="${esc(cur?cur.nome:"")}" placeholder="Ej.: Juan"></div>
   <button class="primary" data-nsave>Guardar</button></div></div>`;setTimeout(()=>{const n=document.getElementById("n-val");if(n)n.focus()},50)}
 function sheetHead(title){return `<div class="sheet-h"><h3>${title}</h3><button type="button" class="x" data-cancel aria-label="Cerrar">✕</button></div>`}
-function asigPicker(){const ids=activos().filter(u=>!roles.socios.includes(u)&&u!==S.me);
+function asigPicker(){const ids=activos().filter(u=>u!==S.me);
   const camN=u=>caminoList().filter(([,d])=>d._u===u).length;
-  const info=u=>{let cls="off",st="";try{const e=estadoDe(u);cls=e.cls==="cz-work"?"work":e.cls==="cz-ok"?"done":e.cls==="cz-late"?"late":"off";st=e.st.replace(/<[^>]+>/g,"")}catch(x){}const c=[...S.items.values()].filter(d=>d._u===u&&isCamino(d)).length;return{cls,st:st+(c?" · "+c+" en camino":"")}};
+  const info=u=>{let cls="off",st="";try{const e=estadoDe(u);cls=e.cls==="cz-work"?"work":e.cls==="cz-ok"?"done":e.cls==="cz-late"?"late":"off";st=e.st.replace(/<[^>]+>/g,"").replace(/^[^A-Za-zÁÉÍÓÚáéíóúÑñ0-9¿¡]+/,"")}catch(x){}const c=[...S.items.values()].filter(d=>d._u===u&&isCamino(d)).length;return{cls,st:st+(c?" · "+c+" en camino":"")}};
   const rows=ids.map(u=>({u,...info(u)})).sort((a,b)=>(a.cls==="work"?0:1)-(b.cls==="work"?0:1)||personName(a.u).localeCompare(personName(b.u)));
-  return `<div class="lbl">¿Quién lo lleva?</div><div class="asig-list">${rows.map(r=>`<button type="button" class="asig ${S.asig===r.u?"on":""}" data-asig="${esc(r.u)}"><span class="vp-dot ${r.cls}"></span><span class="who"><b>${esc(personName(r.u))}</b><small>${esc(r.st)}</small></span></button>`).join("")||`<div class="empty">No hay deliverys activos.</div>`}</div>`}
+  return `<div class="lbl">¿Quién lo lleva?</div><div class="asig-list">${rows.map(r=>`<button type="button" class="asig ${S.asig===r.u?"on":""}" data-asig="${esc(r.u)}"><span class="vp-dot ${r.cls}"></span><span class="who"><b>${esc(personName(r.u))}${roles.socios.includes(r.u)?' <span class="pill p-fijo">Socia/o</span>':""}</b><small>${esc(r.st)}</small></span></button>`).join("")||`<div class="empty">No hay deliverys activos.</div>`}</div>`}
 function openEntry(cm,pasar){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pagoTipo="";S.cmMet="efectivo";S.pasar=!!pasar;if(!pasar)S.asig="";if(!S.cliente){ubicTxt="";listaTxt=""}const isToday=S.dia===today();
   const forWho=S.pasar?"":S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
