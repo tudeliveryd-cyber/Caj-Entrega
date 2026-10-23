@@ -642,6 +642,9 @@ details.sec.fold{display:grid;gap:10px}
 .tel-num{font-size:26px;font-weight:800;text-align:center;letter-spacing:.5px}
 .tel-a{display:block;text-align:center;text-decoration:none;padding:15px!important;font-size:17px!important}
 .entry-sheet .primary:disabled{opacity:1;background:color-mix(in srgb,var(--accent) 40%,var(--surface));color:color-mix(in srgb,var(--ink) 60%,transparent)}
+.ub-row.ub3{grid-template-columns:minmax(0,1fr) auto auto}
+.paste-btn{background:color-mix(in srgb,var(--accent) 16%,var(--surface));border-color:var(--accent);color:var(--ink)}
+#maplink,#retlink{text-decoration:none;font-size:17px;padding:9px 12px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -774,7 +777,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="85";
+const APPV="86";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1510,7 +1513,22 @@ function rowHtml(key,d,showDate){const t=d.criadoEm?new Date(d.criadoEm):null;co
 /* ubicación: link que mandó el cliente, o búsqueda en Google Maps por nombre del comercio */
 const CIUDAD="Santa Rita, Paraguay";
 function linkIn(t){const m=String(t||"").match(/https?:\/\/\S+/);return m?m[0]:""}
-function mapUrl(q,ub){const l=linkIn(ub);if(l)return l;const txt=[ub&&String(ub).trim(),q&&String(q).trim()].filter(Boolean).join(" ");
+/* pegar desde WhatsApp: reconoce link de mapa, coordenadas y teléfono */
+function coordsIn(t){const m=String(t||"").match(/(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/);return m?m[1]+","+m[2]:""}
+function telIn(t){const x=String(t||"").replace(/https?:\/\/\S+/g," ");const m=x.match(/(?:\+?\s?595|0)\s?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}/)||x.match(/(?:\+?\d[\d\s.-]{7,}\d)/);return m?m[0].trim():""}
+function ubicIn(t){const l=linkIn(t);if(l)return l;const c=coordsIn(t);if(c)return "https://maps.google.com/?q="+c;return ""}
+function setF(id,v){const el=document.getElementById(id);if(el){el.value=v;el.dispatchEvent(new Event("input",{bubbles:true}))}}
+async function doPaste(target){let txt="";
+  try{txt=await navigator.clipboard.readText()}catch(e){}
+  if(!txt){const el=document.getElementById(target);if(el)el.focus();toast("Mantené apretado el campo y tocá “Pegar”");return}
+  const isTel=target==="cli-tel"||target==="ret-t";const telT=isTel?target:target==="ret-u"?"ret-t":"cli-tel";
+  const u=ubicIn(txt),tel=telIn(txt);const got=[];
+  if(isTel){if(tel){setF(target,tel);got.push("teléfono")}else{toast("No encontré un número en lo que copiaste");return}
+    if(u){setF(target==="ret-t"?"ret-u":"ubic",u);got.push("ubicación")}}
+  else{if(u){setF(target,u);got.push("ubicación")}else if(!tel){setF(target,txt.trim().slice(0,300));got.push("dirección")}
+    const te=document.getElementById(telT);if(tel&&te&&!te.value.trim()){setF(telT,tel);got.push("teléfono")}}
+  toast(got.length?"✓ Pegado: "+got.join(" y "):"No reconocí nada en lo que copiaste")}
+function mapUrl(q,ub){const l=linkIn(ub);if(l)return l;{const c=coordsIn(ub);if(c)return "https://maps.google.com/?q="+c}const txt=[ub&&String(ub).trim(),q&&String(q).trim()].filter(Boolean).join(" ");
   return "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent((txt||"")+", "+CIUDAD)}
 function mapQ(){return (S.cliente||"").trim()||(S.obs||"").trim()}
 function updMapLink(){const a=document.getElementById("maplink");if(a)a.href=mapUrl(mapQ(),ubicTxt)}
@@ -2238,8 +2256,8 @@ function openEntry(cm,pasar){edit=null;sinCliOk=false;S.pend=false;S.lote=false;
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
   const cliente=`<div class="field"><label for="cli">${cm?"Nombre del cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
       <div class="sugs" id="cli-sug" hidden></div></div>
-    <div class="field"><label for="ubic">${cm?"Ubicación del cliente (opcional)":"Ubicación (opcional)"}</label><div class="ub-row"><input id="ubic" autocomplete="off" placeholder="Pegá la ubicación del WhatsApp" value="${esc(ubicTxt)}"><a class="ub-btn" id="maplink" href="#" target="_blank" rel="noopener">📍 Buscar</a></div>
-      <small class="hint" style="margin:0">Tocá <b>📍 Buscar</b> para ver el comercio en el mapa, o pegá acá la ubicación que te mandó el cliente.</small></div>`;
+    <div class="field"><label for="ubic">${cm?"Ubicación del cliente (opcional)":"Ubicación (opcional)"}</label><div class="ub-row ub3"><input id="ubic" autocomplete="off" placeholder="Ubicación, link o dirección" value="${esc(ubicTxt)}"><button type="button" class="ub-btn paste-btn" data-paste="ubic">📋 Pegar</button><a class="ub-btn" id="maplink" href="#" target="_blank" rel="noopener" aria-label="Ver en el mapa">📍</a></div>
+      <small class="hint" style="margin:0">Copiá la ubicación en WhatsApp y tocá <b>📋 Pegar</b>. Con <b>📍</b> la ves en el mapa.</small></div>`;
   const prod=`<div class="field"><label for="prod">${cm?"Valor del producto (lo que pagaste o dice el tique)":"Valor del producto (opcional, para saber cuánto cobrar)"}</label>
     <div class="money ${cm?"":"small-money"}"><span>₲</span><input id="prod" inputmode="numeric" autocomplete="off" placeholder="Ej.: 30.000" value="${fmtInput(S.prod)}"></div></div>`;
   const val=`<div class="field"><label for="val">${cm?"Valor del delivery":"Monto del delivery (tocá un atajo o escribí el precio)"}</label>
@@ -2247,10 +2265,10 @@ function openEntry(cm,pasar){edit=null;sinCliOk=false;S.pend=false;S.lote=false;
   const obs=`<div class="field"><label for="obs">${cm?"Dirección o detalle (opcional)":"Observación (opcional)"}</label><input id="obs" autocomplete="off" placeholder="Ej.: Barrio San Blas" value="${esc(S.obs)}"></div>`;
   const retF=`<details class="ret-box" ${retN||retU||retT?"open":""}><summary>🏪 <b>Dónde retirar</b> <small>(opcional · comercio o persona)</small><span class="ret-arr">▾</span></summary>
     <div class="field"><label for="ret-n">Nombre</label><input id="ret-n" autocomplete="off" placeholder="Ej.: Farmacia Central" value="${esc(retN)}"></div>
-    <div class="field"><label for="ret-u">Ubicación para retirar</label><div class="ub-row"><input id="ret-u" autocomplete="off" placeholder="Pegá la ubicación del WhatsApp" value="${esc(retU)}"><a class="ub-btn" id="retlink" href="${esc(retU||retN?mapUrl(retN,retU):"#")}" target="_blank" rel="noopener">📍 Buscar</a></div></div>
-    <div class="field"><label for="ret-t">Teléfono para retirar</label><input id="ret-t" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej.: 0981 123 456" value="${esc(retT)}"></div></details>
+    <div class="field"><label for="ret-u">Ubicación para retirar</label><div class="ub-row ub3"><input id="ret-u" autocomplete="off" placeholder="Ubicación, link o dirección" value="${esc(retU)}"><button type="button" class="ub-btn paste-btn" data-paste="ret-u">📋 Pegar</button><a class="ub-btn" id="retlink" href="${esc(retU||retN?mapUrl(retN,retU):"#")}" target="_blank" rel="noopener" aria-label="Ver en el mapa">📍</a></div></div>
+    <div class="field"><label for="ret-t">Teléfono para retirar</label><div class="ub-row"><input id="ret-t" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej.: 0981 123 456" value="${esc(retT)}"><button type="button" class="ub-btn paste-btn" data-paste="ret-t">📋 Pegar</button></div></div></details>
     <div class="lbl ent-lbl">🏠 Entregar a</div>`;
-  const telF=`<div class="field"><label for="cli-tel">Teléfono del cliente (opcional)</label><input id="cli-tel" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej.: 0985 654 321" value="${esc(cliTel)}"></div>`;
+  const telF=`<div class="field"><label for="cli-tel">Teléfono del cliente (opcional)</label><div class="ub-row"><input id="cli-tel" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej.: 0985 654 321" value="${esc(cliTel)}"><button type="button" class="ub-btn paste-btn" data-paste="cli-tel">📋 Pegar</button></div></div>`;
   const listaF=`<div class="field"><label for="lista">🛒 Lista de compras (opcional)</label><textarea id="lista" rows="3" placeholder="Pegá la lista que mandó el cliente. Un producto por línea.">${esc(listaTxt)}</textarea>
     <small class="hint" style="margin:0">En el mercado abrís la lista desde “En camino” y vas marcando cada producto.</small></div>`;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet entry-sheet" role="dialog" aria-label="${cm?"Anotar pedido":"Nueva entrega"}">
@@ -2363,6 +2381,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.fijocli){S.cliente=t.dataset.fijocli;S.err="";const c=document.getElementById("cli");if(c)c.value=S.cliente;refreshForm()}
   else if(t.dataset.diario){const r=lockReason(S.dia);if(r){lockedMsg(r);return}openDiario(t.dataset.diario)}
   else if(t.dataset.tel&&!t.closest("#layer"))openTel(t.dataset.tel,t.dataset.teln||"");
+  else if(t.dataset.paste){doPaste(t.dataset.paste)}
   else if(t.hasAttribute("data-pasar")){S.asig="";openEntry(true,true)}
   else if(t.dataset.asig){S.asig=t.dataset.asig;const b=document.getElementById("asig-box");if(b)b.innerHTML=asigPicker();if(S.err&&S.err.startsWith("Elegí arriba")){S.err=""}refreshForm();const c=document.getElementById("cli");if(c&&!c.value)c.focus()}
   else if(t.hasAttribute("data-anotar")){if(S.mode==="db"&&!S.owner&&S.canWrite===false){noPerm();return}openEntry(true);setTimeout(()=>{const c=document.getElementById("cli");if(c)c.focus()},60)}
