@@ -630,6 +630,12 @@ details.sec.fold{display:grid;gap:10px}
 .nt-sum{display:grid;gap:6px;border:1px solid var(--nc);border-radius:12px;padding:10px 12px;background:color-mix(in srgb,var(--nc) 10%,transparent)}
 .ns-tot{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.ns-tot span{color:var(--muted);font-size:13px}.ns-tot b{font-size:22px}
 .ns-sub{display:flex;justify-content:space-between;gap:10px;font-weight:700;font-size:14px}.nt-sum small{color:var(--muted);font-size:12.5px}
+.nt-cols{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.nt-col{display:grid;grid-template-rows:auto 1fr;min-width:0}.nt-col+.nt-col{border-left:2px solid var(--nc)}
+.nt-cn{border:0;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--nc) 14%,transparent);color:var(--ink);font:700 15px var(--body);padding:9px 10px;outline:none;min-width:0}
+.nt-cols .nt-text{border-radius:0;font-size:15.5px;padding:10px;min-width:0}
+.ns-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ns-two>div{display:grid;gap:2px}.ns-two span{color:var(--muted);font-size:13px}.ns-two b{font-size:19px}.ns-two small{font-size:12px}
+.ns-pasa{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:1px solid var(--line);padding-top:6px;font-weight:700}.ns-pasa b{font-size:20px}
 .nt-ctot{font-size:13px;color:var(--muted)}.nt-ctot b{color:var(--ink)}
 .nt-colors{display:flex;gap:7px;margin-left:auto}
 .nt-dot{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
@@ -817,7 +823,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="97";
+const APPV="98";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1282,7 +1288,7 @@ function subNotas(){if(ntSubbed)return;ntSubbed=true;
 async function putNota(id,d){if(S.mode==="db"&&db){await sendW(privCol(S.me).doc(id).set(d))}else{const o=lsGet(LSN,{});o[id]=d;lsSet(LSN,o)}}
 async function delNota(id){notas.delete(id);if(S.mode==="db"&&db){await sendW(privCol(S.me).doc(id).delete())}else{const o=lsGet(LSN,{});delete o[id];lsSet(LSN,o)}}
 const ntWhen=ms=>{const k=keyOf(new Date(ms));return k===today()?"hoy "+hhmm(ms):k===addDays(today(),-1)?"ayer "+hhmm(ms):ddmm(k)};
-function ntSorted(){const q=norm(NQ);return[...notas.values()].filter(n=>!q||norm((n.titulo||"")+" "+(n.texto||"")).includes(q)).sort((a,b)=>(b.fijada?1:0)-(a.fijada?1:0)||(b.upd||0)-(a.upd||0))}
+function ntSorted(){const q=norm(NQ);return[...notas.values()].filter(n=>!q||norm((n.titulo||"")+" "+(n.texto||"")+" "+(n.texto2||"")+" "+(n.n2||"")).includes(q)).sort((a,b)=>(b.fijada?1:0)-(a.fijada?1:0)||(b.upd||0)-(a.upd||0))}
 function ntPreview(t){return esc(String(t||"").split("\n").slice(0,5).join("\n")).replace(/^(\s*)☐/gm,"$1⬜").replace(/^(\s*)☑/gm,"$1✅")}
 function openNotas(){subNotas();edit=null;NE=null;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet nt-sheet" role="dialog" aria-label="Notas">${sheetHead("📝 Mis notas")}
@@ -1294,49 +1300,64 @@ function drawNotas(){const el=document.getElementById("nt-list");if(!el)return;c
   el.innerHTML=l.length?`<div class="nt-grid">${l.map(n=>{const c=NCOL[n.color]||NCOL.gris;const ck=(n.texto||"").match(/^\s*[☐☑]/gm)||[];const done=(n.texto||"").match(/^\s*☑/gm)||[];
     return `<button type="button" class="nt-card" data-ntopen="${esc(n._id)}" style="--nc:${c}">${n.fijada?'<span class="nt-pin">📌</span>':""}
       ${n.titulo?`<b>${esc(n.titulo)}</b>`:""}<span class="nt-pv">${ntPreview(n.texto)||"<i>Nota vacía</i>"}</span>
-      ${n.suma?(()=>{const r=notaSuma(n.texto);return `<span class="nt-ctot">Total <b class="num">${gs(r.tot)}</b>${r.ck&&r.pend?` · falta ${gs(r.pend)}`:""}</span>`})():""}
+      ${n.dos?(()=>{const a=notaSuma(n.texto),b=notaSuma(n.texto2);return `<span class="nt-ctot">${esc(n.n1||"Yo")} <b class="num">${gs(a.tot)}</b> · ${esc(n.n2||"Otro")} <b class="num">${gs(b.tot)}</b></span>`})():n.suma?(()=>{const r=notaSuma(n.texto);return `<span class="nt-ctot">Total <b class="num">${gs(r.tot)}</b>${r.ck&&r.pend?` · falta ${gs(r.pend)}`:""}</span>`})():""}
       <small>${ck.length?`☑ ${done.length}/${ck.length} · `:""}${ntWhen(n.upd||n.em||Date.now())}</small></button>`}).join("")}</div>`
     :`<div class="empty nt-empty">${NQ?"No hay notas con “"+esc(NQ)+"”.":"📝 Todavía no tenés notas.<br><small>Anotá direcciones, pedidos, recordatorios, listas… lo que quieras.</small>"}</div>`}
 function openNota(id){subNotas();const n=id?notas.get(id):null;
-  NE=n?{id,titulo:n.titulo||"",texto:n.texto||"",color:n.color||"amarillo",fijada:!!n.fijada,suma:!!n.suma,em:n.em||Date.now(),nueva:false,armed:false}
-      :{id:uid(),titulo:"",texto:"",color:"amarillo",fijada:false,suma:false,em:Date.now(),nueva:true,armed:false};
-  edit=null;const c=NCOL[NE.color];
+  NE=n?{id,titulo:n.titulo||"",texto:n.texto||"",texto2:n.texto2||"",n1:n.n1||"",n2:n.n2||"",dos:!!n.dos,color:n.color||"amarillo",fijada:!!n.fijada,suma:!!n.suma||!!n.dos,em:n.em||Date.now(),nueva:false,armed:false,lastTA:"nt-x"}
+      :{id:uid(),titulo:"",texto:"",texto2:"",n1:"",n2:"",dos:false,color:"amarillo",fijada:false,suma:false,em:Date.now(),nueva:true,armed:false,lastTA:"nt-x"};
+  edit=null;drawNotaEd();if(NE.nueva)setTimeout(()=>{const x=document.getElementById("nt-x");if(x)x.focus()},80)}
+function drawNotaEd(){const c=NCOL[NE.color];
+  const ta=(id,v,ph)=>`<textarea id="${id}" class="nt-text" placeholder="${ph}" maxlength="20000">${esc(v)}</textarea>`;
   layer.innerHTML=`<div class="scrim"><div class="sheet nt-ed" role="dialog" aria-label="Nota" style="--nc:${c}">
     <div class="sheet-h"><button type="button" class="linkbtn nt-back" data-ntback>‹ Notas</button><span class="nt-st" id="nt-st">${NE.nueva?"Nueva nota":"Guardado ✓"}</span><button type="button" class="x" data-ntback aria-label="Cerrar">✕</button></div>
     <input id="nt-t" class="nt-title" placeholder="Título" value="${esc(NE.titulo)}" maxlength="120" autocomplete="off">
-    <textarea id="nt-x" class="nt-text" placeholder="Escribí tu nota…" maxlength="20000">${esc(NE.texto)}</textarea>
+    ${NE.dos?`<div class="nt-cols"><div class="nt-col"><input id="nt-n1" class="nt-cn" placeholder="Yo" value="${esc(NE.n1)}" maxlength="30" autocomplete="off">${ta("nt-x",NE.texto,"Ej.: Emir 30.000")}</div>
+      <div class="nt-col"><input id="nt-n2" class="nt-cn" placeholder="Otro delivery" value="${esc(NE.n2)}" maxlength="30" autocomplete="off">${ta("nt-x2",NE.texto2,"Ej.: Ana 25.000")}</div></div>`
+      :ta("nt-x",NE.texto,"Escribí tu nota…")}
     <div id="nt-sum" class="nt-sum" ${NE.suma?"":"hidden"}></div>
     <div class="nt-tools">
       <button type="button" class="chip" data-ntcheck>☐ Casilla</button>
       <button type="button" class="chip ${NE.suma?"on":""}" data-ntsuma>Σ Sumar valores</button>
+      <button type="button" class="chip ${NE.dos?"on":""}" data-ntdos>Dos columnas</button>
       <button type="button" class="chip ${NE.fijada?"on":""}" data-ntpin>📌 ${NE.fijada?"Fijada":"Fijar"}</button>
       <span class="nt-colors">${Object.entries(NCOL).map(([k,v])=>`<button type="button" class="nt-dot ${NE.color===k?"on":""}" data-ntcolor="${k}" style="background:${v}" aria-label="Color ${k}"></button>`).join("")}</span>
     </div>
     <div class="nt-act"><a class="wa-btn" id="nt-wa" href="#" target="_blank" rel="noopener">📲 WhatsApp</a><button type="button" class="ghost" data-ntcopy>Copiar</button><button type="button" class="danger" data-ntdel>${NE.nueva?"Descartar":"Eliminar"}</button></div>
-    <small class="hint" style="margin:0">Se guarda sola mientras escribís. Tocá una casilla ☐ en la nota para marcarla ☑.</small></div></div>`;
-  const t=document.getElementById("nt-t"),x=document.getElementById("nt-x");
-  const grow=()=>{x.style.height="auto";x.style.height=Math.max(220,x.scrollHeight+4)+"px"};grow();updNtWa();drawNtSum();
-  t.addEventListener("input",()=>{NE.titulo=t.value;ntDirty()});
-  x.addEventListener("input",()=>{NE.texto=x.value;grow();ntDirty()});
-  x.addEventListener("click",()=>{const p=x.selectionStart;const v=x.value;const ls=v.lastIndexOf("\n",p-1)+1;const m=v.slice(ls).match(/^(\s*)([☐☑])/);
-    if(m&&p<=ls+m[1].length+2){const i=ls+m[1].length;x.value=v.slice(0,i)+(m[2]==="☐"?"☑":"☐")+v.slice(i+1);x.selectionStart=x.selectionEnd=p;NE.texto=x.value;ntDirty()}});
-  if(NE.nueva)setTimeout(()=>x.focus(),80)}
-function updNtWa(){const a=document.getElementById("nt-wa");if(a&&NE)a.href="https://wa.me/?text="+encodeURIComponent((NE.titulo?"*"+NE.titulo+"*\n":"")+NE.texto)}
+    <small class="hint" style="margin:0">Se guarda sola mientras escribís. Tocá una casilla ☐ en la nota para marcarla ☑.${NE.dos?" Del otro lado anotá lo que hizo el otro delivery: abajo ves cuánto te tiene que pasar.":""}</small></div></div>`;
+  const t=document.getElementById("nt-t");t.addEventListener("input",()=>{NE.titulo=t.value;ntDirty()});
+  [["nt-n1","n1"],["nt-n2","n2"]].forEach(([i,k])=>{const e=document.getElementById(i);if(e)e.addEventListener("input",()=>{NE[k]=e.value;ntDirty()})});
+  [["nt-x","texto"],["nt-x2","texto2"]].forEach(([i,k])=>{const x=document.getElementById(i);if(!x)return;
+    const grow=()=>{x.style.height="auto";x.style.height=Math.max(NE.dos?260:220,x.scrollHeight+4)+"px"};grow();
+    x.addEventListener("focus",()=>{NE.lastTA=i});
+    x.addEventListener("input",()=>{NE[k]=x.value;grow();ntDirty()});
+    x.addEventListener("click",()=>{const p=x.selectionStart;const v=x.value;const ls=v.lastIndexOf("\n",p-1)+1;const m=v.slice(ls).match(/^(\s*)([☐☑])/);
+      if(m&&p<=ls+m[1].length+2){const j=ls+m[1].length;x.value=v.slice(0,j)+(m[2]==="☐"?"☑":"☐")+v.slice(j+1);x.selectionStart=x.selectionEnd=p;NE[k]=x.value;ntDirty()}})});
+  updNtWa();drawNtSum()}
+function ntTxtAll(e){return e.dos?`${e.n1||"Yo"}:\n${e.texto}\n\n${e.n2||"Otro"}:\n${e.texto2}`:e.texto}
+function updNtWa(){const a=document.getElementById("nt-wa");if(a&&NE)a.href="https://wa.me/?text="+encodeURIComponent((NE.titulo?"*"+NE.titulo+"*\n":"")+ntTxtAll(NE))}
 /* sumar valores de una nota: toma el último número de cada línea (30.000 · 30000 · 30 mil · 30k · números chicos = miles) */
 function lineVal(l){const m=[...String(l).matchAll(/(\d{1,3}(?:[.\s]\d{3})+|\d+)(?:[.,]\d{1,2})?\s*(mil|k)?\b/gi)];if(!m.length)return 0;const x=m[m.length-1];
   let v=parseInt(x[1].replace(/[.\s]/g,""),10)||0;if(x[2]||v<1000)v*=1000;return v}
 function notaSuma(t){let tot=0,ok=0,pend=0,n=0,ck=0;for(const l of String(t||"").split("\n")){const v=lineVal(l);if(!v)continue;n++;tot+=v;
-  if(/^\s*☑/.test(l)){ok+=v;ck++}else if(/^\s*☐/.test(l)){pend+=v;ck++}}return{tot,ok,pend,n,ck}}
-function drawNtSum(){const el=document.getElementById("nt-sum");if(!el||!NE)return;el.hidden=!NE.suma;if(!NE.suma)return;const r=notaSuma(NE.texto);
+  if(/^\s*☑/.test(l)){ok+=v;ck++}else if(/^\s*☐/.test(l)){ck++}}pend=tot-ok;return{tot,ok,pend,n,ck}}
+function drawNtSum(){const el=document.getElementById("nt-sum");if(!el||!NE)return;el.hidden=!NE.suma;if(!NE.suma)return;
+  if(NE.dos){const a=notaSuma(NE.texto),b=notaSuma(NE.texto2);const n1=NE.n1.trim()||"Yo",n2=NE.n2.trim()||"Otro delivery";const pasa=b.tot-b.ok;
+    el.innerHTML=`<div class="ns-two"><div><span>${esc(n1)}</span><b class="num">${gs(a.tot)}</b>${a.ck?`<small><span class="c-cash">acertado ${gs(a.ok)}</span> · <span class="c-due">falta ${gs(a.pend)}</span></small>`:""}</div>
+      <div><span>${esc(n2)}</span><b class="num">${gs(b.tot)}</b>${b.ck?`<small><span class="c-cash">pasó ${gs(b.ok)}</span> · <span class="c-due">falta ${gs(b.pend)}</span></small>`:""}</div></div>
+      <div class="ns-tot"><span>Total entre los dos</span><b class="num">${gs(a.tot+b.tot)}</b></div>
+      <div class="ns-pasa"><span>${esc(n2)} te tiene que pasar</span><b class="num c-due">${gs(pasa)}</b></div>`;return}
+  const r=notaSuma(NE.texto);
   el.innerHTML=`<div class="ns-tot"><span>Total · ${r.n} ${r.n===1?"valor":"valores"}</span><b class="num">${gs(r.tot)}</b></div>${r.ck?`<div class="ns-sub"><span class="c-cash">Acertado ${gs(r.ok)}</span><span class="c-due">Falta ${gs(r.pend)}</span></div>`:`<small>Escribí un valor por línea, ej.: “Emir 30.000”. Con ☐ Casilla podés marcar lo que ya acertaste.</small>`}`}
 function ntDirty(){drawNtSum();const st=document.getElementById("nt-st");if(st)st.textContent="Guardando…";updNtWa();clearTimeout(ntTimer);ntTimer=setTimeout(ntSave,700)}
-async function ntSave(){clearTimeout(ntTimer);if(!NE)return;const e=NE;if(!e.titulo.trim()&&!e.texto.trim()){return}
+async function ntSave(){clearTimeout(ntTimer);if(!NE)return;const e=NE;if(!e.titulo.trim()&&!e.texto.trim()&&!(e.texto2||"").trim()){return}
   const d={tipo:"nota",titulo:e.titulo.trim(),texto:e.texto,color:e.color,fijada:e.fijada,suma:!!e.suma,em:e.em,upd:Date.now()};
+  if(e.dos||e.texto2){d.dos=!!e.dos;d.texto2=e.texto2||"";d.n1=(e.n1||"").trim();d.n2=(e.n2||"").trim()}
   notas.set(e.id,{...d,_id:e.id});e.nueva=false;
   try{const w=await putNota(e.id,d);const st=document.getElementById("nt-st");if(st&&NE===e)st.textContent=w==="wait"?"Guardado en el celular ✓":"Guardado ✓";
     const del=document.querySelector("[data-ntdel]");if(del&&NE===e&&!e.armed)del.textContent="Eliminar"}
   catch(err){const st=document.getElementById("nt-st");if(st)st.textContent="⚠️ No se guardó";}}
-function ntBack(){const e=NE;if(e){clearTimeout(ntTimer);if(e.titulo.trim()||e.texto.trim())ntSave()}openNotas();render()}
+function ntBack(){const e=NE;if(e){clearTimeout(ntTimer);if(e.titulo.trim()||e.texto.trim()||(e.texto2||"").trim())ntSave()}openNotas();render()}
 
 function whoBar(){
   if(S.mode!=="db")return"";
@@ -2354,7 +2375,7 @@ function viewRanking(){
 }
 
 /* ---------- sheets ---------- */
-function closeSheet(){if(NE){const e=NE;if(e.titulo.trim()||e.texto.trim())ntSave();NE=null}edit=null;LL=null;HS=null;layer.innerHTML=""}
+function closeSheet(){if(NE){const e=NE;if(e.titulo.trim()||e.texto.trim()||(e.texto2||"").trim())ntSave();NE=null}edit=null;LL=null;HS=null;layer.innerHTML=""}
 function openEdit(key){const d=S.items.get(key);if(!d)return;edit={key,valor:d.valor,cant:d.cant||1,producto:d.producto||0,metodo:d.metodo,cliente:d.cliente||"",obs:d.obs||"",armed:false};drawSheet()}
 const needsApproval=()=>S.mode==="db"&&!S.owner;
 const pendingCambio=key=>{const it=S.items.get(key);if(!it)return null;for(const c of cambios.values())if(c._u===it._u&&c.entregaId===it._id&&c.estado==="pendiente")return c;return null};
@@ -2642,13 +2663,14 @@ layer.addEventListener("click",async e=>{
   if(t.hasAttribute("data-ntnew")){openNota(null);return}
   if(t.dataset.ntopen){openNota(t.dataset.ntopen);return}
   if(t.hasAttribute("data-ntback")){ntBack();return}
-  if(NE&&t.hasAttribute("data-ntsuma")){NE.suma=!NE.suma;t.classList.toggle("on",NE.suma);ntDirty();return}
+  if(NE&&t.hasAttribute("data-ntdos")){NE.dos=!NE.dos;if(NE.dos)NE.suma=true;drawNotaEd();ntDirty();return}
+  if(NE&&t.hasAttribute("data-ntsuma")){if(NE.dos&&NE.suma){toast("Con dos columnas siempre se suma");return}NE.suma=!NE.suma;t.classList.toggle("on",NE.suma);ntDirty();return}
   if(NE&&t.hasAttribute("data-ntpin")){NE.fijada=!NE.fijada;t.classList.toggle("on",NE.fijada);t.textContent="📌 "+(NE.fijada?"Fijada":"Fijar");ntDirty();return}
   if(NE&&t.dataset.ntcolor){NE.color=t.dataset.ntcolor;document.querySelectorAll("[data-ntcolor]").forEach(b=>b.classList.toggle("on",b===t));const sh=document.querySelector(".nt-ed");if(sh)sh.style.setProperty("--nc",NCOL[NE.color]);ntDirty();return}
-  if(NE&&t.hasAttribute("data-ntcheck")){const x=document.getElementById("nt-x");const p=x.selectionStart,v=x.value;const ls=v.lastIndexOf("\n",p-1)+1;const line=v.slice(ls,v.indexOf("\n",p)<0?v.length:v.indexOf("\n",p));
+  if(NE&&t.hasAttribute("data-ntcheck")){const x=document.getElementById(NE.lastTA)||document.getElementById("nt-x");const fld=x.id==="nt-x2"?"texto2":"texto";const p=x.selectionStart,v=x.value;const ls=v.lastIndexOf("\n",p-1)+1;const line=v.slice(ls,v.indexOf("\n",p)<0?v.length:v.indexOf("\n",p));
     let nv,np;if(!line.trim()){nv=v.slice(0,ls)+"☐ "+v.slice(ls);np=ls+2}else{const end=v.indexOf("\n",p)<0?v.length:v.indexOf("\n",p);nv=v.slice(0,end)+"\n☐ "+v.slice(end);np=end+3}
-    x.value=nv;x.focus();x.selectionStart=x.selectionEnd=np;NE.texto=nv;x.dispatchEvent(new Event("input"));return}
-  if(NE&&t.hasAttribute("data-ntcopy")){copy((NE.titulo?NE.titulo+"\n":"")+NE.texto);return}
+    x.value=nv;x.focus();x.selectionStart=x.selectionEnd=np;NE[fld]=nv;x.dispatchEvent(new Event("input"));return}
+  if(NE&&t.hasAttribute("data-ntcopy")){copy((NE.titulo?NE.titulo+"\n":"")+ntTxtAll(NE));return}
   if(NE&&t.hasAttribute("data-ntdel")){if(NE.nueva&&!notas.has(NE.id)){NE=null;openNotas();return}
     if(!NE.armed){NE.armed=true;t.classList.add("armed");t.textContent="Tocá de nuevo para eliminar";setTimeout(()=>{if(NE&&t.isConnected){NE.armed=false;t.classList.remove("armed");t.textContent="Eliminar"}},3000);return}
     const id=NE.id;clearTimeout(ntTimer);NE=null;try{await delNota(id);toast("Nota eliminada")}catch(err){toast("No se pudo eliminar")}openNotas();render();return}
