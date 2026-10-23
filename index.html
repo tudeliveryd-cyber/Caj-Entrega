@@ -867,7 +867,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="116";
+const APPV="117";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1617,9 +1617,9 @@ var CARGA_DESDE="2026-10-19",CARGA_HASTA="2026-10-23";
 function lockReason(dia){if(S.mode!=="db"||S.owner)return"";
   if(dia>today())return"No se puede registrar en días que todavía no llegaron.";
   /* liberado solo al empezar a usar la app: hasta el 23/10 se puede cargar desde el lunes 19/10; después, solo el día de hoy */
-  const libre=today()<=CARGA_HASTA&&dia>=CARGA_DESDE;
-  if(dia!==today()&&!libre)return"Solo podés registrar o cambiar entregas y gastos de hoy. Si hay que corregir otro día, pedíselo al dueño.";
-  {const c=(S.people.get(S.me)||{}).cierre;if(c&&c.dia===dia)return"Ya cerraste este día. Si te faltó registrar algo, pedíselo al dueño.";}
+  const ayer=addDays(today(),-1);const libre=(today()<=CARGA_HASTA&&dia>=CARGA_DESDE)||dia===ayer;
+  if(dia!==today()&&!libre)return"Solo podés registrar entregas y gastos de hoy y de ayer. Si hay que corregir otro día, pedíselo al dueño.";
+  {const c=(S.people.get(S.me)||{}).cierre;if(dia===today()&&c&&c.dia===dia)return"Ya cerraste el día de hoy. Si te faltó registrar algo, pedíselo al dueño (o mañana podés cargarlo como día de ayer).";}
   if(pagoOf(S.me,dia))return"Este día ya fue liquidado. Si hay que corregir algo, pedíselo al dueño.";return""}
 function lockedMsg(r){edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Día cerrado">
   ${sheetHead("Día cerrado")}<p class="hint" style="margin:0">${r}</p><button class="primary" data-cancel>Entendido</button></div></div>`}
