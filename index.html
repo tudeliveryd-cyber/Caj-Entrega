@@ -534,6 +534,12 @@ body.compact .brand .logo{width:34px!important;height:34px!important;border-radi
 .cl-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.cl-ic{font-size:28px;line-height:1}.cl-top b{font-size:26px}
 .cl-mm{font-size:13px;color:var(--muted)}.cl-tip{font-size:15px;font-weight:600;line-height:1.35}
 .lote-chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.lote-vals{display:grid;gap:8px;border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0;max-width:100%;box-sizing:border-box}.lote-vals>*{min-width:0}
+.lv-h{display:grid;gap:2px}.lv-h span{font-weight:700}.lv-h small{color:var(--muted);font-size:12.5px}
+.lv-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.lv-it{display:flex;align-items:center;gap:8px;min-width:0;border:1px solid var(--line);border-radius:10px;padding:4px 10px;background:var(--bg)}
+.lv-it span{color:var(--muted);font:700 13px var(--body);min-width:16px}.lv-it input{flex:1;min-width:0;width:100%;border:0;background:none;color:var(--ink);font:700 17px var(--body)!important;padding:8px 0;outline:none}
+.lv-tot{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);padding-top:8px}.lv-tot span{color:var(--muted)}.lv-tot b{font-size:20px}
 .lote-info{margin-top:8px;font-size:14px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 10%,transparent);line-height:1.35}
 .method[aria-pressed="true"].m-paid{border-color:#2e9e5b;background:color-mix(in srgb,#2e9e5b 14%,var(--surface));color:#2e9e5b}
 .p-paid{background:color-mix(in srgb,#2e9e5b 16%,var(--surface));color:#2e9e5b}
@@ -856,7 +862,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="109";
+const APPV="110";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1466,16 +1472,27 @@ function noteTxt(){
   if(S.mode==="local")return"Los datos se guardan solo en este celular.";
   return S.owner?"Ves las entregas de todos los deliverys. Cada delivery ve solo las suyas.":"Solo vos y el dueño de Tú Delivery ven tus entregas.";
 }
-function refreshForm(){
+/* varias entregas: un valor por entrega (pueden ser distintos); el total se suma solo */
+var LV=[];
+function drawLoteVals(){const el=document.getElementById("lote-vals");if(!el)return;const on=S.lote&&S.cant>1;el.hidden=!on;
+  const vf=(document.getElementById("val")||{}).closest?document.getElementById("val").closest(".field"):null;if(vf)vf.hidden=on;
+  if(!on){el.dataset.n="";return}
+  while(LV.length<S.cant)LV.push(LV.length?LV[LV.length-1]:0);LV.length=S.cant;S.val=LV.reduce((a,v)=>a+(v||0),0);
+  if(el.dataset.n!==String(S.cant)){el.dataset.n=String(S.cant);
+    el.innerHTML=`<div class="lv-h"><span>Valor de cada entrega</span><small>Con los atajos de monto (10 mil, 15 mil…) ponés el mismo valor en todas</small></div>
+      <div class="lv-grid">${LV.map((v,i)=>`<label class="lv-it"><span>${i+1}</span><input id="lv-${i}" inputmode="numeric" autocomplete="off" placeholder="₲" value="${v?fmtInput(v):""}"></label>`).join("")}</div>
+      <div class="lv-tot"><span>Total · ${S.cant} entregas</span><b class="num" id="lv-tot">${gs(S.val)}</b></div>`}
+  else{LV.forEach((v,i)=>{const x=document.getElementById("lv-"+i);if(x&&document.activeElement!==x)x.value=v?fmtInput(v):""});const t=document.getElementById("lv-tot");if(t)t.textContent=gs(S.val)}}
+function refreshForm(){drawLoteVals();
   {const pw=document.getElementById("pend-wrap");if(pw){pw.hidden=S.metodo!=="transferencia"||S.mode!=="db";const c=pw.querySelector("[data-pend]");if(c)c.classList.toggle("on",S.pend)}}
   const sv=document.getElementById("save");if(sv){const fx=S.metodo==="fijo";sv.disabled=(!S.val&&!fx)||saving;sv.textContent=fx?(S.cant>1?"Registrar "+S.cant+" entregas · cliente fijo":"Registrar entrega · cliente fijo"):S.lote&&S.cant>1?"Registrar "+S.cant+" entregas · "+(S.val?gs(S.val):""):"Registrar "+(S.val?gs(S.val):"entrega")}
   {const lw=document.getElementById("lote-wrap");if(lw){const cmF=!document.getElementById("save");const fx=cmF?S.cmMet==="fijo":S.metodo==="fijo";lw.hidden=fx;if(cmF&&fx&&S.lote){S.lote=false;S.cant=1}const c=lw.querySelector("[data-lote]");if(c)c.classList.toggle("on",S.lote);
-    const li=document.getElementById("lote-info");if(li){li.hidden=!S.lote;li.innerHTML=S.lote?(S.cant>1&&S.val?`<b>${S.cant} entregas</b> · ${gs(Math.round(S.val/S.cant))} c/u en promedio · cuentan como ${S.cant} en el día y el ranking`:"Poné la <b>cantidad</b> abajo y el <b>valor total</b> de todas juntas."):""}
+    const li=document.getElementById("lote-info");if(li){li.hidden=!S.lote;li.innerHTML=S.lote?(S.cant>1?`<b>${S.cant} entregas</b> · cuentan como ${S.cant} en el día y el ranking`:"Poné la <b>cantidad</b> de entregas."):""}
     const vl=document.querySelector('label[for="val"]');if(vl)vl.textContent=S.lote?"Valor TOTAL de todas las entregas":cmF?"Valor del delivery":"Monto del delivery (tocá un atajo o escribí el precio)"
-    const pc=document.querySelector("#money-block > .chips");if(pc)pc.hidden=S.lote;const scb=document.getElementById("savecamino");if(scb&&!fx&&!cmF)scb.hidden=S.lote;
+    const pc=document.querySelector("#money-block > .chips");if(pc)pc.hidden=false;const scb=document.getElementById("savecamino");if(scb&&!fx&&!cmF)scb.hidden=S.lote;
     if(cmF){const fq=document.getElementById("fijo-cant");if(fq)fq.hidden=!S.lote;const ci=document.getElementById("cant");if(ci&&document.activeElement!==ci)ci.value=S.cant;
       if(scb){const nm=S.pasar&&S.asig?" a "+(personName(S.asig)||"").split(" ")[0]:"";const many=S.lote&&S.cant>1;scb.textContent=S.pasar?(many?"📦 Enviar "+S.cant+" pedidos"+nm:"📦 Enviar pedido"+nm):(many?"Guardar "+S.cant+" pedidos":"Guardar pedido")}
-      {const li=document.getElementById("lote-info");if(li&&S.lote)li.innerHTML=S.cant>1?`Se crean <b>${S.cant} pedidos</b> en “En camino”${S.val?" de "+gs(Math.floor(S.val/S.cant/1000)*1000)+" c/u":""}. Finalizás cada uno al entregar.`:"Poné la <b>cantidad</b> y el <b>valor total</b> de todos juntos."}}}}
+      {const li=document.getElementById("lote-info");if(li&&S.lote)li.innerHTML=S.cant>1?`Se crean <b>${S.cant} pedidos</b> en “En camino”. Finalizás cada uno al entregar.`:"Poné la <b>cantidad</b> de entregas."}}}}
   const sc=document.getElementById("savecamino");if(sc)sc.disabled=!S.val||saving;
   {const fx=S.metodo==="fijo";const mb=document.getElementById("money-block");
    if(mb){mb.hidden=fx;if(sc)sc.hidden=fx;
@@ -2558,7 +2575,7 @@ function asigPicker(){const ids=activos().filter(u=>u!==S.me);
   const info=u=>{let cls="off",st="";try{const e=estadoDe(u);cls=e.cls==="cz-work"?"work":e.cls==="cz-ok"?"done":e.cls==="cz-late"?"late":"off";st=e.st.replace(/<[^>]+>/g,"").replace(/^[^A-Za-zÁÉÍÓÚáéíóúÑñ0-9¿¡]+/,"")}catch(x){}const c=[...S.items.values()].filter(d=>d._u===u&&isCamino(d)).length;return{cls,st:st+(c?" · "+c+" en camino":"")}};
   const rows=ids.map(u=>({u,...info(u)})).sort((a,b)=>(a.cls==="work"?0:1)-(b.cls==="work"?0:1)||personName(a.u).localeCompare(personName(b.u)));
   return `<div class="lbl">¿Quién lo lleva?</div><div class="asig-list">${rows.map(r=>`<button type="button" class="asig ${S.asig===r.u?"on":""}" data-asig="${esc(r.u)}"><span class="vp-dot ${r.cls}"></span><span class="who"><b>${esc(personName(r.u))}${roles.socios.includes(r.u)?' <span class="pill p-fijo">Socia/o</span>':""}</b><small>${esc(r.st)}</small></span></button>`).join("")||`<div class="empty">No hay deliverys activos.</div>`}</div>`}
-function openEntry(cm,pasar){edit=null;sinCliOk=false;S.pend=false;S.lote=false;S.pagoTipo="";S.cmMet="efectivo";S.pasar=!!pasar;if(!pasar)S.asig="";if(!S.cliente){ubicTxt="";listaTxt="";retN="";retU="";retT="";cliTel=""}const isToday=S.dia===today();
+function openEntry(cm,pasar){edit=null;sinCliOk=false;S.pend=false;S.lote=false;LV=[];S.pagoTipo="";S.cmMet="efectivo";S.pasar=!!pasar;if(!pasar)S.asig="";if(!S.cliente){ubicTxt="";listaTxt="";retN="";retU="";retT="";cliTel=""}const isToday=S.dia===today();
   const forWho=S.pasar?"":S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
   const cliente=`<div class="field"><label for="cli">${cm?"Nombre del cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
@@ -2582,8 +2599,8 @@ function openEntry(cm,pasar){edit=null;sinCliOk=false;S.pend=false;S.lote=false;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet entry-sheet" role="dialog" aria-label="${cm?"Anotar pedido":"Nueva entrega"}">
     ${sheetHead((S.pasar?"📦 Pasar pedido":cm?"Anotar pedido":"Nueva entrega")+(isToday?"":" · "+ddmm(S.dia))+forWho)}
     ${S.pasar?`<div id="asig-box">${asigPicker()}</div>`:""}
-    ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${methodBtns("data-cmet",S.cmMet)}</div>`+(S.pasar?retF:"")+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+cliente+telF+listaF+prod+presets+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
-       :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+`<div id="pend-wrap" hidden><button type="button" class="chip pend-chip" data-pend>⏳ El cliente me transfiere después</button></div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div>`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
+    ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${methodBtns("data-cmet",S.cmMet)}</div>`+(S.pasar?retF:"")+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+cliente+telF+listaF+prod+presets+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div><div id="lote-vals" class="lote-vals" hidden></div>`+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
+       :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+`<div id="pend-wrap" hidden><button type="button" class="chip pend-chip" data-pend>⏳ El cliente me transfiere después</button></div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div><div id="lote-vals" class="lote-vals" hidden></div>`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
     <p class="err" id="err" ${S.err?"":"hidden"}>${esc(S.err)}</p>
     ${cm?`<button type="button" class="primary" id="savecamino" ${S.val?"":"disabled"}>${S.pasar?"Enviar pedido":"Guardar pedido"}</button>`
        :`<button type="button" class="primary" id="save" ${S.val?"":"disabled"}>Registrar ${S.val?gs(S.val):"entrega"}</button>
@@ -2616,6 +2633,7 @@ function resumo(title,list){const gr=groups(list);let t="Tú Delivery · "+(hide
 document.querySelector("nav.tabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(!b)return;S.tab=b.dataset.tab;render(true);window.scrollTo(0,0)});
 document.addEventListener("change",e=>{if(e.target.id==="dpick")e.target.dispatchEvent(new Event("input",{bubbles:true}))});
 document.addEventListener("input",e=>{const id=e.target.id;
+  if(id&&id.startsWith("lv-")){const i=+id.slice(3);LV[i]=parseVal(e.target.value);e.target.value=fmtInput(LV[i]);S.err="";refreshForm();return}
   if(id==="val"){S.val=parseVal(e.target.value);e.target.value=fmtInput(S.val);S.err="";refreshForm()}
   if(id==="prod"){S.prod=parseVal(e.target.value);e.target.value=fmtInput(S.prod);refreshForm()}
   if(id==="dpick"){const v=e.target.value;if(v&&v<=today()&&v!==S.dia){S.dia=v;if(S.mode==="db"&&v<addDays(today(),-WINDOW+1)){const d=fromKey(v);loadMonth(keyOf(new Date(d.getFullYear(),d.getMonth(),1)),keyOf(new Date(d.getFullYear(),d.getMonth()+1,0)))}render(true)}return}
@@ -2643,6 +2661,7 @@ async function save(camino){
   const fx=!camino&&S.metodo==="fijo";
   if(fx&&!S.cliente.trim()&&S.obs.trim()){S.cliente=S.obs.trim();S.obs=""}
   if(camino&&S.pasar&&!S.asig){S.err="Elegí arriba qué delivery lleva el pedido.";refreshForm();const b=document.getElementById("asig-box");if(b)b.scrollIntoView({behavior:"smooth",block:"center"});return}
+  if(!fx&&S.lote&&S.cant>1){const z=LV.findIndex(v=>!v);if(z>=0){S.err="Falta el valor de la entrega "+(z+1)+".";refreshForm();const x=document.getElementById("lv-"+z);if(x)x.focus();return}}
   if(!S.val&&!fx){S.err="Escribí el monto de la entrega.";refreshForm();return}
   if(fx&&!S.cliente.trim()){S.err="Poné el nombre del cliente fijo (ej.: el restaurante).";refreshForm();return}
   if(!camino&&S.metodo==="anotado"&&!S.cliente.trim()){S.err="Para anotar, poné el nombre del cliente.";refreshForm();return}
@@ -2652,15 +2671,15 @@ async function save(camino){
   sinCliOk=false;
   const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(12,0,0,0));
   const d={valor:fx?0:S.val,metodo:camino?"efectivo":S.metodo,cliente:S.cliente.trim(),obs:S.obs.trim(),dia:S.dia,criadoEm:when.getTime()};
-  if(S.prod)d.producto=S.prod;if(camino&&S.cmMet&&M[S.cmMet]){d.metPlan=S.cmMet;if(S.cmMet==="pagado")d.pagoTipo="todo"}if(S.pagoTipo&&d.metodo!=="pagado"&&!d.pagoTipo)d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li;const r={};if(retN.trim())r.n=retN.trim();if(retU.trim())r.ubic=retU.trim();if(retT.trim())r.tel=retT.trim();if(Object.keys(r).length)d.ret=r;if(cliTel.trim())d.tel=cliTel.trim()}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true}
+  if(S.prod)d.producto=S.prod;if(camino&&S.cmMet&&M[S.cmMet]){d.metPlan=S.cmMet;if(S.cmMet==="pagado")d.pagoTipo="todo"}if(S.pagoTipo&&d.metodo!=="pagado"&&!d.pagoTipo)d.pagoTipo=S.pagoTipo;if(!camino&&S.pagoTipo==="todo")d.metodo="pagado";if(camino)d.estado="camino";if(ubicTxt.trim())d.ubic=ubicTxt.trim();if(camino){const li=parseLista(listaTxt);if(li.length)d.lista=li;const r={};if(retN.trim())r.n=retN.trim();if(retU.trim())r.ubic=retU.trim();if(retT.trim())r.tel=retT.trim();if(Object.keys(r).length)d.ret=r;if(cliTel.trim())d.tel=cliTel.trim()}if(fx&&S.cant>1)d.cant=S.cant;if(!fx&&S.lote&&S.cant>1){d.cant=S.cant;d.lote=true;d.vals=LV.slice(0,S.cant)}
   const label=camino?"En camino":M[S.metodo].n;S.val=0;S.prod=0;S.cant=1;S.obs="";S.cliente="";ubicTxt="";listaTxt="";retN="";retU="";retT="";cliTel="";S.err="";S.pend=false;S.lote=false;S.pagoTipo="";const _cm=S.cmMet;S.cmMet="";closeSheet();
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
   const pasarA=camino&&S.pasar?S.asig:"";if(pasarA){d.central={por:S.me,em:Date.now()}}S.pasar=false;
   const nid=uid(),wt=pasarA||writeTarget();if(pendNow)addPend(wt,nid,d).catch(()=>{});
   /* varias entregas juntas anotadas "en camino": se separan en pedidos individuales para finalizar uno por uno */
-  if(camino&&d.lote&&d.cant>1){const n=d.cant,tot=d.valor||0;const base=Math.floor(tot/n/1000)*1000;const first=tot-base*(n-1);const nm=d.cliente||"Pedido";
-    const ps=[];for(let i=0;i<n;i++){const x={...d,valor:i===0?first:base,cliente:nm+" · "+(i+1)+"/"+n,criadoEm:d.criadoEm+i};delete x.cant;delete x.lote;if(i>0){delete x.producto;delete x.lista}ps.push(addItem(x,wt,i===0?nid:uid()))}
+  if(camino&&d.lote&&d.cant>1){const n=d.cant,vs=d.vals||[];const nm=d.cliente||"Pedido";
+    const ps=[];for(let i=0;i<n;i++){const x={...d,valor:vs[i]||0,cliente:nm+" · "+(i+1)+"/"+n,criadoEm:d.criadoEm+i};delete x.cant;delete x.lote;delete x.vals;if(i>0){delete x.producto;delete x.lista}ps.push(addItem(x,wt,i===0?nid:uid()))}
     try{const w=await sendW(Promise.all(ps));toast(w==="wait"?"Guardado en el celular · se envía al volver la señal":pasarA?`📦 ${n} pedidos enviados a ${personName(pasarA)}`:`${n} pedidos en camino · finalizá cada uno al entregar`)}catch(e){toast("No se guardó. Probá de nuevo.")}
     saving=false;refreshForm();render();return}
   try{const w=await sendW(addItem(d,wt,nid));if(w==="wait"){toast("Guardado en el celular · se envía al volver la señal")}else if(pendNow)toast("Registrado · ⏳ transferencia por cobrar");else if(pasarA)toast("📦 Pedido enviado a "+personName(pasarA));else if(d.lote)toast(`Registradas ${d.cant} entregas · ${gs(d.valor)}`);else toast(d.metodo==="fijo"&&!camino?`Registrado${d.cant>1?" "+d.cant+" entregas":""} · cliente fijo (${d.cliente})`:`Registrado: ${gs(d.valor)} · ${label}`)}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast(e&&e.code==="quota_exceeded"?"Almacenamiento lleno":"No se guardó. Probá de nuevo.")}
@@ -2681,7 +2700,7 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-equipo"))openEquipo();
   else if(t.hasAttribute("data-logout"))logout();
   else if(t.dataset.cli!==undefined){S.cliente=t.dataset.cli;if(t.dataset.cubic){ubicTxt=t.dataset.cubic;const ui=document.getElementById("ubic");if(ui)ui.value=ubicTxt}if(t.dataset.ctel){cliTel=t.dataset.ctel;const ti=document.getElementById("cli-tel");if(ti)ti.value=cliTel}const v=Number(t.dataset.cval);if(v)S.val=v;S.err="";cliFocus=false;refreshForm();drawSug();const c=document.getElementById("cli");if(c)c.value=S.cliente}
-  else if(t.dataset.preset){S.val=Number(t.dataset.preset);S.err="";refreshForm()}
+  else if(t.dataset.preset){if(S.lote&&S.cant>1){LV=LV.map(()=>Number(t.dataset.preset));const el=document.getElementById("lote-vals");if(el)el.dataset.n=""}else S.val=Number(t.dataset.preset);S.err="";refreshForm()}
   else if(t.dataset.metodo){S.metodo=t.dataset.metodo;if(!["efectivo","transferencia"].includes(S.metodo)&&S.pagoTipo==="prod")S.pagoTipo="";S.err="";refreshForm()}
   else if(t.hasAttribute("data-solodel")){S.pagoTipo=S.pagoTipo==="prod"?"":"prod";if(S.pagoTipo==="prod"){if(document.getElementById("save")){if(!["efectivo","transferencia"].includes(S.metodo))S.metodo="efectivo"}else if(!["efectivo","transferencia"].includes(S.cmMet))S.cmMet="efectivo"}S.err="";refreshForm()}
   else if(t.hasAttribute("data-other")){S.val=0;S.err="";refreshForm();const v=document.getElementById("val");v.value="";v.focus()}
@@ -2727,7 +2746,7 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-viewpick"))openViewPick();
   else if(t.dataset.cuenta)openCuenta(t.dataset.cuenta);
   else if(t.hasAttribute("data-pend")){S.pend=!S.pend;refreshForm()}
-  else if(t.hasAttribute("data-lote")){S.lote=!S.lote;if(S.lote&&S.cant<2)S.cant=10;if(!S.lote)S.cant=1;refreshForm();if(S.lote){const v=document.getElementById("val");if(v&&!S.val)v.focus()}}
+  else if(t.hasAttribute("data-lote")){S.lote=!S.lote;LV=S.lote&&S.val?[S.val]:[];if(S.lote&&S.cant<2)S.cant=2;if(!S.lote){S.cant=1;S.val=0}refreshForm();if(S.lote){const v=document.getElementById("lv-0");if(v)v.focus()}}
   else if(t.dataset.csem!==undefined&&t.dataset.csem!==""){cierreSem=+t.dataset.csem;render(true)}
   else if(t.hasAttribute("data-gocierre")){S.tab="semana";infoMode="semana";render(true);setTimeout(()=>{const x=document.getElementById("cierre-sem");if(x)x.scrollIntoView({behavior:"smooth"})},120)}
   else if(t.hasAttribute("data-gopend")){S.tab="fiado";render(true);setTimeout(()=>{const x=document.getElementById("pend-sec");if(x)x.scrollIntoView({behavior:"smooth"})},80)}
