@@ -645,6 +645,21 @@ details.sec.fold{display:grid;gap:10px}
 .ub-row.ub3{grid-template-columns:minmax(0,1fr) auto auto}
 .paste-btn{background:color-mix(in srgb,var(--accent) 16%,var(--surface));border-color:var(--accent);color:var(--ink)}
 #maplink,#retlink{text-decoration:none;font-size:17px;padding:9px 12px}
+.neto{display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:0;margin:0 16px 12px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.neto>div{display:grid;gap:2px;padding:9px 10px;border-left:1px solid var(--line)}.neto>div:first-child{border-left:0}
+.neto span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}.neto b{font-size:15px;white-space:nowrap}
+.neto-q{background:color-mix(in srgb,#2e9e5b 10%,transparent)}.neto-q b{font-size:17px}
+.caja-open{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;text-align:left;padding:13px 14px;border:1px dashed #d9a93a;border-radius:14px;background:color-mix(in srgb,#d9a93a 8%,transparent);color:var(--ink);font:15px var(--body);cursor:pointer}
+.caja-open .caja-ic{font-size:24px}.caja-open small{display:block;color:var(--muted);font-size:12.5px}.caja-go{color:var(--muted);font-size:20px}
+.caja{display:grid;gap:10px;border:1px solid #d9a93a;border-radius:16px;padding:14px;background:color-mix(in srgb,#d9a93a 7%,var(--surface))}
+.caja.cerrada{border-color:var(--line);background:var(--surface)}
+.caja-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}.caja-h b{font-size:16px}.caja-h small{color:var(--muted);font-size:12.5px}
+.caja-rows{display:grid;gap:5px;font-size:14.5px}.caja-rows>div{display:flex;justify-content:space-between;gap:10px}.caja-rows span{color:var(--muted)}
+.caja-esp{border-top:1px solid var(--line);padding-top:7px;margin-top:2px}.caja-esp span{color:var(--ink)!important;font-weight:700}.caja-esp b{font-size:18px}
+.caja-rows.mini .caja-esp{border:0;padding:0}
+.caja-dif{border-radius:10px;padding:8px 10px;margin-top:4px;font-weight:700}.caja-dif span{color:inherit!important}
+.caja-dif.ok{background:color-mix(in srgb,#2e9e5b 16%,transparent);color:#2e9e5b}.caja-dif.falta{background:var(--due-bg);color:var(--due)}.caja-dif.sobra{background:color-mix(in srgb,#4a8fe0 14%,transparent);color:#4a8fe0}
+.caja-act{display:flex;gap:12px;align-items:center}.caja-act .primary{flex:1}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;white-space:nowrap}
 .note{font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
@@ -777,7 +792,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="86";
+const APPV="87";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -818,6 +833,9 @@ function subscribeUser(u){
   if(S.owner)db.collection("liq/"+u+"/movs").where("abierto","==",true).limit(300).onSnapshot(snap=>{
     for(const k of[...movs.keys()])if(k.startsWith(u+"|"))movs.delete(k);
     for(const d of snap.docs)movs.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
+  db.collection("turnos/"+u+"/caja").where("dia",">=",from).limit(60).onSnapshot(snap=>{
+    for(const k of[...cajas.keys()])if(k.startsWith(u+"|"))cajas.delete(k);
+    for(const d of snap.docs)cajas.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
   db.collection("liq/"+u+"/premios").limit(300).onSnapshot(snap=>{
     for(const k of[...canjes.keys()])if(k.startsWith(u+"|"))canjes.delete(k);
     for(const d of snap.docs)canjes.set(u+"|"+d.id,{...d.data(),_u:u,_id:d.id});render()},()=>{});
@@ -1305,6 +1323,7 @@ function paint(){
     {const cb=document.getElementById("cta-box");if(cb)cb.innerHTML=cuentasBox()}
     {const cl=caminoList();const el=document.getElementById("camino-list");el.hidden=!cl.length;el.innerHTML=cl.length?viewCamino(cl):"";centralSeen(cl)}
     {const mb=document.getElementById("meta-box");if(mb){const h=viewMeta(list);mb.hidden=!h;mb.innerHTML=h}}
+    {const cb=document.getElementById("caja-box");if(cb){let h="";try{h=cajaBox()}catch(e){}if(cb.dataset.h!==h){cb.innerHTML=h;cb.dataset.h=h}}}
     {const pb=document.getElementById("pts-box");if(pb){let h="";try{h=S.dia===today()?ptsBox():""}catch(e){}if(pb.dataset.h!==h){const op=pb.querySelector("details[open]");pb.innerHTML=h;pb.dataset.h=h;if(op){const d=pb.querySelector("details");if(d)d.open=true}ptsAnim(pb)}}}
     {const cb=document.getElementById("cierre-box");if(cb){const h=viewCierre(list);cb.hidden=!h;cb.innerHTML=h}}
     document.getElementById("mode-note").textContent=noteTxt();
@@ -1417,6 +1436,7 @@ function viewDiaShell(){
   <div id="pend-box"></div>
   <div id="cta-box"></div>
   ${showEmp()?`<section class="sec" id="cierre-box" hidden></section>`:""}
+  <div id="caja-box"></div>
   <section class="summary" id="dia-sum" aria-label="Resumen del día"></section>
   <section class="sec" id="meta-box" hidden></section>
   ${showEmp()?"":`<section class="sec" id="cierre-box" hidden></section>`}
@@ -1484,6 +1504,44 @@ function acertoLabel(base,gr){
   if(S.filter!=="all")return base+" · "+esc(personName(S.filter));
   return base+(gr.length===1?" · "+esc(gr[0].name):"");
 }
+function netoStrip(s){
+  if(showEmp()&&S.mode==="db"){const g=egStats(egRange(S.dia,S.dia)).total;const q=s.com-g;
+    return `<div class="neto"><div><span>Comisiones</span><b class="num">${gs(s.com)}</b></div><div><span>Gastos empresa</span><b class="num c-due">− ${gs(g)}</b></div><div class="neto-q"><span>Queda</span><b class="num ${q<0?"c-due":"c-cash"}">${q<0?"− ":""}${gs(Math.abs(q))}</b></div></div>`}
+  const g=myGt(S.dia,S.dia);const q=s.total-g;
+  return `<div class="neto"><div><span>Entró</span><b class="num">${gs(s.total)}</b></div><div><span>Gastos</span><b class="num c-due">− ${gs(g)}</b></div><div class="neto-q"><span>Queda</span><b class="num ${q<0?"c-due":"c-cash"}">${q<0?"− ":""}${gs(Math.abs(q))}</b></div></div>`}
+/* ---------- caja: apertura y cierre (turnos/<uid>/caja/<dia>) ---------- */
+var cajas=new Map();
+const cajaOf=(u,dia)=>cajas.get(u+"|"+dia)||null;
+function cajaCalc(u,dia){const l=allItems().filter(([,d])=>d._u===u&&d.dia===dia&&!isCamino(d));
+  let ef=0,prod=0,pago=0,diar=0;
+  for(const[,d]of l){if(d.metodo==="efectivo"){ef+=d.valor||0;prod+=prodCobra(d)}else if(d.metodo==="pagado")pago+=d.valor||0;else if(d.metodo==="fijo"&&d.diario&&d.via!=="transferencia"&&d.via!=="empresa")diar+=d.valor||0}
+  const gas=[...S.gastos.values(),...(u===S.me?S.priv.values():[])].filter(g=>g._u===u&&g.dia===dia).reduce((a,g)=>a+(g.valor||0),0);
+  const c=cajaOf(u,dia)||{};const ab=c.abre||0;return{ab,ef,prod,pago,diar,gas,esp:ab+ef+prod+pago+diar-gas,c}}
+function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u=S.filter==="all"?S.me:S.filter;const yo=u===S.me;const K=cajaCalc(u,S.dia);const c=K.c;
+  if(!c.abreEm){return yo?`<button type="button" class="caja-open" data-cajaabrir><span class="caja-ic">💰</span><span><b>Abrir caja</b><small>Anotá con cuánta plata empezás hoy (cambio)</small></span><span class="caja-go">›</span></button>`:""}
+  const dif=c.cierraEm?(c.cierra-K.esp):0;
+  return `<section class="caja ${c.cierraEm?"cerrada":""}"><div class="caja-h"><b>💰 Caja ${c.cierraEm?"cerrada":"abierta"}</b><small>${yo?"":esc(personName(u))+" · "}abrió ${hhmm(c.abreEm)}${c.cierraEm?" · cerró "+hhmm(c.cierraEm):""}</small></div>
+    <div class="caja-rows"><div><span>Empezó con</span><b class="num">${gs(K.ab)}</b></div>
+      <div><span>+ Efectivo cobrado</span><b class="num">${gs(K.ef+K.pago+K.diar)}</b></div>
+      ${K.prod?`<div><span>+ Productos cobrados</span><b class="num">${gs(K.prod)}</b></div>`:""}
+      <div><span>− Gastos</span><b class="num c-due">${gs(K.gas)}</b></div>
+      <div class="caja-esp"><span>${c.cierraEm?"Tenía que haber":"Ahora tendría que haber"}</span><b class="num">${gs(K.esp)}</b></div>
+      ${c.cierraEm?`<div><span>Contó al cerrar</span><b class="num">${gs(c.cierra)}</b></div>
+      <div class="caja-dif ${dif===0?"ok":dif<0?"falta":"sobra"}"><span>${dif===0?"✅ La caja cuadra":dif<0?"⚠️ Falta":"➕ Sobra"}</span><b class="num">${dif?gs(Math.abs(dif)):""}</b></div>`:""}</div>
+    ${yo?(c.cierraEm?`<button type="button" class="linkbtn small-link" data-cajacerrar style="justify-self:start">Corregir cierre</button>`:`<div class="caja-act"><button type="button" class="primary" data-cajacerrar>Cerrar caja</button><button type="button" class="linkbtn small-link" data-cajaabrir>Cambiar inicio</button></div>`):""}
+    <small class="hint" style="margin:0">Transferencias no entran: van a la cuenta, no a la caja.</small></section>`}
+function openCaja(modo){edit=null;const K=cajaCalc(S.me,today());const ab=modo==="abrir";const cur=ab?(K.c.abre||""):(K.c.cierra||"");
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Caja">${sheetHead(ab?"💰 Abrir caja":"🔒 Cerrar caja")}
+    <p class="hint" style="margin:0">${ab?"¿Con cuánta plata empezás hoy? (el cambio que llevás)":"Contá toda la plata en efectivo que tenés ahora y escribí el total."}</p>
+    ${ab?"":`<div class="caja-rows mini"><div class="caja-esp"><span>Tendría que haber</span><b class="num">${gs(K.esp)}</b></div></div>`}
+    <div class="money"><span>₲</span><input id="caja-v" inputmode="numeric" autocomplete="off" placeholder="${ab?"Ej.: 200.000":"Total contado"}" value="${cur?fmtInput(cur):""}"></div>
+    ${ab?`<div class="chips">${[0,50000,100000,150000,200000,300000].map(v=>`<button type="button" class="chip" data-cajapre="${v}">${v?v/1000+" mil":"Sin cambio"}</button>`).join("")}</div>`:""}
+    <button type="button" class="primary" data-cajasave="${ab?"abrir":"cerrar"}">${ab?"Abrir caja":"Cerrar caja"}</button></div></div>`;
+  setTimeout(()=>{const i=document.getElementById("caja-v");if(i)i.focus()},80)}
+async function saveCaja(modo,v){const dia=today();const cur=cajaOf(S.me,dia)||{dia};const n={...cur,dia};
+  if(modo==="abrir"){n.abre=v;n.abreEm=cur.abreEm||Date.now()}else{n.cierra=v;n.cierraEm=Date.now();if(!n.abreEm){n.abreEm=Date.now();n.abre=0}}
+  delete n._u;delete n._id;cajas.set(S.me+"|"+dia,{...n,_u:S.me,_id:dia});render(true);
+  const w=await sendW(db.collection("turnos/"+S.me+"/caja").doc(dia).set(n));return w}
 function viewSummary(list){
   const s=stats(list);const gr=groups(list);
   const single=gr.length===1?gr[0].k:null;
@@ -1491,6 +1549,7 @@ function viewSummary(list){
   return `
     <div class="sum-head"><div><div class="lbl">${showEmp()?"Total de la empresa":"Total cobrado"}</div><div class="big num">${gs(s.total)}</div></div>
       <div class="count"><div class="lbl">${showEmp()?"Entregas que salieron":"Entregas"}</div><div class="big num">${s.n}</div></div></div>
+    ${netoStrip(s)}
     <div class="split">
       <div><div class="k c-cash"><span class="dot d-cash"></span>Efectivo</div>${showEmp()?'<div class="hold">con los deliverys</div>':""}<div class="v num">${gs(s.efectivo)}</div><div class="n">${plural(s.ne,"entrega")}</div></div>
       <div><div class="k c-transfer"><span class="dot d-transfer"></span>Transfer.</div>${showEmp()?'<div class="hold">a los deliverys</div>':""}<div class="v num">${gs(s.transferencia)}</div><div class="n">${plural(s.nt,"entrega")}</div></div>
@@ -2382,6 +2441,8 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.diario){const r=lockReason(S.dia);if(r){lockedMsg(r);return}openDiario(t.dataset.diario)}
   else if(t.dataset.tel&&!t.closest("#layer"))openTel(t.dataset.tel,t.dataset.teln||"");
   else if(t.dataset.paste){doPaste(t.dataset.paste)}
+  else if(t.hasAttribute("data-cajaabrir")&&!t.closest("#layer"))openCaja("abrir");
+  else if(t.hasAttribute("data-cajacerrar")&&!t.closest("#layer"))openCaja("cerrar");
   else if(t.hasAttribute("data-pasar")){S.asig="";openEntry(true,true)}
   else if(t.dataset.asig){S.asig=t.dataset.asig;const b=document.getElementById("asig-box");if(b)b.innerHTML=asigPicker();if(S.err&&S.err.startsWith("Elegí arriba")){S.err=""}refreshForm();const c=document.getElementById("cli");if(c&&!c.value)c.focus()}
   else if(t.hasAttribute("data-anotar")){if(S.mode==="db"&&!S.owner&&S.canWrite===false){noPerm();return}openEntry(true);setTimeout(()=>{const c=document.getElementById("cli");if(c)c.focus()},60)}
@@ -2461,6 +2522,11 @@ layer.addEventListener("click",async e=>{
   if(e.target.hasAttribute&&e.target.hasAttribute("data-close")){closeSheet();return}
   const t=e.target.closest("button");if(!t)return;
   if(t.hasAttribute("data-cancel")){closeSheet();return}
+  if(t.dataset.cajapre!==undefined){const i=document.getElementById("caja-v");if(i)i.value=fmtInput(+t.dataset.cajapre)||"0";return}
+  if(t.dataset.cajasave){const md=t.dataset.cajasave;const raw=(document.getElementById("caja-v")||{}).value||"";const v=parseVal(raw);
+    if(md==="cerrar"&&!raw.trim()){toast("Escribí cuánto contaste");return}
+    closeSheet();try{const w=await saveCaja(md,v);if(md==="abrir")toast(w==="wait"?"Caja abierta · se envía al volver la señal":"💰 Caja abierta con "+gs(v));
+      else{const K=cajaCalc(S.me,today());const d=v-K.esp;toast(d===0?"✅ Caja cerrada · cuadra justo":d<0?"⚠️ Caja cerrada · falta "+gs(-d):"Caja cerrada · sobra "+gs(d))}}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-ntnew")){openNota(null);return}
   if(t.dataset.ntopen){openNota(t.dataset.ntopen);return}
   if(t.hasAttribute("data-ntback")){ntBack();return}
