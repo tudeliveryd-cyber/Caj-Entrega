@@ -948,7 +948,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="142";
+const APPV="143";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1520,7 +1520,10 @@ function drawDeu(){if(!NE||!NE.deu)return;const el=document.getElementById("dd-l
 function acCalc(e){const base=ntCols(e).reduce((a,c)=>a+notaSuma(e[c.t]).tot,0);const cob=e.cobrado>0?e.cobrado:base;
   const lines=String(e.desc||"").split("\n").map(l=>({l:l.replace(/^\s*[☐☑]\s*/,"").trim(),v:lineVal(l)})).filter(x=>x.v);const des=lines.reduce((a,x)=>a+x.v,0);return{base,cob,lines,des,res:cob-des}}
 function acTxt(e){const k=acCalc(e);const nm=e.titulo.trim()||"cliente";const f=new Date();
-  return `*Tú Delivery · Acerto ${nm}*\n${ddmm(today())} ${hhmm(Date.now())}\n\nCobrado: *${gs(k.cob)}*\n\nDescuentos:\n${k.lines.map(x=>"• "+x.l.replace(/\s*(\d{1,3}(?:[.\s]\d{3})+|\d+)(?:[.,]\d{1,2})?\s*(mil|k)?\s*$/i,"")+": "+gs(x.v)).join("\n")||"—"}\nTotal descuentos: ${gs(k.des)}\n\n*${k.res>=0?"Te paso: "+gs(k.res):"Nos debés: "+gs(-k.res)}*\n\n¡Gracias! — Tú Delivery`}
+  const lbl=l=>l.replace(/^\s*[☐☑]\s*/,"").replace(/\s*(\d{1,3}(?:[.\s]\d{3})+|\d+)(?:[.,]\d{1,2})?\s*(mil|k)?\s*$/i,"").replace(/[\s:\-–]+$/,"").trim()||"Sin nombre";
+  const cols=ntCols(e);const det=cols.map(c=>{const ls=String(e[c.t]||"").split("\n").filter(l=>lineVal(l)).map(l=>"• "+lbl(l)+": "+gs(lineVal(l)));if(!ls.length)return"";const st=notaSuma(e[c.t]).tot;return (cols.length>1?"_"+(e[c.n]||c.ph)+" ("+gs(st)+")_\n":"")+ls.join("\n")}).filter(Boolean).join("\n\n");
+  const nDet=cols.reduce((a,c)=>a+notaSuma(e[c.t]).n,0);
+  return `*Tú Delivery · Acerto ${nm}*\n${ddmm(today())} ${hhmm(Date.now())}\n\n${det?"Cobrado de cada uno ("+nDet+"):\n"+det+"\n\n":""}Cobrado: *${gs(k.cob)}*${det&&k.cob!==k.base?" (suma de la lista: "+gs(k.base)+")":""}\n\nDescuentos:\n${k.lines.map(x=>"• "+x.l.replace(/\s*(\d{1,3}(?:[.\s]\d{3})+|\d+)(?:[.,]\d{1,2})?\s*(mil|k)?\s*$/i,"")+": "+gs(x.v)).join("\n")||"—"}\nTotal descuentos: ${gs(k.des)}\n\n*${k.res>=0?"Te paso: "+gs(k.res):"Nos debés: "+gs(-k.res)}*\n\n¡Gracias! — Tú Delivery`}
 function drawAc(){if(!NE||!NE.acerto)return;const k=acCalc(NE);const r=document.getElementById("ac-res");const nm=NE.titulo.trim()||"ellos";
   if(r)r.innerHTML=`<div><span>Cobrado</span><b class="num">${gs(k.cob)}</b></div><div><span>− Descuentos (${k.lines.length})</span><b class="num c-due">${gs(k.des)}</b></div>
     <div class="ac-fin ${k.res<0?"neg":""}"><span>${k.res>=0?"Tengo que pasar a "+esc(nm):esc(nm)+" nos debe"}</span><b class="num">${gs(Math.abs(k.res))}</b></div>`;
