@@ -683,6 +683,13 @@ details.sec.fold{display:grid;gap:10px}
 .log-it{display:grid;gap:3px;padding:10px 12px;border-top:1px solid var(--line);font-size:14px}.log-it:first-child{border-top:0}
 .log-h small{display:block;color:var(--muted);font-size:12px}.log-it.del .log-h{color:var(--due)}.log-d{color:var(--muted);font-size:13px}
 .log-c{font-size:13.5px}.log-c span{color:var(--muted);margin-right:6px}.log-c s{color:var(--muted)}
+#main > :empty{display:none}
+.aviso-min{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid color-mix(in srgb,#e08a3a 45%,var(--line));background:color-mix(in srgb,#e08a3a 8%,var(--surface));color:var(--ink);border-radius:12px;padding:9px 12px;font:inherit}
+.aviso-min svg{width:18px;height:18px;color:#e08a3a;flex:none}.aviso-min span{font-weight:700;font-size:14px;white-space:nowrap}.aviso-min small{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.cta-row b.num,.sec-h .num{white-space:nowrap}
+.caja-sumline{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}.caja-sumline b{font-size:17px}.caja-sumline small{color:var(--muted)}
+details.caja>summary{list-style:none;cursor:pointer;display:grid;gap:8px}details.caja>summary::-webkit-details-marker{display:none}
+details.caja .caja-arr{color:var(--muted);transition:transform .2s;margin-left:4px}details.caja[open] .caja-arr{transform:rotate(180deg)}details.caja[open] .caja-sumline{display:none}
 .p-aux{background:color-mix(in srgb,#4a8fe0 18%,transparent);color:#4a8fe0}
 .rd-open.rd-live svg{color:#2e9e5b}
 .rd-sheet{display:grid;gap:12px}
@@ -966,7 +973,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="150";
+const APPV="151";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1724,9 +1731,13 @@ function climaHtml(){if(S.dia!==today()||!CLIMA||!CLIMA.current)return"";const c
   else tip="😎 Buen tiempo: ¡aprovechá para hacer muchas entregas!";
   return `<div class="clima ${cls}"><div class="cl-top"><span class="cl-ic">${wIcon(code)}</span><b class="num">${tNow}°</b><span class="cl-mm">Santa Rita · máx ${mx}° · mín ${mn}°${pRain>=30?` · lluvia ${pRain}%`:""}</span></div><div class="cl-tip">${tip}</div></div>`}
 function viewMsg(){
+  const avK="av_"+(msgDia&&msgDia.criadoEm||0);let avLeido=false;try{avLeido=localStorage.getItem("caixa_aviso_leido")===avK}catch(e){}
+  if(msgDia&&msgDia.texto&&avLeido&&!(S.mode==="db"&&S.owner))return `<button type="button" class="aviso-min" data-avabrir>${icSvg("megaphone")}<span>Aviso de Tú Delivery</span><small>${esc(String(msgDia.texto).slice(0,38))}${String(msgDia.texto).length>38?"…":""}</small></button>`+(S.dia!==today()?"":viewMsgRest(""));
   const aviso=msgDia&&msgDia.texto?`<div class="aviso"><div class="aviso-h">📢 Aviso de Tú Delivery</div><p>${esc(msgDia.texto)}</p><small>${msgDia.criadoEm?"Publicado el "+ddmm(keyOf(new Date(msgDia.criadoEm)))+" "+hhmm(msgDia.criadoEm):""}</small>
-    ${S.mode==="db"&&S.owner?`<button type="button" class="linkbtn small-link" data-msg>Cambiar o quitar aviso</button>`:""}</div>`:"";
+    ${S.mode==="db"&&S.owner?`<button type="button" class="linkbtn small-link" data-msg>Cambiar o quitar aviso</button>`:`<button type="button" class="linkbtn small-link" data-avok="${avK}">Entendido</button>`}</div>`:"";
   if(S.dia!==today())return aviso;
+  return viewMsgRest(aviso)}
+function viewMsgRest(aviso){aviso=aviso||"";
   const h=new Date().getHours();const saludo=h<12?"¡Buen día":h<19?"¡Buenas tardes":"¡Buenas noches";
   const nm=S.mode==="db"?(personName(S.me)||"").split(" ")[0]:"";
   const hs=String(S.me||"").split("").reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7);
@@ -1852,13 +1863,16 @@ function cajaCalc(u,dia){const l=allItems().filter(([,d])=>d._u===u&&d.dia===dia
   const gas=[...S.gastos.values(),...(u===S.me?S.priv.values():[])].filter(g=>g._u===u&&g.dia===dia).reduce((a,g)=>a+(g.valor||0),0);
   const c=cajaOf(u,dia)||{};const ab=c.abre||0;return{ab,ef,prod,prodOut,pago,diar,gas,tr,ntr,emp,nemp,esp:ab+ef+pago+diar-gas,c}}
 function cajaPuedeAbrir(u){return isRealOwner||!allItems().some(([,d])=>d._u===u&&d.dia===today()&&!isCamino(d))}
+function cajaOpenPref(u,force){if(force)return true;try{const o=JSON.parse(localStorage.getItem("caixa_caja_open")||"{}");return o[u+"|"+today()]===true}catch(e){return false}}
+document.addEventListener("toggle",e=>{const d=e.target;if(!d||!d.dataset||!d.dataset.cajadet)return;try{const o=JSON.parse(localStorage.getItem("caixa_caja_open")||"{}");o[d.dataset.cajadet+"|"+today()]=d.open;localStorage.setItem("caixa_caja_open",JSON.stringify(o))}catch(x){}},true);
 function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u=S.filter==="all"?S.me:S.filter;const yo=u===S.me;const K=cajaCalc(u,S.dia);const c=K.c;
   const tieneEnt=allItems().some(([,d])=>d._u===u&&d.dia===today()&&!isCamino(d));
   if(!c.abreEm&&(yo?cajaPuedeAbrir(u):!tieneEnt)){{return yo?`<button type="button" class="caja-open" data-cajaabrir><span class="caja-ic">💰</span><span><b>Abrir caja</b><small>Al empezar el día, antes de la primera entrega: anotá con cuánto empezás</small></span><span class="caja-go">›</span></button>`
       :`<section class="caja cerrada"><div class="caja-h"><b>💰 Caja sin abrir</b><small>${esc(personName(u))}</small></div><small class="hint" style="margin:0">Todavía no abrió la caja ni registró entregas hoy.</small></section>`}}
   const espC=c.cierraEm&&c.esp!=null?c.esp:K.esp;const dif=c.cierraEm?(c.cierra-espC):0;const despues=c.cierraEm&&c.esp!=null&&K.esp!==c.esp;
   const reab=(c.prev||[]).length?`<small class="caja-reab">Reabierta ${c.prev.length===1?"1 vez":c.prev.length+" veces"} · último cierre anterior ${hhmm(c.prev[c.prev.length-1].cierraEm)}</small>`:"";
-  return `<section class="caja ${c.cierraEm?"cerrada":""}"><div class="caja-h"><b>💰 Caja ${c.cierraEm?"cerrada":"abierta"}</b><small>${yo?"":esc(personName(u))+" · "}${c.abreEm&&!c.auto?"abrió "+hhmm(c.abreEm):"no se abrió · empezó en ₲ 0"}${c.cierraEm?" · cerró "+hhmm(c.cierraEm):""}</small></div>
+  const cjOpen=cajaOpenPref(u,!!(despues||(c.cierraEm&&dif)||(yo&&(!c.abreEm||c.auto)&&!c.cierraEm&&false)));
+  return `<details class="caja ${c.cierraEm?"cerrada":""}" data-cajadet="${esc(u)}" ${cjOpen?"open":""}><summary><div class="caja-h"><b>💰 Caja ${c.cierraEm?"cerrada":"abierta"}</b><small>${yo?"":esc(personName(u))+" · "}${c.abreEm&&!c.auto?"abrió "+hhmm(c.abreEm):"no se abrió · empezó en ₲ 0"}${c.cierraEm?" · cerró "+hhmm(c.cierraEm):""}</small><span class="caja-arr">▾</span></div><div class="caja-sumline"><small>${c.cierraEm?(dif===0?"Cuadró al cerrar":dif<0?"Faltó al cerrar":"Sobró al cerrar"):"Ahora tendría que haber"}</small><b class="num ${c.cierraEm&&dif<0?"c-due":""}">${gs(c.cierraEm?(dif?Math.abs(dif):espC):K.esp)}</b></div></summary>
     ${!yo&&isRealOwner&&!c.cierraEm?`<button type="button" class="caja-ini" data-cajaabrir="${esc(u)}">${icSvg("pencil")}<span><b>${!c.abreEm||c.auto?"Anotar con cuánto empezó":"Corregir con cuánto empezó"}</b><small>Las entregas que ya hizo siguen contando.</small></span></button>`:""}${yo&&(!c.abreEm||c.auto)&&!c.cierraEm?`<button type="button" class="caja-ini" data-cajaabrir>${icSvg("pencil")}<span><b>¿Empezaste con plata?</b><small>Anotá con cuánto empezaste hoy. Se puede hacer una sola vez.</small></span></button>`:""}
     <div class="caja-rows"><div><span>Empezó con</span><b class="num">${gs(K.ab)}</b></div>
       <div><span>+ Delivery cobrado en efectivo</span><b class="num">${gs(c.cierraEm&&c.efC!=null?c.efC:K.ef+K.pago+K.diar)}</b></div>
@@ -1873,7 +1887,7 @@ function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u
       ${K.emp?`<small>Lo que entra a la empresa ya se descuenta de la comisión en la liquidación.</small>`:""}
       <div class="cf-tot"><span>Total de delivery hoy</span><b class="num">${gs(K.ef+K.pago+K.diar+K.tr+K.emp)}</b></div><small>Los productos no entran: los pagás con la plata de la caja y el cliente te los devuelve.</small></div>
     ${yo?(c.cierraEm?`<div class="caja-act"><button type="button" class="${despues?"primary":"ghost"}" data-cajareabrir>Seguir trabajando · reabrir caja</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajacerrar style="justify-self:start">Corregir cierre</button>`:""}</div><small class="caja-lock">Si saliste a trabajar de nuevo, reabrí la caja. Lo de antes queda guardado.</small>`:`<div class="caja-act"><button type="button" class="primary" data-cajacerrar>Cerrar caja · terminé el trabajo</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajaabrir>Cambiar inicio</button>`:""}</div>`):""}
-    ${isRealOwner?`<button type="button" class="linkbtn small-link caja-reset" data-cajareset="${esc(u)}">🗑️ Borrar la caja de hoy${yo?"":" de "+esc((personName(u)||"").split(" ")[0])} y empezar de nuevo</button>`:""}</section>`}
+    ${isRealOwner?`<button type="button" class="linkbtn small-link caja-reset" data-cajareset="${esc(u)}">🗑️ Borrar la caja de hoy${yo?"":" de "+esc((personName(u)||"").split(" ")[0])} y empezar de nuevo</button>`:""}</details>`}
 var CJU=null;
 function openCaja(modo,u){edit=null;CJU=(isRealOwner&&u)||S.me;const otro=CJU!==S.me;const K=cajaCalc(CJU,today());const ab=modo==="abrir";const cur=ab?(K.c.abre||""):(K.c.cierra||"");
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Caja">${sheetHead(otro?(ab?"💰 Inicio de caja · ":"🔒 Cerrar caja · ")+esc((personName(CJU)||"").split(" ")[0]):ab?"💰 Abrir caja":"🔒 Cerrar caja")}
@@ -3100,6 +3114,8 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-cajacerrar")&&!t.closest("#layer"))openCaja("cerrar");
   else if(t.hasAttribute("data-auxquien")&&!t.closest("#layer"))openAuxQuien();
   else if(t.hasAttribute("data-export")&&!t.closest("#layer"))openExport();
+  else if(t.dataset.avok){try{localStorage.setItem("caixa_aviso_leido",t.dataset.avok)}catch(e){}render(true)}
+  else if(t.hasAttribute("data-avabrir")){try{localStorage.removeItem("caixa_aviso_leido")}catch(e){}render(true)}
   else if(t.hasAttribute("data-logs")&&!t.closest("#layer"))openLogs();
   else if(t.hasAttribute("data-radio")&&!t.closest("#layer")){rdUnlock();openRadio()}
   else if(t.dataset.confok||t.dataset.confno){const k=t.dataset.confok||t.dataset.confno;const ok=!!t.dataset.confok;const d=S.items.get(k);if(!d)return;
