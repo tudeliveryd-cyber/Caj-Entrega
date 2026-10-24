@@ -708,6 +708,7 @@ details.caja .caja-arr{color:var(--muted);transition:transform .2s;margin-left:4
 .dst>svg{width:22px;height:22px;color:#e8b93a;flex:none}.dst-b{display:grid;gap:6px;flex:1;min-width:0}
 .dst-r{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px}.dst-l{grid-column:1/-1;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:#c99a1c;font-weight:700}.dst-r b{font-size:15px}.dst-r small{color:var(--muted);font-size:12.5px;align-self:center}
 .cum-falta{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}.cum-falta.hoy{color:#e0679a;font-weight:700}
+.cum-team{display:flex;flex-wrap:wrap;gap:6px}
 .cum-row{display:grid;grid-template-columns:1fr 1.6fr;gap:10px}.cum-row select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--bg);color:var(--ink);font:16px var(--body)}
 .confeti{position:fixed;inset:0;pointer-events:none;z-index:200;overflow:hidden}.confeti i{position:absolute;top:-12px;width:8px;height:14px;border-radius:2px;animation:conf 3s ease-in forwards}
 @keyframes conf{to{top:110%;transform:rotate(720deg) translateX(40px)}}
@@ -994,7 +995,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="157";
+const APPV="158";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2859,6 +2860,7 @@ function openCumple(pre){edit=null;if(!S.owner){toast("Los cumpleaños los carga
     <div class="cum-row"><div class="field"><label for="cum-d">Día</label><select id="cum-d"><option value="">—</option>${Array.from({length:31},(_,i)=>`<option ${ex&&Number(ex.md.slice(3))===i+1?"selected":""}>${i+1}</option>`).join("")}</select></div>
       <div class="field"><label for="cum-m">Mes</label><select id="cum-m"><option value="">—</option>${MESES.map((m,i)=>`<option value="${i+1}" ${ex&&Number(ex.md.slice(0,2))===i+1?"selected":""}>${m}</option>`).join("")}</select></div></div>
     <button type="button" class="primary" data-cumsave="${esc(ex?ex.id:"")}" data-cumu="${esc(pre&&pre!==S.me?pre:ex&&ex.u||"")}">${ex?"Guardar cambios":"+ Agregar cumpleaños"}</button>
+    ${(()=>{const falta=[...new Set([S.me,...S.people.keys()])].filter(u=>!isBaja(u)&&(u===S.me||isAprob(u))&&!l.some(c=>c.u===u||norm(c.nome)===norm(personName(u)||"")));return falta.length?`<div class="lbl">Equipo sin cumpleaños (${falta.length}) · tocá para cargar</div><div class="cum-team">${falta.map(u=>`<button type="button" class="chip" data-cumpick="${esc(u)}">+ ${esc(personName(u)||"")}${u===S.me?" (vos)":""}</button>`).join("")}</div>`:`<p class="hint" style="margin:0">Todo el equipo ya tiene su cumpleaños cargado.</p>`})()}
     <div class="lbl">Cargados (${l.length})</div>
     <div class="list">${l.length?l.map(c=>`<div class="cta-it"><span><b>${Number(c.md.slice(3))} de ${MESES[Number(c.md.slice(0,2))-1]}</b> · ${esc(c.nome)}${c.f?` <span class="cm-f">${esc(c.f)}</span>`:""}<small class="cum-falta ${diasHasta(c.md)===0?"hoy":""}">${(n=>n===0?"¡Es hoy!":n===1?"Falta 1 día · mañana":"Faltan "+n+" días")(diasHasta(c.md))}</small></span><span><button type="button" class="linkbtn small-link" data-cumedit="${esc(c.id)}">editar</button> <button type="button" class="linkbtn small-link" data-cumdel="${esc(c.id)}">quitar</button></span></div>`).join(""):`<div class="empty">Todavía no cargaste ningún cumpleaños.</div>`}</div></div></div>`;
   if(!ex)setTimeout(()=>{const n=document.getElementById("cum-n");if(n&&!n.value)n.focus()},80)}
@@ -3350,6 +3352,7 @@ layer.addEventListener("click",async e=>{
     if(!n){toast("Escribí el nombre");return}if(!d||!m){toast("Elegí día y mes");return}const mx=new Date(2024,m,0).getDate();if(d>mx){toast(MESES[m-1]+" tiene "+mx+" días");return}
     const md=String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");let cu=t.dataset.cumu||"";if(!cu){const hit=[...S.people.keys()].find(u=>norm(personName(u)||"")===norm(n));if(hit)cu=hit}
     const f=((document.getElementById("cum-f")||{}).value||"").trim();const id=t.dataset.cumsave||uid();const list=[...cumpleL.filter(c=>c.id!==id),{id,n,md,u:cu,...(f?{f}:{})}];await saveCumpleList(list,"Guardado: "+n+" · "+d+" de "+MESES[m-1]);openCumple();return}
+  if(t.dataset.cumpick){const u=t.dataset.cumpick;const n=document.getElementById("cum-n");if(n)n.value=personName(u)||"";const b=layer.querySelector("[data-cumsave]");if(b){b.dataset.cumsave="";b.dataset.cumu=u;b.textContent="+ Agregar cumpleaños"}const f=document.getElementById("cum-f");if(f)f.value=u===S.me?"Patrón":roles.socios.includes(u)?"Patrona":"";layer.querySelectorAll("[data-cumpick]").forEach(x=>x.classList.toggle("on",x===t));const d=document.getElementById("cum-d");if(d){d.value="";d.scrollIntoView({block:"center",behavior:"smooth"});setTimeout(()=>d.focus(),300)}return}
   if(t.dataset.cumf){const i=document.getElementById("cum-f");if(i)i.value=i.value===t.dataset.cumf?"":t.dataset.cumf;return}
   if(t.dataset.cumedit){const c=cumpleL.find(x=>x.id===t.dataset.cumedit);if(!c)return;openCumple();const n=document.getElementById("cum-n");n.value=c.n;document.getElementById("cum-f").value=c.f||"";document.getElementById("cum-d").value=String(Number(c.md.slice(3)));document.getElementById("cum-m").value=String(Number(c.md.slice(0,2)));const b=layer.querySelector("[data-cumsave]");b.dataset.cumsave=c.id;b.dataset.cumu=c.u||"";b.textContent="Guardar cambios";return}
   if(t.dataset.cumdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿seguro?";return}await saveCumpleList(cumpleL.filter(c=>c.id!==t.dataset.cumdel),"Cumpleaños quitado");openCumple();return}
