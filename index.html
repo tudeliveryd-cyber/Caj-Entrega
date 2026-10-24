@@ -926,7 +926,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="138";
+const APPV="139";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1971,8 +1971,9 @@ function openCuenta(u){edit=null;const c=cuentaDe(u);const ro=!S.owner;
     </div>
     ${ro?`<p class="hint" style="margin:0">Para pagar, hablá con la empresa. Cuando registren tu pago, se descuenta acá.</p>`:""}<div class="cta-acts" ${ro?"hidden":""}><button type="button" class="small pay" data-movnew="${esc(u)}|abono">+ Registrar pago</button><button type="button" class="small" data-movnew="${esc(u)}|deuda">+ Deuda anterior / préstamo</button></div>
     ${ro?"":`<a class="wa-big" href="${esc(cuentaWa(u,c))}" target="_blank" rel="noopener">📲 Enviar estado de cuenta</a>`}
+    ${!ro&&c.dias.some(x=>x.dia<today())?(()=>{const ant=c.dias.filter(x=>x.dia<today());const sm=ant.reduce((a,x)=>a+x.s.saldo,0);return `<button type="button" class="primary hasta-ayer" data-hastaayer="${esc(u)}">${icSvg("checkc")} Pagó hasta ayer · ${plural(ant.length,"día")} · ${gs(Math.abs(sm))}</button>`})():""}
     ${!ro&&(c.dias.length||c.ms.length)?`<button type="button" class="ghost" data-saldar="${esc(u)}">✓ Saldar todo (queda en cero)</button>`:""}
-    ${ro?"":`<p class="hint" style="margin:0">Pago parcial: registrá lo que pagó y el saldo baja. <b>Pagó este día</b> salda solo ese día y deja los otros pendientes. “Saldar todo” marca todos los días como pagados y cierra la cuenta.</p>`}</div></div>`}
+    ${ro?"":`<p class="hint" style="margin:0">Pago parcial: registrá lo que pagó y el saldo baja. <b>Pagó hasta ayer</b> salda todos los días anteriores y deja el de hoy. <b>Pagó este día</b> salda solo ese día y deja los otros pendientes. “Saldar todo” marca todos los días como pagados y cierra la cuenta.</p>`}</div></div>`}
 function openMovNew(u,tipo){edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog">${sheetHead((tipo==="abono"?"💵 Registrar pago de ":"📌 Deuda de ")+esc(personName(u)))}
   <div class="money"><span>₲</span><input id="mv-val" inputmode="numeric" autocomplete="off" placeholder="Monto"></div>
   <div class="field"><label for="mv-nota">Detalle (opcional)</label><input id="mv-nota" autocomplete="off" placeholder="${tipo==="abono"?"Ej.: pagó en efectivo":"Ej.: deuda de septiembre, préstamo"}"></div>
@@ -3030,6 +3031,9 @@ layer.addEventListener("click",async e=>{
     try{await sendW(db.collection("liq/"+u+"/movs").doc(id).set(m));toast(tp==="abono"?"Pago registrado · "+gs(v):"Deuda registrada · "+gs(v))}catch(err){movs.delete(u+"|"+id);toast("No se guardó.");openCuenta(u)}return}
   if(t.dataset.movdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿quitar?";return}const[u,id]=t.dataset.movdel.split("|");movs.delete(u+"|"+id);openCuenta(u);
     try{await sendW(db.collection("liq/"+u+"/movs").doc(id).delete());toast("Quitado")}catch(err){toast("No se guardó.")}return}
+  if(t.dataset.hastaayer){const u=t.dataset.hastaayer;const ant=cuentaDe(u).dias.filter(x=>x.dia<today());if(!ant.length)return;
+    if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo: salda hasta el "+ddmm(addDays(today(),-1));return}
+    try{for(const x of ant)await setPago(u,x.dia,x.s);render(true);openCuenta(u);toast("Saldado hasta ayer · "+plural(ant.length,"día"))}catch(err){toast("No se guardó.")}return}
   if(t.dataset.diapaga){const[u,dia]=t.dataset.diapaga.split("|");const x=cuentaDe(u).dias.find(y=>y.dia===dia);if(!x)return;
     if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo para confirmar "+ddmm(dia);return}
     try{await setPago(u,dia,x.s);render(true);openCuenta(u);toast(ddmm(dia)+" saldado · "+gs(Math.abs(x.s.saldo)))}catch(err){toast("No se guardó.")}return}
