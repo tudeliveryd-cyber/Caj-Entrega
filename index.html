@@ -708,6 +708,8 @@ details.sec.fold{display:grid;gap:10px}
 .caja-dif.ok{background:color-mix(in srgb,#2e9e5b 16%,transparent);color:#2e9e5b}.caja-dif.falta{background:var(--due-bg);color:var(--due)}.caja-dif.sobra{background:color-mix(in srgb,#4a8fe0 14%,transparent);color:#4a8fe0}
 .caja-act{display:flex;gap:12px;align-items:center}
 .caja-lock{color:var(--muted);font-size:13px}
+.caja-ini{display:flex;gap:10px;align-items:center;text-align:left;width:100%;border:1px dashed var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink);border-radius:12px;padding:10px 12px;font:inherit}
+.caja-ini svg{width:20px;height:20px;flex:none;color:var(--accent)}.caja-ini span{display:grid;gap:2px}.caja-ini small{color:var(--muted);font-size:12.5px}
 .p0{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 12px;font:600 13px var(--body)}
 .p0.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .caja-desp{display:flex;gap:8px;align-items:flex-start;background:color-mix(in srgb,#e0a030 16%,transparent);color:var(--ink);border-radius:10px;padding:9px 10px;font-size:14px}
@@ -901,7 +903,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="132";
+const APPV="133";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1746,6 +1748,7 @@ function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u
   const espC=c.cierraEm&&c.esp!=null?c.esp:K.esp;const dif=c.cierraEm?(c.cierra-espC):0;const despues=c.cierraEm&&c.esp!=null&&K.esp!==c.esp;
   const reab=(c.prev||[]).length?`<small class="caja-reab">Reabierta ${c.prev.length===1?"1 vez":c.prev.length+" veces"} · último cierre anterior ${hhmm(c.prev[c.prev.length-1].cierraEm)}</small>`:"";
   return `<section class="caja ${c.cierraEm?"cerrada":""}"><div class="caja-h"><b>💰 Caja ${c.cierraEm?"cerrada":"abierta"}</b><small>${yo?"":esc(personName(u))+" · "}${c.abreEm&&!c.auto?"abrió "+hhmm(c.abreEm):"no se abrió · empezó en ₲ 0"}${c.cierraEm?" · cerró "+hhmm(c.cierraEm):""}</small></div>
+    ${yo&&(!c.abreEm||c.auto)&&!c.cierraEm?`<button type="button" class="caja-ini" data-cajaabrir>${icSvg("pencil")}<span><b>¿Empezaste con plata?</b><small>Anotá con cuánto empezaste hoy. Se puede hacer una sola vez.</small></span></button>`:""}
     <div class="caja-rows"><div><span>Empezó con</span><b class="num">${gs(K.ab)}</b></div>
       <div><span>+ Delivery cobrado en efectivo</span><b class="num">${gs(c.cierraEm&&c.efC!=null?c.efC:K.ef+K.pago+K.diar)}</b></div>
       <div><span>− Gastos</span><b class="num c-due">${gs(c.cierraEm&&c.gasC!=null?c.gasC:K.gas)}</b></div>
@@ -1769,8 +1772,8 @@ function openCaja(modo){edit=null;const K=cajaCalc(S.me,today());const ab=modo==
     <button type="button" class="primary" data-cajasave="${ab?"abrir":"cerrar"}">${ab?"Abrir caja":"Cerrar caja"}</button></div></div>`;
   setTimeout(()=>{const i=document.getElementById("caja-v");if(i)i.focus()},80)}
 async function saveCaja(modo,v){const dia=today();const cur=cajaOf(S.me,dia)||{dia};const n={...cur,dia};
-  if(!isRealOwner&&modo!=="reabrir"&&((modo==="abrir"&&(cur.abreEm||!cajaPuedeAbrir(S.me)))||(modo==="cerrar"&&cur.cierraEm))){toast("🔒 No se puede cambiar la caja de hoy");return"ok"}
-  if(modo==="abrir"){n.abre=v;n.abreEm=cur.abreEm||Date.now()}else if(modo==="reabrir"){if(!cur.cierraEm)return"ok";n.prev=[...(cur.prev||[]),{cierra:cur.cierra||0,cierraEm:cur.cierraEm,esp:cur.esp!=null?cur.esp:null}];delete n.cierra;delete n.cierraEm;delete n.esp;delete n.efC;delete n.gasC}
+  if(!isRealOwner&&modo!=="reabrir"&&((modo==="abrir"&&((cur.abreEm&&!cur.auto)||cur.cierraEm))||(modo==="cerrar"&&cur.cierraEm))){toast("🔒 No se puede cambiar la caja de hoy");return"ok"}
+  if(modo==="abrir"){n.abre=v;n.abreEm=cur.abreEm||Date.now();delete n.auto}else if(modo==="reabrir"){if(!cur.cierraEm)return"ok";n.prev=[...(cur.prev||[]),{cierra:cur.cierra||0,cierraEm:cur.cierraEm,esp:cur.esp!=null?cur.esp:null}];delete n.cierra;delete n.cierraEm;delete n.esp;delete n.efC;delete n.gasC}
   else{n.cierra=v;n.cierraEm=Date.now();if(!n.abreEm){n.abreEm=Date.now();n.abre=0;n.auto=true}{const K0=cajaCalc(S.me,dia);n.esp=K0.esp;n.efC=K0.ef+K0.pago+K0.diar;n.gasC=K0.gas}}
   delete n._u;delete n._id;cajas.set(S.me+"|"+dia,{...n,_u:S.me,_id:dia});render(true);
   const w=await sendW(db.collection("turnos/"+S.me+"/caja").doc(dia).set(n));return w}
