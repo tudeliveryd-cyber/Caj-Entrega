@@ -704,6 +704,9 @@ details.caja .caja-arr{color:var(--muted);transition:transform .2s;margin-left:4
 .cumple-mes .hoy .cm-n{font-weight:800}.cumple-mes .hoy .cm-d{background:#e0679a;color:#fff}.cumple-mes .pas{opacity:.55}
 .cm-f{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,#e0679a 16%,transparent);color:#e0679a;vertical-align:middle;margin-left:4px}
 .cumple-hoy .cm-f{justify-self:start;margin:0}.cum-fchips{margin-top:6px}
+.dst{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid color-mix(in srgb,#e8b93a 50%,var(--line));background:color-mix(in srgb,#e8b93a 8%,var(--surface));color:var(--ink);border-radius:14px;padding:10px 12px;font:inherit}
+.dst>svg{width:22px;height:22px;color:#e8b93a;flex:none}.dst-b{display:grid;gap:6px;flex:1;min-width:0}
+.dst-r{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px}.dst-l{grid-column:1/-1;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:#c99a1c;font-weight:700}.dst-r b{font-size:15px}.dst-r small{color:var(--muted);font-size:12.5px;align-self:center}
 .cum-row{display:grid;grid-template-columns:1fr 1.6fr;gap:10px}.cum-row select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--bg);color:var(--ink);font:16px var(--body)}
 .confeti{position:fixed;inset:0;pointer-events:none;z-index:200;overflow:hidden}.confeti i{position:absolute;top:-12px;width:8px;height:14px;border-radius:2px;animation:conf 3s ease-in forwards}
 @keyframes conf{to{top:110%;transform:rotate(720deg) translateX(40px)}}
@@ -990,7 +993,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="154";
+const APPV="155";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1127,10 +1130,11 @@ async function syncRank(u){
   const cier=[...new Set([...((cur&&cur.cier)||[]),...lv.cier])].sort().slice(-500);
   const mt=[...new Set([...((cur&&cur.mt)||[]),...(lv.mt||[])])].sort().slice(-500);
   const sk=o=>JSON.stringify(Object.keys(o).sort().map(k=>[k,o[k]]));
-  if(cur&&sk(cur.dias||{})===sk(dias)&&(cur.nome||"")===nome&&sk(cur.pd||{})===sk(pd)&&JSON.stringify(cur.cier||[])===JSON.stringify(cier)&&JSON.stringify(cur.mt||[])===JSON.stringify(mt))return;
+  const nop=(isRealOwner&&u===S.me)||roles.socios.includes(u)||pctOf(u)===0;
+  if(cur&&!!cur.nop===nop&&sk(cur.dias||{})===sk(dias)&&(cur.nome||"")===nome&&sk(cur.pd||{})===sk(pd)&&JSON.stringify(cur.cier||[])===JSON.stringify(cier)&&JSON.stringify(cur.mt||[])===JSON.stringify(mt))return;
   if(!cur&&!Object.keys(dias).length&&!nome)return;
-  const doc={nome,dias,pd,cier,mt,atualizado:Date.now()};rank.set(u,{...(cur||{}),...doc});
-  try{await db.doc("ranking/"+u).set(doc,{mergeFields:["nome","dias","pd","cier","mt","atualizado"]})}catch(e){}
+  const doc={nome,dias,pd,cier,mt,nop,atualizado:Date.now()};rank.set(u,{...(cur||{}),...doc});
+  try{await db.doc("ranking/"+u).set(doc,{mergeFields:["nome","dias","pd","cier","mt","nop","atualizado"]})}catch(e){}
 }
 
 {const c=lsGet(LSC,null);if(c&&c.pct)S.cfg={pct:c.pct,por:c.por||{}};else{const old=lsGet("caixa_config_v1",null);if(old&&old.pct)S.cfg.pct=old.pct}}
@@ -1235,8 +1239,9 @@ function startDemo(modo){
    put("ranking/_cumples",{list:[{id:"cb1",n:"Juan",md:t.slice(5),u:"r2"},{id:"cb2",n:"Pedro",md:addDays(t,5).slice(5),u:"r3"},{id:"cb3",n:"Doña Rosa (cocina)",md:t.slice(5,8)+"03",u:""}]});
    put("ranking/_puntos",{inicio:addDays(t,-200),premios:[{p:600,n:"Recarga de celular ₲ 50.000"},{p:1500,n:"Tanque lleno de nafta"},{p:2000,n:"₲ 150.000"}]});
    {const wav=sec=>{const sr=8000,n=sr*sec,b=new Uint8Array(44+n),v=new DataView(b.buffer);const w=(o,t)=>{for(let i=0;i<t.length;i++)b[o+i]=t.charCodeAt(i)};w(0,"RIFF");v.setUint32(4,36+n,true);w(8,"WAVEfmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,"data");v.setUint32(40,n,true);for(let i=0;i<n;i++)b[44+i]=128+Math.round(40*Math.sin(i/sr*2*Math.PI*440)*Math.min(1,(n-i)/800));let s="";for(let i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return "data:audio/wav;base64,"+btoa(s)};
-    put("ranking/r2",{nome:"Juan",dias:{[t]:11,[y]:9},pd:{...pd(40),[t]:11,[y]:9},cier:ci(40),radio:[{id:"rdj1",a:wav(1),em:Date.now()-12*60e3,d:1},{id:"rdj2",a:wav(2),em:Date.now()-3*60e3,d:2}]})}
-   put("ranking/r3",{nome:"Pedro",dias:{[t]:6,[y]:12},pd:{...pd(20),[t]:6,[y]:12},cier:ci(10)});
+   {const hist=(base)=>{const o={};for(let i=2;i<45;i++)o[addDays(t,-i)]=base+(i%3);return o};window.__rkh=hist}
+    put("ranking/r2",{nome:"Juan",dias:{...window.__rkh(11),[t]:11,[y]:9},pd:{...pd(40),[t]:11,[y]:9},cier:ci(40),radio:[{id:"rdj1",a:wav(1),em:Date.now()-12*60e3,d:1},{id:"rdj2",a:wav(2),em:Date.now()-3*60e3,d:2}]})}
+   put("ranking/r3",{nome:"Pedro",dias:{...window.__rkh(9),[t]:6,[y]:12},pd:{...pd(20),[t]:6,[y]:12},cier:ci(10)});
    window.__demoPts={pd,ci}}
   put("ranking/_clientes",{list:[{id:"c1",n:"Divina Mesa",cat:"Restaurantes",ubic:"https://maps.google.com/?q=-25.7935,-55.0870",dir:"Av. Santa Rita c/ Mallorquín",tel:"0981 555 111",nota:"Entregar por la cocina"},{id:"c2",n:"Bom Corte Bar & Grill",cat:"Restaurantes",ubic:"https://maps.google.com/?q=-25.7912,-55.0851",dir:"Ruta PY06, frente a la estación",tel:"0983 222 333",nota:""}]});
   put("ranking/_mensaje",{texto:"Bienvenidos a la app de Tú Delivery. Registren todas las entregas del día y no se olviden de anotar los pedidos.",criadoEm:at(t,7,0)});};
@@ -1358,7 +1363,7 @@ function startData(me){setTimeout(()=>{try{subNotas()}catch(e){}},400);
     cfgRef.onSnapshot(s=>{if(s.exists){const d=s.data();S.cfg={pct:d.pct||30,por:d.por||{}};lsSet(LSC,S.cfg)}cfgOk=true;pctSync();render(true)},()=>{})}
   subscribeUser(me);
   if(S.owner)egCol().where("dia",">=",addDays(today(),-WINDOW)).limit(1000).onSnapshot(snap=>{S.egastos=new Map(snap.docs.map(d=>[d.id,{...d.data(),_id:d.id}]));render()},()=>{});
-  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;metaDia=0;const hadG=chatG.length;chatG=[];for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}if(d.id==="_meta"){metaDia=Number(d.data().n)||0;continue}if(d.id==="_puntos"){ptsCfg=d.data();continue}if(d.id==="_clientes"){clisF=Array.isArray(d.data().list)?d.data().list:[];if(document.getElementById("cf-list"))drawClientesF();continue}if(d.id==="_chat"){chatG=(d.data().msgs||[]);continue}if(d.id==="_cumples"){cumpleL=Array.isArray(d.data().list)?d.data().list:[];continue}rank.set(d.id,d.data())}if(!snap.docs.some(d=>d.id==="_puntos"))ptsCfg=null;render();{const sig=JSON.stringify(msgDia)+"|"+metaDia;if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(chatG.length!==hadG){chatNotify();render()}if(S.tab==="rank")render(true);radioCheck();cumpleAviso()},()=>{});
+  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;metaDia=0;const hadG=chatG.length;chatG=[];for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}if(d.id==="_meta"){metaDia=Number(d.data().n)||0;continue}if(d.id==="_puntos"){ptsCfg=d.data();continue}if(d.id==="_clientes"){clisF=Array.isArray(d.data().list)?d.data().list:[];if(document.getElementById("cf-list"))drawClientesF();continue}if(d.id==="_chat"){chatG=(d.data().msgs||[]);continue}if(d.id==="_cumples"){cumpleL=Array.isArray(d.data().list)?d.data().list:[];continue}rank.set(d.id,d.data())}if(!snap.docs.some(d=>d.id==="_puntos"))ptsCfg=null;render();{const sig=JSON.stringify(msgDia)+"|"+metaDia;if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(chatG.length!==hadG){chatNotify();render()}if(S.tab==="rank")render(true);radioCheck();cumpleAviso();destacadoAviso()},()=>{});
   if(S.owner){let first=true;db.collection("turnos").limit(200).onSnapshot(snap=>{for(const d of snap.docs){const prev=S.people.get(d.id),nd=d.data();
     if(!first&&d.id!==S.me&&nd.cierre&&nd.cierre.dia===today()&&!(prev&&prev.cierre&&prev.cierre.em===nd.cierre.em))toast("🏁 "+(nd.nome||"Un delivery")+" cerró su día");
     if(!first&&d.id!==S.me&&nd.inicio&&nd.inicio.dia===today()&&!(prev&&prev.inicio&&prev.inicio.em===nd.inicio.em))toast("▶️ "+(nd.nome||"Un delivery")+" empezó a trabajar");
@@ -1755,7 +1760,7 @@ function viewMsg(){
     ${S.mode==="db"&&S.owner?`<button type="button" class="linkbtn small-link" data-msg>Cambiar o quitar aviso</button>`:`<button type="button" class="linkbtn small-link" data-avok="${avK}">Entendido</button>`}</div>`:"";
   if(S.dia!==today())return aviso;
   return viewMsgRest(aviso)}
-function viewMsgRest(aviso){aviso=(aviso||"")+cumpleBox();
+function viewMsgRest(aviso){aviso=(aviso||"")+destacadosBox()+cumpleBox();
   const h=new Date().getHours();const saludo=h<12?"¡Buen día":h<19?"¡Buenas tardes":"¡Buenas noches";
   const nm=S.mode==="db"?(personName(S.me)||"").split(" ")[0]:"";
   const hs=String(S.me||"").split("").reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7);
@@ -2859,6 +2864,17 @@ function openCumple(pre){edit=null;if(!S.owner){toast("Los cumpleaños los carga
   if(!ex)setTimeout(()=>{const n=document.getElementById("cum-n");if(n&&!n.value)n.focus()},80)}
 async function saveCumpleList(list,msg){cumpleL=list;render(true);try{await sendW(db.doc("ranking/_cumples").set({list,upd:Date.now()}));toast(msg)}catch(e){toast("No se guardó.")}}
 
+/* ---------- Destacados: más entregas la semana pasada (tanque lleno) y el mes pasado (bono) ---------- */
+function destacados(){const t=fromKey(today());const dow=(t.getDay()+6)%7;const lun=addDays(today(),-dow);const wFrom=addDays(lun,-7),wTo=addDays(lun,-1);
+  const pm=new Date(t.getFullYear(),t.getMonth()-1,1);const mFrom=keyOf(pm),mTo=keyOf(new Date(t.getFullYear(),t.getMonth(),0));
+  const best=(a,b)=>{let top=0,who=[];try{for(const[u,d]of rank){if(String(u).startsWith("_")||!d||d.nop||isBaja(u))continue;let n=0;for(const[k,v]of Object.entries(d.dias||{}))if(k>=a&&k<=b)n+=v||0;if(!n)continue;if(n>top){top=n;who=[d.nome||personName(u)||""]}else if(n===top)who.push(d.nome||personName(u)||"")}}catch(e){}return{n:top,who:who.filter(Boolean)}};
+  return{sem:best(wFrom,wTo),mes:best(mFrom,mTo),mesNom:MESES[pm.getMonth()]}}
+function destacadosBox(){if(S.mode!=="db"||S.dia!==today())return"";const D=destacados();if(!D.sem.n&&!D.mes.n)return"";const fn=a=>a.map(x=>esc(x.split(" ")[0])).join(" y ");
+  const row=(lbl,r,premio)=>r.n?`<div class="dst-r"><span class="dst-l">${lbl}</span><b>${fn(r.who)}</b><small>${r.n} entregas · ${premio}</small></div>`:"";
+  return `<button type="button" class="dst" data-gotab="rank">${icSvg("star")}<div class="dst-b">${row("Destacado de la semana",D.sem,"tanque lleno")}${row("Destacado de "+D.mesNom,D.mes,"bono ₲ 200.000")}</div><span class="caja-go">›</span></button>`}
+function destacadoAviso(){if(S.mode!=="db")return;const D=destacados();if(!D.sem.n)return;const k="caixa_dst_aviso";const wk=addDays(today(),-((fromKey(today()).getDay()+6)%7));let seen="";try{seen=localStorage.getItem(k)||""}catch(e){}if(seen===wk)return;try{localStorage.setItem(k,wk)}catch(e){}
+  const me=(rank.get(S.me)||{}).nome;const gane=me&&D.sem.who.includes(me);setTimeout(()=>{toast(gane?"¡Sos el destacado de la semana! Ganaste el tanque lleno":"Destacado de la semana: "+D.sem.who.map(x=>x.split(" ")[0]).join(" y ")+" · ¡Felicidades!");if(gane)cumpleConfeti()},2600)}
+
 /* historial completo de un delivery (también desactivados): días trabajados, total, comisión, pagado */
 const sameAux=u=>{if(!isAux(u))return[u];const k=norm((S.people.get(u)||{}).nome||"");if(!k)return[u];return[u,...[...S.people.keys()].filter(x=>x!==u&&isAux(x)&&norm((S.people.get(x)||{}).nome||"")===k)]};
 async function openHist(u){edit=null;const nm=personName(u)||"Delivery";const us=sameAux(u);
@@ -3163,6 +3179,7 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-cajacerrar")&&!t.closest("#layer"))openCaja("cerrar");
   else if(t.hasAttribute("data-auxquien")&&!t.closest("#layer"))openAuxQuien();
   else if(t.hasAttribute("data-export")&&!t.closest("#layer"))openExport();
+  else if(t.dataset.gotab&&!t.closest("#layer")){S.tab=t.dataset.gotab;render(true);window.scrollTo(0,0)}
   else if(t.hasAttribute("data-cumple")&&!t.closest("#layer"))openCumple(t.dataset.cumple||S.me);
   else if(t.dataset.avok){try{localStorage.setItem("caixa_aviso_leido",t.dataset.avok)}catch(e){}render(true)}
   else if(t.hasAttribute("data-avabrir")){try{localStorage.removeItem("caixa_aviso_leido")}catch(e){}render(true)}
