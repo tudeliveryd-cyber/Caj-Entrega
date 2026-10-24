@@ -679,6 +679,10 @@ details.sec.fold{display:grid;gap:10px}
 .hist-tot{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hist-tot>div{display:grid;gap:2px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface)}.hist-tot span{color:var(--muted);font-size:12.5px}.hist-tot b{font-size:19px}
 .ht-wide{grid-column:1/-1}.ht-wide.due b{color:var(--due)}.ht-wide.cash b{color:var(--cash)}.ht-wide.ok b{color:var(--cash)}
 .hist-it span small{display:block;color:var(--muted);font-size:12px}
+.info-tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.log-it{display:grid;gap:3px;padding:10px 12px;border-top:1px solid var(--line);font-size:14px}.log-it:first-child{border-top:0}
+.log-h small{display:block;color:var(--muted);font-size:12px}.log-it.del .log-h{color:var(--due)}.log-d{color:var(--muted);font-size:13px}
+.log-c{font-size:13.5px}.log-c span{color:var(--muted);margin-right:6px}.log-c s{color:var(--muted)}
 .p-aux{background:color-mix(in srgb,#4a8fe0 18%,transparent);color:#4a8fe0}
 .rd-open.rd-live svg{color:#2e9e5b}
 .rd-sheet{display:grid;gap:12px}
@@ -926,8 +930,13 @@ function loadLocal(){const all=lsAll();S.items=new Map();const from=addDays(toda
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const colFor=u=>db.collection("turnos/"+u+"/entregas");
 async function addItem(d,u,id){id=id||uid();if(S.mode==="db"&&!S.owner&&isAux(S.me)&&auxHoy(S.me)&&!d.quien)d={...d,quien:auxHoy(S.me)};if(S.mode==="db"&&!S.owner&&d.metodo==="anotado"&&d.estado!=="camino")d={...d,conf:"pend"};if(db){await colFor(u).doc(id).set(d)}else{const a=lsAll();a[id]=d;lsSet(LS,a);loadLocal()}}
-async function patchItem(key,p){const it=S.items.get(key);if(!it)return;if(S.mode==="db"&&!S.owner&&isAux(S.me)&&auxHoy(S.me)&&p.estado==="ok"&&!it.quien)p={...p,quien:auxHoy(S.me)};if(S.mode==="db"&&!S.owner&&p.metodo==="anotado"&&!p.conf)p={...p,conf:"pend"};if(db){await colFor(it._u).doc(it._id).update(p)}else{const a=lsAll();if(a[it._id]){Object.assign(a[it._id],p);lsSet(LS,a);loadLocal()}}}
-async function delItem(key){const it=S.items.get(key);if(!it)return;if(db){await colFor(it._u).doc(it._id).delete()}else{const a=lsAll();delete a[it._id];lsSet(LS,a);loadLocal()}}
+/* registro de cambios: quién editó o borró una entrega ya registrada (turnos/<uid>/log) */
+const LOGF=[["valor","Valor"],["metodo","Pago"],["cliente","Cliente"],["producto","Producto"],["dia","Día"],["cant","Cantidad"],["obs","Detalle"]];
+function logFmt(f,v){if(v==null||v==="")return"—";if(f==="valor"||f==="producto")return gs(v);if(f==="metodo")return(M[v]&&M[v].n)||v;if(f==="dia")return ddmm(v);return String(v)}
+function writeLog(it,acc,cambios){if(!db||S.mode!=="db"||!it||isCamino(it))return;const l={em:Date.now(),por:S.me,porNome:personName(S.me)||"",acc,ent:it._id,cli:it.cliente||"",dia:it.dia||"",valor:it.valor||0,metodo:it.metodo||""};if(cambios)l.cambios=cambios;
+  db.collection("turnos/"+it._u+"/log").doc(uid()).set(l).catch(()=>{})}
+async function patchItem(key,p){const it=S.items.get(key);if(!it)return;if(!isCamino(it)){const lv=(f,v)=>["valor","producto","cant"].includes(f)?String(Number(v||0)||(f==="cant"?1:0)):String(v??"").trim();const ch=LOGF.filter(([f])=>f in p&&lv(f,p[f])!==lv(f,it[f])).map(([f])=>({f,a:it[f]??"",b:p[f]??""}));if(ch.length)writeLog(it,"editó",ch)}if(S.mode==="db"&&!S.owner&&isAux(S.me)&&auxHoy(S.me)&&p.estado==="ok"&&!it.quien)p={...p,quien:auxHoy(S.me)};if(S.mode==="db"&&!S.owner&&p.metodo==="anotado"&&!p.conf)p={...p,conf:"pend"};if(db){await colFor(it._u).doc(it._id).update(p)}else{const a=lsAll();if(a[it._id]){Object.assign(a[it._id],p);lsSet(LS,a);loadLocal()}}}
+async function delItem(key){const it=S.items.get(key);if(!it)return;writeLog(it,"borró");if(db){await colFor(it._u).doc(it._id).delete()}else{const a=lsAll();delete a[it._id];lsSet(LS,a);loadLocal()}}
 const gasCol=u=>db.collection("turnos/"+u+"/gastos");
 const privCol=u=>db.collection("turnos/"+u+"/privado");
 async function addGasto(d,u){if(db){await (d.tipo==="personal"?privCol(S.me):gasCol(u)).doc(uid()).set(d)}else{const a=lsGet(LSG,{});a[uid()]=d;lsSet(LSG,a);loadLocal()}}
@@ -957,7 +966,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="149";
+const APPV="150";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2542,7 +2551,7 @@ function clientesBlock(list){
       <span class="rk-n num">${c.n}<small>${gs(c.total)}</small></span></div>`).join("")}</div></section>`}
 function viewInforme(){
   const seg=`<div class="seg two" role="group" aria-label="Informe">${[["semana","Semana"],["mes","Mes"]].map(([k,l])=>`<button type="button" data-info="${k}" aria-pressed="${infoMode===k}">${l}</button>`).join("")}</div>`;
-  return seg+(infoMode==="semana"?viewSemana():viewMes());
+  return seg+(S.mode==="db"&&S.owner?`<div class="info-tools"><button type="button" class="nt-open" data-export>${icSvg("chart")} Exportar Excel</button><button type="button" class="nt-open" data-logs>${icSvg("clock")} Registro de cambios</button></div>`:"")+(infoMode==="semana"?viewSemana():viewMes());
 }
 function totTiles(T,gt){
   if(hideMoney())return `<div class="wk-tot">
@@ -2711,6 +2720,81 @@ function premiosBlock(){
   return `<div class="prizes">${premioCard("Premio de la semana","Tanque lleno de nafta",ws,t,pws,addDays(ws,-1),"Ganador de la semana pasada")}
     ${premioCard("Premio del mes",gs(200000)+" de bono",ms,t,pms,pme,"Ganador de "+MESES[pm.getMonth()])}</div>
     <p class="hint">La semana va de lunes a domingo y el mes es el mes calendario. Gana quien hace más entregas.</p>`}
+
+/* ---------- Exportar Excel del mes (backup / contador) ---------- */
+/* generador .xlsx propio (sin internet): zip "store" + XML mínimo */
+const CRCT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRCT[(c^b[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
+function zipStore(files){const enc=new TextEncoder();const parts=[],cen=[];let off=0;
+  for(const[name,str]of files){const nb=enc.encode(name),db=enc.encode(str),cr=crc32(db);
+    const h=new DataView(new ArrayBuffer(30));h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,0,true);h.setUint32(14,cr,true);h.setUint32(18,db.length,true);h.setUint32(22,db.length,true);h.setUint16(26,nb.length,true);
+    parts.push(new Uint8Array(h.buffer),nb,db);
+    const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint32(16,cr,true);c.setUint32(20,db.length,true);c.setUint32(24,db.length,true);c.setUint16(28,nb.length,true);c.setUint32(42,off,true);
+    cen.push(new Uint8Array(c.buffer),nb);off+=30+nb.length+db.length}
+  const cs=cen.reduce((a,x)=>a+x.length,0);const e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cs,true);e.setUint32(16,off,true);
+  return new Blob([...parts,...cen,new Uint8Array(e.buffer)],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})}
+function makeXlsx(sheets){const x=v=>String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"");
+  const col=n=>{let s="";n++;while(n){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26)}return s};
+  const ws=sh=>`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>${sh.w?`<cols>${sh.w.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("")}</cols>`:""}<sheetData>${sh.rows.map((r,ri)=>`<row r="${ri+1}">${r.map((v,ci)=>{const ref=col(ci)+(ri+1);const st=ri===0?' s="1"':typeof v==="number"&&sh.money&&sh.money.includes(ci)?' s="2"':"";if(v===""||v==null)return"";return typeof v==="number"&&isFinite(v)?`<c r="${ref}"${st}><v>${v}</v></c>`:`<c r="${ref}" t="inlineStr"${st}><is><t xml:space="preserve">${x(v)}</t></is></c>`}).join("")}</row>`).join("")}</sheetData></worksheet>`;
+  const files=[["[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>`],
+    ["_rels/.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ["xl/workbook.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${x(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join("")}</sheets></workbook>`],
+    ["xl/_rels/workbook.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join("")}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ["xl/styles.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF3A2470"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="3"><xf xfId="0"/><xf xfId="0" fontId="1" fillId="2" applyFont="1" applyFill="1"/><xf xfId="0" numFmtId="164" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
+    ...sheets.map((sh,i)=>["xl/worksheets/sheet"+(i+1)+".xml",ws(sh)])];
+  return zipStore(files)}
+function mesRange(ym){const[y,m]=ym.split("-").map(Number);const from=`${y}-${String(m).padStart(2,"0")}-01`;const last=new Date(y,m,0).getDate();return{from,to:`${y}-${String(m).padStart(2,"0")}-${String(last).padStart(2,"0")}`}}
+function openExport(){edit=null;const d=new Date();const cur=keyOf(d).slice(0,7);const prev=keyOf(new Date(d.getFullYear(),d.getMonth()-1,1)).slice(0,7);
+  const mn=ym=>{const[y,m]=ym.split("-");return["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"][Number(m)-1]+" "+y};
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Exportar">${sheetHead(icSvg("chart")+" Exportar Excel")}
+    <p class="hint" style="margin:0">Baja una planilla con todo el mes: entregas, deliverys (comisión y liquidación), gastos y caja. Sirve de copia de seguridad y para el contador.</p>
+    <div class="chips">${[cur,prev].map((ym,i)=>`<button type="button" class="chip ${i?"":"on"}" data-expm="${ym}">${mn(ym)}</button>`).join("")}</div>
+    <div class="field"><label for="exp-m">Otro mes</label><input id="exp-m" type="month" value="${cur}" max="${cur}"></div>
+    <button type="button" class="primary" data-expgo>${icSvg("chart")} Descargar Excel</button>
+    <p class="hint" id="exp-st" style="margin:0"></p></div></div>`}
+async function doExport(ym){const st=document.getElementById("exp-st");const say=t=>{if(st)st.textContent=t};const{from,to}=mesRange(ym);
+  say("Juntando datos…");const ids=[...new Set([S.me,...S.people.keys()])];
+  const ent=[],gas=[],caj=[],liq={};
+  for(const u of ids){try{const sn=await colFor(u).where("dia",">=",from).where("dia","<=",to).limit(5000).get();for(const d of sn.docs){const x=d.data();if(x.dia>=from&&x.dia<=to)ent.push([u+"|"+d.id,{...x,_u:u,_id:d.id}])}}catch(e){for(const e2 of allItems())if(e2[1]._u===u&&e2[1].dia>=from&&e2[1].dia<=to)ent.push(e2)}
+    try{const sn=await gasCol(u).where("dia",">=",from).where("dia","<=",to).limit(3000).get();for(const d of sn.docs){const x=d.data();if(x.dia>=from&&x.dia<=to)gas.push({...x,_u:u})}}catch(e){}
+    try{const sn=await db.collection("turnos/"+u+"/caja").where("dia",">=",from).where("dia","<=",to).limit(60).get();for(const d of sn.docs){const x=d.data();if(x.dia>=from&&x.dia<=to)caj.push({...x,_u:u})}}catch(e){}
+    try{const sn=await db.collection("liq/"+u+"/dias").where("dia",">=",from).where("dia","<=",to).limit(60).get();for(const d of sn.docs)liq[u+"|"+d.data().dia]=d.data()}catch(e){}
+    say("Juntando datos… "+esc((personName(u)||"").split(" ")[0]))}
+  let eg=[];try{const sn=await egCol().where("dia",">=",from).where("dia","<=",to).limit(3000).get();eg=sn.docs.map(d=>d.data()).filter(x=>x.dia>=from&&x.dia<=to)}catch(e){}
+  const fin=ent.filter(([,d])=>!isCamino(d)).sort((a,b)=>(a[1].dia+String(a[1].criadoEm||0).padStart(15,"0"))<(b[1].dia+String(b[1].criadoEm||0).padStart(15,"0"))?-1:1);
+  const nm=u=>personName(u)||u;const met=k=>(M[k]&&M[k].n)||k||"";
+  const hEnt=[["Fecha","Hora","Delivery","Quién (auxiliar)","Cliente","Pago","Valor delivery","Producto","Cantidad","Estado anotado","Detalle"]];
+  for(const[,d]of fin)hEnt.push([ddmm(d.dia)+"/"+d.dia.slice(0,4),d.criadoEm?hhmm(d.criadoEm):"",nm(d._u),d.quien||"",d.cliente||"",met(d.metodo),d.valor||0,d.producto||0,d.cant||1,d.metodo==="anotado"?(d.conf==="pend"?"por confirmar":d.conf==="no"?"no llegó":"confirmado"):"",d.obs||""]);
+  const hDel=[["Delivery","Tipo","Días trabajados","Entregas","Total cobrado","Efectivo","Transferencia","Anotado","Pedido pago","% comisión","Comisión","Anotado confirmado","Saldo (+ debe / − empresa paga)","Días liquidados","Días pendientes"]];
+  for(const u of ids){const l=fin.filter(([,d])=>d._u===u);if(!l.length)continue;const s=stats(l);const dias=[...new Set(l.map(([,d])=>d.dia))];
+    let liqd=0,pend=0;for(const dia of dias){const sd=stats(l.filter(([,d])=>d.dia===dia));if(!sd.saldo)continue;if(liq[u+"|"+dia])liqd++;else pend++}
+    hDel.push([nm(u),isAux(u)?"Auxiliar":roles.socios.includes(u)?"Socio":u===S.me?"Dueño":"Delivery",dias.length,s.n,s.total,s.efectivo,s.transferencia,s.anotado,s.pagado,s.sinCom?0:(s.pct==null?"varios":s.pct),s.com,s.anotOk,s.saldo,liqd,pend])}
+  const T=stats(fin);hDel.push([]);hDel.push(["TOTAL","",new Set(fin.map(([,d])=>d.dia)).size,T.n,T.total,T.efectivo,T.transferencia,T.anotado,T.pagado,"",T.com,T.anotOk,T.saldo,"",""]);
+  const hDia=[["Fecha","Entregas","Total cobrado","Comisión","Gastos deliverys","Gastos empresa"]];
+  const dset=[...new Set(fin.map(([,d])=>d.dia).concat(gas.map(g=>g.dia)).concat(eg.map(g=>g.dia)))].sort();
+  for(const dia of dset){const sd=stats(fin.filter(([,d])=>d.dia===dia));hDia.push([ddmm(dia),sd.n,sd.total,sd.com,gas.filter(g=>g.dia===dia).reduce((a,g)=>a+(g.valor||0),0),eg.filter(g=>g.dia===dia).reduce((a,g)=>a+(g.valor||0),0)])}
+  const hGas=[["Fecha","De","Tipo","Valor","Detalle"]];for(const g of gas.sort((a,b)=>a.dia<b.dia?-1:1))hGas.push([ddmm(g.dia),nm(g._u),(GT[g.tipo]||g.tipo||"").replace(/^\S+\s/,x=>/[a-z]/i.test(x)?x:""),g.valor||0,g.obs||""]);
+  for(const g of eg.sort((a,b)=>a.dia<b.dia?-1:1))hGas.push([ddmm(g.dia),"Empresa",EGT[g.tipo]||g.tipo||"",g.valor||0,g.obs||""]);
+  const hCaj=[["Fecha","Delivery","Empezó con","Contó al cerrar","Tenía que haber","Diferencia","Reabierta"]];for(const c of caj.sort((a,b)=>a.dia<b.dia?-1:1))hCaj.push([ddmm(c.dia),nm(c._u),c.abre||0,c.cierraEm?c.cierra||0:"",c.esp!=null?c.esp:"",c.cierraEm&&c.esp!=null?(c.cierra||0)-c.esp:"",(c.prev||[]).length||""]);
+  const file="TuDelivery_"+ym+".xlsx";
+  say("Armando la planilla…");
+  try{const blob=makeXlsx([{name:"Deliverys",rows:hDel,w:[22,10,15,10,14,12,13,12,12,11,12,17,26,15,15],money:[4,5,6,7,8,10,11,12]},{name:"Entregas",rows:hEnt,w:[11,7,18,14,24,13,13,12,9,14,28],money:[6,7]},{name:"Por día",rows:hDia,w:[10,9,14,12,15,15],money:[2,3,4,5]},{name:"Gastos",rows:hGas,w:[10,18,16,12,28],money:[3]},{name:"Caja",rows:hCaj,w:[10,18,13,14,14,12,9],money:[2,3,4,5]}]);
+    await shareFile(blob,file);say("Listo ✓ "+plural(T.n,"entrega")+" en "+file)}
+  catch(e){say("No se pudo armar la planilla. Probá de nuevo.")}}
+async function shareFile(blob,name){try{const f=new File([blob],name,{type:blob.type});if(navigator.canShare&&navigator.canShare({files:[f]})&&/iPhone|iPad|Android/i.test(navigator.userAgent)){await navigator.share({files:[f],title:name});return}}catch(e){if(e&&e.name==="AbortError")return}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+
+async function openLogs(){edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Registro">${sheetHead(icSvg("clock")+" Registro de cambios")}<div class="empty">Cargando…</div></div></div>`;
+  const ids=[...new Set([S.me,...S.people.keys()])];const lim=Date.now()-60*864e5;let all=[];
+  for(const u of ids){try{const sn=await db.collection("turnos/"+u+"/log").where("em",">=",lim).limit(300).get();for(const d of sn.docs)all.push({...d.data(),_u:u})}catch(e){}}
+  all.sort((a,b)=>b.em-a.em);if(!layer.querySelector('[aria-label="Registro"]'))return;
+  const nm=u=>(personName(u)||"").split(" ")[0]||"—";
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Registro">${sheetHead(icSvg("clock")+" Registro de cambios")}
+    <p class="hint" style="margin:0">Entregas ya registradas que alguien editó o borró (últimos 60 días).</p>
+    <div class="list">${all.length?all.slice(0,300).map(l=>`<div class="log-it ${l.acc==="borró"?"del":""}"><div class="log-h"><b>${esc((l.porNome||"").split(" ")[0]||nm(l.por))}</b> ${l.acc} ${l.por!==l._u?"una entrega de <b>"+esc(nm(l._u))+"</b>":"su entrega"}<small>${ddmm(keyOf(new Date(l.em)))} ${hhmm(l.em)}</small></div>
+      <div class="log-d">${esc(l.cli||"Sin cliente")} · ${l.dia?ddmm(l.dia):""} · ${gs(l.valor)} · ${esc((M[l.metodo]&&M[l.metodo].n)||l.metodo||"")}</div>
+      ${(l.cambios||[]).map(c=>`<div class="log-c"><span>${esc((LOGF.find(x=>x[0]===c.f)||[0,c.f])[1])}</span><s>${esc(logFmt(c.f,c.a))}</s> → <b>${esc(logFmt(c.f,c.b))}</b></div>`).join("")}</div>`).join("")
+      :`<div class="empty">Nadie editó ni borró entregas en los últimos 60 días.</div>`}</div></div></div>`}
 
 /* historial completo de un delivery (también desactivados): días trabajados, total, comisión, pagado */
 const sameAux=u=>{if(!isAux(u))return[u];const k=norm((S.people.get(u)||{}).nome||"");if(!k)return[u];return[u,...[...S.people.keys()].filter(x=>x!==u&&isAux(x)&&norm((S.people.get(x)||{}).nome||"")===k)]};
@@ -3015,6 +3099,8 @@ document.addEventListener("click",async e=>{
   else if(t.hasAttribute("data-cajaabrir")&&!t.closest("#layer"))openCaja("abrir",t.dataset.cajaabrir||"");
   else if(t.hasAttribute("data-cajacerrar")&&!t.closest("#layer"))openCaja("cerrar");
   else if(t.hasAttribute("data-auxquien")&&!t.closest("#layer"))openAuxQuien();
+  else if(t.hasAttribute("data-export")&&!t.closest("#layer"))openExport();
+  else if(t.hasAttribute("data-logs")&&!t.closest("#layer"))openLogs();
   else if(t.hasAttribute("data-radio")&&!t.closest("#layer")){rdUnlock();openRadio()}
   else if(t.dataset.confok||t.dataset.confno){const k=t.dataset.confok||t.dataset.confno;const ok=!!t.dataset.confok;const d=S.items.get(k);if(!d)return;
     if(!ok&&!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Seguro?";return}
@@ -3176,6 +3262,8 @@ layer.addEventListener("click",async e=>{
     try{await setBaja(t.dataset.baja,true);toast("Delivery dado de baja");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.dataset.aprobar){try{await aprobar(t.dataset.aprobar);toast("Delivery aprobado");setTimeout(openEquipo,400)}catch(err){toast("No se guardó.")}return}
   if(t.dataset.hist){openHist(t.dataset.hist);return}
+  if(t.dataset.expm){layer.querySelectorAll("[data-expm]").forEach(b=>b.classList.toggle("on",b===t));const i=document.getElementById("exp-m");if(i)i.value=t.dataset.expm;return}
+  if(t.hasAttribute("data-expgo")){const i=document.getElementById("exp-m");const ym=(i&&i.value)||keyOf(new Date()).slice(0,7);t.disabled=true;doExport(ym).finally(()=>{t.disabled=false});return}
   if(t.dataset.auxpick){saveAuxQuien(t.dataset.auxpick);return}
   if(t.hasAttribute("data-auxsave")){saveAuxQuien((document.getElementById("aux-n")||{}).value);return}
   if(t.dataset.aux){const u=t.dataset.aux,on=t.dataset.on==="1";try{S.people.set(u,{...(S.people.get(u)||{}),aux:on});await db.doc("turnos/"+u).set({aux:on},{merge:true});toast(on?personName(u)+" ahora es auxiliar: sin horario y acerto en el día":personName(u)+" ahora es fijo");openEquipo();render(true)}catch(err){toast("No se guardó.")}return}
