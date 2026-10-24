@@ -880,7 +880,11 @@ async function delGasto(key){const it=S.gastos.get(key)||S.priv.get(key)||S.oldG
 const egCol=()=>db.collection("empresa/datos/gastos");
 async function addEGasto(d){if(db){await egCol().doc(uid()).set(d)}else{const a=lsGet(LSE,{});a[uid()]=d;lsSet(LSE,a);loadLocal()}}
 async function delEGasto(id){if(db){await egCol().doc(id).delete()}else{const a=lsGet(LSE,{});delete a[id];lsSet(LSE,a);loadLocal()}}
-async function saveCfg(c){S.cfg=c;lsSet(LSC,c);if(cfgRef){await cfgRef.set(c)}render(true)}
+async function saveCfg(c){S.cfg=c;lsSet(LSC,c);if(cfgRef){await cfgRef.set(c);cfgOk=true;pctSync()}render(true)}
+/* el % de cada uno se copia a su ficha (turnos/<uid>.pct) para que el delivery vea en su celular la comisión correcta */
+var cfgOk=false;
+function pctSync(){if(!S.owner||!cfgOk||!db||S.mode!=="db"||document.body.classList.contains("demo"))return;
+  for(const[u,p]of S.people){if(!p||p.baja)continue;const v=pctOf(u);if(p.pct!==v){p.pct=v;db.doc("turnos/"+u).set({pct:v},{merge:true}).catch(()=>{})}}}
 async function saveName(n){const ex=S.people.get(S.me);
   const doc=ex?{nome:n,atualizado:Date.now()}:{nome:n,email:(auth&&auth.currentUser&&auth.currentUser.email)||"",aprobado:!!S.owner,baja:false,criadoEm:Date.now(),atualizado:Date.now()};
   S.people.set(S.me,{...(ex||{}),...doc});
@@ -897,7 +901,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="128";
+const APPV="129";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1138,7 +1142,7 @@ function startDemo(modo){
   put("ranking/_clientes",{list:[{id:"c1",n:"Divina Mesa",cat:"Restaurantes",ubic:"https://maps.google.com/?q=-25.7935,-55.0870",dir:"Av. Santa Rita c/ Mallorquín",tel:"0981 555 111",nota:"Entregar por la cocina"},{id:"c2",n:"Bom Corte Bar & Grill",cat:"Restaurantes",ubic:"https://maps.google.com/?q=-25.7912,-55.0851",dir:"Ruta PY06, frente a la estación",tel:"0983 222 333",nota:""}]});
   put("ranking/_mensaje",{texto:"Bienvenidos a la app de Tú Delivery. Registren todas las entregas del día y no se olviden de anotar los pedidos.",criadoEm:at(t,7,0)});};
   const seedFull=()=>{
-  put("turnos/demo",{nome:(/[?&]limpio/.test(location.search)?"Carlos":"Carlos Demo"),aprobado:true,baja:false});
+  put("turnos/demo",{nome:(/[?&]limpio/.test(location.search)?"Carlos":"Carlos Demo"),...(/[?&]sincom/.test(location.search)?{pct:0}:/[?&]pct=(\d+)/.test(location.search)?{pct:Number(location.search.match(/[?&]pct=(\d+)/)[1])}:{}),aprobado:true,baja:false});
   const E="turnos/demo/entregas/";
   put(E+"e1",{valor:15000,metodo:"efectivo",cliente:"Farmacia Central",obs:"",dia:t,criadoEm:at(t,9,10)});
   put(E+"e2",{valor:20000,metodo:"transferencia",cliente:"Super 6",obs:"Barrio Centro",dia:t,criadoEm:at(t,10,5)});
@@ -1248,14 +1252,14 @@ function startData(me){setTimeout(()=>{try{subNotas()}catch(e){}},400);
   try{const pend=lsAll();const ids=Object.entries(pend);if(ids.length){Promise.all(ids.map(([id,d])=>colFor(me).doc(id).set(d))).then(()=>lsSet(LS,{})).catch(()=>{})}}catch(e){}
   if(S.owner)db.doc("config/turnos").onSnapshot(sn=>{if(sn.exists&&Array.isArray(sn.data().list)){const l=sn.data().list;TF=[...l,...DEF_TF.filter(x=>!l.some(y=>y.id===x.id)&&!(sn.data().borrados||[]).includes(x.id))]}},()=>{});
   if(S.owner){cfgRef=db.doc("config/geral");
-    cfgRef.onSnapshot(s=>{if(s.exists){const d=s.data();S.cfg={pct:d.pct||30,por:d.por||{}};lsSet(LSC,S.cfg);render(true)}},()=>{})}
+    cfgRef.onSnapshot(s=>{if(s.exists){const d=s.data();S.cfg={pct:d.pct||30,por:d.por||{}};lsSet(LSC,S.cfg)}cfgOk=true;pctSync();render(true)},()=>{})}
   subscribeUser(me);
   if(S.owner)egCol().where("dia",">=",addDays(today(),-WINDOW)).limit(1000).onSnapshot(snap=>{S.egastos=new Map(snap.docs.map(d=>[d.id,{...d.data(),_id:d.id}]));render()},()=>{});
   db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;metaDia=0;const hadG=chatG.length;chatG=[];for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}if(d.id==="_meta"){metaDia=Number(d.data().n)||0;continue}if(d.id==="_puntos"){ptsCfg=d.data();continue}if(d.id==="_clientes"){clisF=Array.isArray(d.data().list)?d.data().list:[];if(document.getElementById("cf-list"))drawClientesF();continue}if(d.id==="_chat"){chatG=(d.data().msgs||[]);continue}rank.set(d.id,d.data())}if(!snap.docs.some(d=>d.id==="_puntos"))ptsCfg=null;render();{const sig=JSON.stringify(msgDia)+"|"+metaDia;if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(chatG.length!==hadG){chatNotify();render()}if(S.tab==="rank")render(true)},()=>{});
   if(S.owner){let first=true;db.collection("turnos").limit(200).onSnapshot(snap=>{for(const d of snap.docs){const prev=S.people.get(d.id),nd=d.data();
     if(!first&&d.id!==S.me&&nd.cierre&&nd.cierre.dia===today()&&!(prev&&prev.cierre&&prev.cierre.em===nd.cierre.em))toast("🏁 "+(nd.nome||"Un delivery")+" cerró su día");
     if(!first&&d.id!==S.me&&nd.inicio&&nd.inicio.dia===today()&&!(prev&&prev.inicio&&prev.inicio.em===nd.inicio.em))toast("▶️ "+(nd.nome||"Un delivery")+" empezó a trabajar");
-    S.people.set(d.id,nd);subscribeUser(d.id);scheduleRank(d.id)}first=false;render(true)},()=>{})}
+    S.people.set(d.id,nd);subscribeUser(d.id);scheduleRank(d.id)}first=false;pctSync();render(true)},()=>{})}
   setSync("Cargando…");bootStage="datos";render(true);heartbeat(true);
 }
 
@@ -1264,7 +1268,7 @@ const personName=u=>(S.people.get(u)&&S.people.get(u).nome)||(u===S.me?"Vos":"De
 const isLegacy=d=>!!(d.entregador||"").trim();
 const groupKey=d=>isLegacy(d)?"n:"+d.entregador.trim():d._u;
 const groupName=k=>k.startsWith("n:")?k.slice(2):personName(k);
-const pctOf=u=>{const p=S.cfg.por;return p&&Object.prototype.hasOwnProperty.call(p,u)&&p[u]!=null&&p[u]!==""?Number(p[u]):S.cfg.pct};
+const pctOf=u=>{if(!S.owner){const pp=S.people.get(u);if(pp&&pp.pct!=null&&pp.pct!=="")return Number(pp.pct)}const p=S.cfg.por;return p&&Object.prototype.hasOwnProperty.call(p,u)&&p[u]!=null&&p[u]!==""?Number(p[u]):S.cfg.pct};
 const sinComU=u=>pctOf(u)===0;
 function stats(list){
   const s={n:0,total:0,efectivo:0,transferencia:0,anotado:0,pagado:0,fijo:0,fijoEmp:0,ne:0,nt:0,na:0,np:0,nf:0,com:0,anotCom:0,pcts:new Set()};
@@ -1693,7 +1697,7 @@ function waPend(p){const u=p.u;const nm=(p.name||"").split(" ")[0];
   return waOpen(`*Tú Delivery · Liquidaciones pendientes*\nHola ${nm} 👋\n\n${p.ds.map(x=>`• ${ddmm(x.dia)}: ${x.s.saldo>0?"pagás":"recibís"} ${gs(Math.abs(x.s.saldo))} (${plural(x.s.n,"entrega")})`).join("\n")}\n\n*${res>0?"Total a pagar a la empresa: "+gs(res):res<0?"Total que la empresa te paga: "+gs(-res):"Total en cero"}*`,u)}
 function acertoBlock(s,label,pay,gt){
   if(s.sinCom&&!hideMoney()){const yo=S.mode==="db"&&!S.owner;return `<div class="acerto sincom">
-    <div class="ac-h">${label}</div>
+    <div class="ac-h">${String(label).replace("Liquidación","Resumen")}</div>
     <div class="ac-row"><span>Sin comisión · el 100% es ${yo?"tuyo":"suyo"}</span><b class="num">${gs(s.total)}</b></div>
     ${gt!==undefined?`<div class="ac-net"><span>Gastos ${gs(gt)}</span><span>${yo?"Te queda limpio":"Queda limpio"} <b class="num ${s.total-gt<0?"c-due":"c-cash"}">${gs(s.total-gt)}</b></span></div>`:""}</div>`}
   if(hideMoney())return pay?`<div class="acerto"><div class="ac-h">Liquidación del día</div><div class="ac-pay">${pay}</div></div>`:"";
