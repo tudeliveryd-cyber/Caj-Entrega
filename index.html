@@ -901,7 +901,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="130";
+const APPV="131";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1744,7 +1744,7 @@ function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u
       :`<section class="caja cerrada"><div class="caja-h"><b>💰 Caja sin abrir</b><small>${esc(personName(u))}</small></div><small class="hint" style="margin:0">Todavía no empezó el día.</small></section>`}
   const espC=c.cierraEm&&c.esp!=null?c.esp:K.esp;const dif=c.cierraEm?(c.cierra-espC):0;const despues=c.cierraEm&&c.esp!=null&&K.esp!==c.esp;
   const reab=(c.prev||[]).length?`<small class="caja-reab">Reabierta ${c.prev.length===1?"1 vez":c.prev.length+" veces"} · último cierre anterior ${hhmm(c.prev[c.prev.length-1].cierraEm)}</small>`:"";
-  return `<section class="caja ${c.cierraEm?"cerrada":""}"><div class="caja-h"><b>💰 Caja ${c.cierraEm?"cerrada":"abierta"}</b><small>${yo?"":esc(personName(u))+" · "}${c.abreEm?"abrió "+hhmm(c.abreEm):"no se abrió · empezó en ₲ 0"}${c.cierraEm?" · cerró "+hhmm(c.cierraEm):""}</small></div>
+  return `<section class="caja ${c.cierraEm?"cerrada":""}"><div class="caja-h"><b>💰 Caja ${c.cierraEm?"cerrada":"abierta"}</b><small>${yo?"":esc(personName(u))+" · "}${c.abreEm&&!c.auto?"abrió "+hhmm(c.abreEm):"no se abrió · empezó en ₲ 0"}${c.cierraEm?" · cerró "+hhmm(c.cierraEm):""}</small></div>
     <div class="caja-rows"><div><span>Empezó con</span><b class="num">${gs(K.ab)}</b></div>
       <div><span>+ Delivery cobrado en efectivo</span><b class="num">${gs(c.cierraEm&&c.efC!=null?c.efC:K.ef+K.pago+K.diar)}</b></div>
       <div><span>− Gastos</span><b class="num c-due">${gs(c.cierraEm&&c.gasC!=null?c.gasC:K.gas)}</b></div>
@@ -1770,7 +1770,7 @@ function openCaja(modo){edit=null;const K=cajaCalc(S.me,today());const ab=modo==
 async function saveCaja(modo,v){const dia=today();const cur=cajaOf(S.me,dia)||{dia};const n={...cur,dia};
   if(!isRealOwner&&modo!=="reabrir"&&((modo==="abrir"&&(cur.abreEm||!cajaPuedeAbrir(S.me)))||(modo==="cerrar"&&cur.cierraEm))){toast("🔒 No se puede cambiar la caja de hoy");return"ok"}
   if(modo==="abrir"){n.abre=v;n.abreEm=cur.abreEm||Date.now()}else if(modo==="reabrir"){if(!cur.cierraEm)return"ok";n.prev=[...(cur.prev||[]),{cierra:cur.cierra||0,cierraEm:cur.cierraEm,esp:cur.esp!=null?cur.esp:null}];delete n.cierra;delete n.cierraEm;delete n.esp;delete n.efC;delete n.gasC}
-  else{n.cierra=v;n.cierraEm=Date.now();if(!n.abreEm){n.abreEm=Date.now();n.abre=0}{const K0=cajaCalc(S.me,dia);n.esp=K0.esp;n.efC=K0.ef+K0.pago+K0.diar;n.gasC=K0.gas}}
+  else{n.cierra=v;n.cierraEm=Date.now();if(!n.abreEm){n.abreEm=Date.now();n.abre=0;n.auto=true}{const K0=cajaCalc(S.me,dia);n.esp=K0.esp;n.efC=K0.ef+K0.pago+K0.diar;n.gasC=K0.gas}}
   delete n._u;delete n._id;cajas.set(S.me+"|"+dia,{...n,_u:S.me,_id:dia});render(true);
   const w=await sendW(db.collection("turnos/"+S.me+"/caja").doc(dia).set(n));return w}
 function viewSummary(list){
