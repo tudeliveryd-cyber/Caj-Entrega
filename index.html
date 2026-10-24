@@ -668,6 +668,14 @@ details.sec.fold{display:grid;gap:10px}
 .ns-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ns-two>div{display:grid;gap:2px}.ns-two span{color:var(--muted);font-size:13px}.ns-two b{font-size:19px}.ns-two small{font-size:12px}
 .ns-pasa{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:1px solid var(--line);padding-top:6px;font-weight:700}.ns-pasa b{font-size:20px}
 .nt-ctot{font-size:13px;color:var(--muted)}
+.conf-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}.conf-row:first-child{border-top:0}
+.conf-row .who{display:grid;gap:2px}.conf-row .who small{color:var(--muted);font-size:12.5px}
+.conf-act{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.conf-ok,.conf-no{border-radius:10px;padding:10px;font:700 15px var(--body);border:1px solid var(--line)}
+.conf-ok{background:var(--cash);border-color:var(--cash);color:#fff}.conf-no{background:var(--surface);color:var(--due)}.conf-no.armed{background:var(--due);color:#fff;border-color:var(--due)}
+.conf-sec .sec-h h2{display:flex;align-items:center;gap:6px}.conf-sec .sec-h h2 svg{width:18px;height:18px}
+.conf-b{display:inline-flex;align-items:center;gap:4px;font-weight:600}.conf-b svg{width:13px;height:13px}.conf-b.pend{color:#c98a10}.conf-b.no{color:var(--due)}.conf-b.ok{color:var(--cash)}
+.ac-pend span,.ac-pend b{color:#c98a10!important}.ac-no span,.ac-no b{color:var(--due)!important}
 .deu-box{display:grid;gap:10px;border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--surface)}
 .deu-form{display:grid;gap:8px}.deu-form>input{min-width:0;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:15px var(--body);background:var(--bg);color:var(--ink);width:100%}.deu-form>input:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .dd-rows{display:grid;border:1px solid var(--line);border-radius:12px;overflow:hidden}
@@ -881,8 +889,8 @@ function loadLocal(){const all=lsAll();S.items=new Map();const from=addDays(toda
   S.pagos=new Map(Object.entries(lsGet(LSP,{})));render()}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const colFor=u=>db.collection("turnos/"+u+"/entregas");
-async function addItem(d,u,id){id=id||uid();if(db){await colFor(u).doc(id).set(d)}else{const a=lsAll();a[id]=d;lsSet(LS,a);loadLocal()}}
-async function patchItem(key,p){const it=S.items.get(key);if(!it)return;if(db){await colFor(it._u).doc(it._id).update(p)}else{const a=lsAll();if(a[it._id]){Object.assign(a[it._id],p);lsSet(LS,a);loadLocal()}}}
+async function addItem(d,u,id){id=id||uid();if(S.mode==="db"&&!S.owner&&d.metodo==="anotado"&&d.estado!=="camino")d={...d,conf:"pend"};if(db){await colFor(u).doc(id).set(d)}else{const a=lsAll();a[id]=d;lsSet(LS,a);loadLocal()}}
+async function patchItem(key,p){const it=S.items.get(key);if(!it)return;if(S.mode==="db"&&!S.owner&&p.metodo==="anotado"&&!p.conf)p={...p,conf:"pend"};if(db){await colFor(it._u).doc(it._id).update(p)}else{const a=lsAll();if(a[it._id]){Object.assign(a[it._id],p);lsSet(LS,a);loadLocal()}}}
 async function delItem(key){const it=S.items.get(key);if(!it)return;if(db){await colFor(it._u).doc(it._id).delete()}else{const a=lsAll();delete a[it._id];lsSet(LS,a);loadLocal()}}
 const gasCol=u=>db.collection("turnos/"+u+"/gastos");
 const privCol=u=>db.collection("turnos/"+u+"/privado");
@@ -912,7 +920,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="135";
+const APPV="136";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1179,6 +1187,7 @@ function startDemo(modo){
   /* dueño en demo: un delivery de ejemplo con días sin pagar, para probar cuentas y pagos parciales */
   const seedOwner=()=>{const G="turnos/gabi/entregas/";put("turnos/gabi",{nome:"Gabi (ejemplo)",aprobado:true,baja:false,horario:{res:{0:["09:00|23:00"],1:["09:00|23:00"],2:["09:00|23:00"],3:["09:00|23:00"],4:["09:00|23:00"],5:["09:00|23:00"],6:["09:00|23:00"]}}});
     [[4,[20000,15000,30000,25000]],[2,[15000,20000,18000]],[1,[25000,30000,15000,20000,15000]]].forEach(([dd,vs])=>{const dk=addDays(t,-dd);vs.forEach((v,i)=>put(G+"g"+dd+"_"+i,{valor:v,metodo:i%3===1?"transferencia":"efectivo",cliente:"Cliente "+(i+1),obs:"",dia:dk,criadoEm:at(dk,10+i,0)}))});
+    put(G+"cf1",{valor:20000,metodo:"anotado",cliente:"Divina Mesa",obs:"",dia:t,criadoEm:at(t,9,15),conf:"pend"});put(G+"cf2",{valor:15000,metodo:"anotado",cliente:"Bom Corte",obs:"",dia:t,criadoEm:at(t,9,40),conf:"pend"});
     put("ranking/gabi",{nome:"Gabi (ejemplo)",dias:{},pd:window.__demoPts.pd(110),cier:window.__demoPts.ci(110)})};
   seedBase();
   window.__demoAprobar=()=>{store.set("turnos/demo",{...(store.get("turnos/demo")||{}),aprobado:true});notify()};
@@ -1282,12 +1291,12 @@ const groupName=k=>k.startsWith("n:")?k.slice(2):personName(k);
 const pctOf=u=>{if(!S.owner){const pp=S.people.get(u);if(pp&&pp.pct!=null&&pp.pct!=="")return Number(pp.pct)}const p=S.cfg.por;return p&&Object.prototype.hasOwnProperty.call(p,u)&&p[u]!=null&&p[u]!==""?Number(p[u]):S.cfg.pct};
 const sinComU=u=>pctOf(u)===0;
 function stats(list){
-  const s={n:0,total:0,efectivo:0,transferencia:0,anotado:0,pagado:0,fijo:0,fijoEmp:0,ne:0,nt:0,na:0,np:0,nf:0,com:0,anotCom:0,pcts:new Set()};
+  const s={n:0,total:0,efectivo:0,transferencia:0,anotado:0,pagado:0,fijo:0,fijoEmp:0,ne:0,nt:0,na:0,np:0,nf:0,com:0,anotCom:0,anotPend:0,anotNo:0,nPend:0,pcts:new Set()};
   for(const[,d]of list){s.total+=d.valor;
     if(d.metodo==="fijo"){s.fijo+=d.valor;if(d.via==="empresa")s.fijoEmp+=d.valor;if(!d.diario){const c=d.cant||1;s.nf+=c;s.n+=c}continue}
     const cq=d.cant||1;s.n+=cq;s[d.metodo]+=d.valor;s[{efectivo:"ne",transferencia:"nt",anotado:"na",pagado:"np"}[d.metodo]||"na"]+=cq;
-    const p=pctOf(d._u);s.pcts.add(p);s.com+=d.valor*p/100;if(p&&d.metodo==="anotado")s.anotCom+=d.valor}
-  s.com=Math.round(s.com);s.fica=s.total-s.com;s.enEmp=s.anotado;s.saldo=s.com-s.anotCom;s.sinCom=s.pcts.size>0&&[...s.pcts].every(p=>p===0);
+    const p=pctOf(d._u);s.pcts.add(p);s.com+=d.valor*p/100;if(d.metodo==="anotado"){if(d.conf==="pend"){s.anotPend+=d.valor;s.nPend++}else if(d.conf==="no")s.anotNo+=d.valor;else if(p)s.anotCom+=d.valor}}
+  s.com=Math.round(s.com);s.fica=s.total-s.com;s.anotOk=s.anotado-s.anotPend-s.anotNo;s.enEmp=s.anotOk;s.saldo=s.com-s.anotCom;s.sinCom=s.pcts.size>0&&[...s.pcts].every(p=>p===0);
   s.pct=s.pcts.size===1?[...s.pcts][0]:(s.pcts.size?null:pctOf(S.filter==="all"?S.me:S.filter));return s}
 function groups(list){const m=new Map();for(const e of list){const k=groupKey(e[1]);if(!m.has(k))m.set(k,[]);m.get(k).push(e)}
   return[...m.entries()].map(([k,l])=>({k,name:groupName(k),list:l,s:stats(l)})).sort((a,b)=>b.s.total-a.s.total)}
@@ -1541,7 +1550,7 @@ function paint(){
     document.getElementById("dia-list").innerHTML=viewDiaList(list);
     {loadClima();const cb=document.getElementById("clima-box");if(cb){const h=climaHtml();if(cb.dataset.h!==h){cb.innerHTML=h;cb.dataset.h=h}}}
     {const pb=document.getElementById("pend-box");if(pb)pb.innerHTML=cierreBanner()+pendBanner()}
-    {const cb=document.getElementById("cta-box");if(cb)cb.innerHTML=cuentasBox()+miCuentaBox()}
+    {const cb=document.getElementById("cta-box");if(cb)cb.innerHTML=confBox()+cuentasBox()+miCuentaBox()}
     {const cl=caminoList();const el=document.getElementById("camino-list");el.hidden=!cl.length;el.innerHTML=cl.length?viewCamino(cl):"";centralSeen(cl)}
     {const mb=document.getElementById("meta-box");if(mb){const h=viewMeta(list);mb.hidden=!h;mb.innerHTML=h}}
     {const cb=document.getElementById("caja-box");if(cb){let h="";try{h=cajaBox()}catch(e){}if(cb.dataset.h!==h){cb.innerHTML=h;cb.dataset.h=h}}}
@@ -1719,7 +1728,7 @@ function payControl(u,dia,s,compact){
 /* mensaje de liquidación para mandar al delivery por WhatsApp (sin mostrar el %) */
 const allItems=()=>[...new Map([...S.old,...S.items]).entries()];
 function liqLines(s){const r=saldoTxt(s);const fx=s.nf||s.fijo?`\nClientes fijos: ${plural(s.nf,"entrega")}${s.fijo?" · diario "+gs(s.fijo)+" (todo tuyo)":""}`:"";
-  return `Entregas: ${s.n} · Total cobrado: ${gs(s.total)}\nEfectivo ${gs(s.efectivo)} · Transferencia ${gs(s.transferencia)} · Anotado ${gs(s.anotado)}${s.pagado?" · Pedido pago "+gs(s.pagado):""}${fx}\nComisión Tú Delivery: ${gs(s.com)}\nMenos anotado (ya está en la cuenta de la empresa): − ${gs(s.anotado)}\n*${s.saldo>0?"Tenés que pagar a la empresa":s.saldo<0?"La empresa te paga":"Liquidación en cero"}${s.saldo?": "+gs(r.v):""}*`}
+  return `Entregas: ${s.n} · Total cobrado: ${gs(s.total)}\nEfectivo ${gs(s.efectivo)} · Transferencia ${gs(s.transferencia)} · Anotado ${gs(s.anotado)}${s.pagado?" · Pedido pago "+gs(s.pagado):""}${fx}\nComisión Tú Delivery: ${gs(s.com)}\nMenos anotado (ya está en la cuenta de la empresa): − ${gs(s.anotOk)}${s.anotPend?"\nAnotado por confirmar (no se descuenta todavía): "+gs(s.anotPend):""}\n*${s.saldo>0?"Tenés que pagar a la empresa":s.saldo<0?"La empresa te paga":"Liquidación en cero"}${s.saldo?": "+gs(r.v):""}*`}
 function telWa(u){let t=String((S.people.get(u)||{}).tel||"").replace(/\D/g,"");if(!t)return"";if(t.startsWith("595"))return t;if(t.startsWith("0"))t=t.slice(1);return "595"+t}
 function waOpen(txt,u){const n=u?telWa(u):"";return "https://wa.me/"+n+"?text="+encodeURIComponent(txt)}
 function waDia(u,dia){const l=allItems().filter(([,d])=>d._u===u&&d.dia===dia&&!isCamino(d)&&!isLegacy(d));const s=stats(l);const st=pagoState(u,dia,s);
@@ -1738,7 +1747,9 @@ function acertoBlock(s,label,pay,gt){
   return `<div class="acerto">
     <div class="ac-h">${label}</div>
     <div class="ac-row"><span>Comisión Tú Delivery${pctLabel(s)}</span><b class="num">${gs(s.com)}</b></div>
-    <div class="ac-row"><span>Anotado, ya en la cuenta de la empresa</span><b class="num c-due">− ${gs(s.anotado)}</b></div>
+    <div class="ac-row"><span>Anotado, ${s.anotPend||s.anotNo?"confirmado por la empresa":"ya en la cuenta de la empresa"}</span><b class="num c-due">− ${gs(s.anotOk)}</b></div>
+    ${s.anotPend?`<div class="ac-row ac-pend"><span>Anotado por confirmar · no se descuenta todavía</span><b class="num">${gs(s.anotPend)}</b></div>`:""}
+    ${s.anotNo?`<div class="ac-row ac-no"><span>Anotado que no llegó a la empresa · no se descuenta</span><b class="num">${gs(s.anotNo)}</b></div>`:""}
     <div class="ac-res"><span>${r.t}</span><b class="num ${r.c}">${gs(r.v)}</b></div>
     ${pay?`<div class="ac-pay">${pay}</div>`:""}
     <div class="ac-foot">${S.mode==="db"&&!S.owner?"Te quedan":"Delivery queda con"} ${gs(s.fica)} · ${S.mode==="db"&&!S.owner?"tenés":"tiene"} en mano ${gs(s.efectivo+s.transferencia+s.pagado+s.fijo-s.fijoEmp)}${s.fijo?" (incluye diario de clientes fijos)":s.pagado?" entre efectivo, transferencia y pedidos pagos":" entre efectivo y transferencia"}</div>
@@ -1832,7 +1843,7 @@ function viewSummary(list){
 }
 function rowHtml(key,d,showDate){const t=d.criadoEm?new Date(d.criadoEm):null;const pcb=pendingCambio(key);
   const showWho=S.mode!=="db"||(S.owner&&S.filter==="all");
-  const sub=[showWho&&("Delivery: "+esc(groupName(groupKey(d)))),d.pagoTipo==="prod"?"producto ya pagado":d.metodo==="pagado"?"✅ pedido pago":d.producto&&("Prod. "+gs(d.producto)+" · cobrado "+gs(d.producto+d.valor)),d.obs&&esc(d.obs)].filter(Boolean).join(" · ");
+  const sub=[showWho&&("Delivery: "+esc(groupName(groupKey(d)))),d.metodo==="anotado"&&d.conf==="pend"?`<span class="conf-b pend">${icSvg("hourglass")} por confirmar</span>`:"",d.metodo==="anotado"&&d.conf==="no"?`<span class="conf-b no">no llegó a la empresa</span>`:"",d.metodo==="anotado"&&d.conf==="ok"?`<span class="conf-b ok">${icSvg("checkc")} recibido</span>`:"",d.pagoTipo==="prod"?"producto ya pagado":d.metodo==="pagado"?"✅ pedido pago":d.producto&&("Prod. "+gs(d.producto)+" · cobrado "+gs(d.producto+d.valor)),d.obs&&esc(d.obs)].filter(Boolean).join(" · ");
   return `<button class="row" data-edit="${esc(key)}"><span class="time num">${showDate?ddmm(d.dia):(t?pad(t.getHours())+":"+pad(t.getMinutes()):"")}</span>
     <span class="who"><b>${esc(d.cliente)||"Sin cliente"}</b>${sub?`<small>${sub}</small>`:""}</span>
     <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?((d.cant||1)>1?"× "+d.cant:"—"):gs(d.valor)}</b>${d.metodo!=="fijo"&&(d.cant||1)>1?`<span class="pill p-fijo">× ${d.cant} entregas</span>`:""}<span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span>${pends.has(d._u+"|"+d._id)?`<span class="pill p-due">⏳ Por cobrar</span>`:""}${pcb?`<span class="pill p-due">${pcb.tipo==="borrar"?"Pide borrar":"Cambio pedido"}</span>`:""}</span></button>`}
@@ -1923,6 +1934,13 @@ function cuentaDe(u){const dias=diasPend(u);const ms=[...movs.values()].filter(m
   const sd=dias.reduce((a,x)=>a+x.s.saldo,0),deu=ms.filter(m=>m.tipo==="deuda").reduce((a,m)=>a+m.monto,0),abo=ms.filter(m=>m.tipo==="abono").reduce((a,m)=>a+m.monto,0);
   const old=dias.length?Math.floor((Date.now()-fromKey(dias[0].dia).getTime())/864e5):0;
   return{dias,ms,sd,deu,abo,saldo:sd+deu-abo,old}}
+/* anotados que cargó un delivery: el dueño confirma si la plata entró a la cuenta de la empresa */
+function confList(){return allItems().filter(([,d])=>d.metodo==="anotado"&&d.conf==="pend"&&!isCamino(d)).sort((a,b)=>(a[1].criadoEm||0)-(b[1].criadoEm||0))}
+function confBox(){if(S.mode!=="db"||!S.owner||!showEmp())return"";const l=confList();if(!l.length)return"";const tot=l.reduce((a,[,d])=>a+(d.valor||0),0);
+  return `<section class="sec conf-sec"><div class="sec-h"><h2>${icSvg("hourglass")} Anotados por confirmar</h2><span class="num">${gs(tot)}</span></div>
+    <small class="hint" style="margin:0 0 8px">El delivery dice que el cliente pagó a la cuenta de la empresa. Confirmá si llegó: recién ahí se le descuenta.</small>
+    <div class="list">${l.map(([k,d])=>`<div class="conf-row"><span class="who"><b>${esc(d.cliente||"Sin cliente")}</b><small>${esc((personName(d._u)||"").split(" ")[0])} · ${d.dia===today()?"hoy":ddmm(d.dia)} ${hhmm(d.criadoEm||0)}${d.cant>1?" · "+d.cant+" entregas":""}</small></span><b class="num">${gs(d.valor)}</b>
+      <span class="conf-act"><button type="button" class="conf-ok" data-confok="${esc(k)}">Recibido</button><button type="button" class="conf-no" data-confno="${esc(k)}">No llegó</button></span></div>`).join("")}</div></section>`}
 function cuentasBox(){if(S.mode!=="db"||!S.owner||!showEmp())return"";const ids=activos().filter(u=>u!==S.me);
   const rows=ids.map(u=>({u,c:cuentaDe(u)})).filter(r=>r.c.saldo).sort((a,b)=>b.c.saldo-a.c.saldo);if(!rows.length)return"";
   const debe=rows.filter(r=>r.c.saldo>0).reduce((a,r)=>a+r.c.saldo,0);
@@ -2424,7 +2442,7 @@ function cierreSemTxt(u,r){const l=listRange(r.from,r.to).filter(([,d])=>d._u===
   t+=`🛵 Entregas: *${s.n}* · Total cobrado: ${gs(s.total)}\n`;
   t+=`Efectivo ${gs(s.efectivo)} · Transferencia ${gs(s.transferencia)} · Anotado ${gs(s.anotado)}${s.pagado?" · Pedido pago "+gs(s.pagado):""}\n`;
   if(s.nf||s.fijo)t+=`Clientes fijos: ${plural(s.nf,"entrega")} · diario ${gs(s.fijo)} (sin %)\n`;
-  t+=s.sinCom?`Sin comisión · el 100% es tuyo\n`:`Comisión${pctLabel(s)}: ${gs(s.com)} · Menos anotado: ${gs(s.anotado)}\n*${res.t}: ${gs(res.v)}*\n`;
+  t+=s.sinCom?`Sin comisión · el 100% es tuyo\n`:`Comisión${pctLabel(s)}: ${gs(s.com)} · Menos anotado: ${gs(s.anotOk)}${s.anotPend?" (por confirmar "+gs(s.anotPend)+")":""}\n*${res.t}: ${gs(res.v)}*\n`;
   if(pend&&pend.ds.length){t+=`\n⏳ Falta liquidar ${plural(pend.ds.length,"día")}: ${pend.debe?"debés "+gs(pend.debe):""}${pend.debe&&pend.recibe?" · ":""}${pend.recibe?"te pagamos "+gs(pend.recibe):""}\n`}else if(s.n)t+=`\n✅ Semana liquidada\n`;
   if(P)t+=`\n⭐ Tus puntos: *${P.pts.toLocaleString("es-PY")}*${P.racha?" · 🔥 "+P.racha+" días seguidos":""}${nx?"\nTe faltan "+(nx.p-P.pts).toLocaleString("es-PY")+" para "+nx.n:""}\n`;
   t+=`\n¡Gracias por tu trabajo! 🙌 Cada entrega cuenta.`;return{t,s}}
@@ -2740,7 +2758,7 @@ function noPerm(){edit=null;layer.innerHTML=`<div class="scrim" data-close><div 
 /* ---------- copy ---------- */
 function toast(m){clearTimeout(tt);let el=document.querySelector(".toast");if(!el){el=document.createElement("div");el.className="toast";document.body.appendChild(el)}el.textContent=m;tt=setTimeout(()=>el.remove(),2200)}
 async function copy(txt){try{await navigator.clipboard.writeText(txt);toast("Copiado")}catch(e){layer.innerHTML=`<div class="scrim" data-close><div class="sheet"><h3>Copiá el texto</h3><textarea id="cp" style="width:100%;min-height:220px;font:14px var(--body);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px">${esc(txt)}</textarea><button class="ghost" data-cancel>Cerrar</button></div></div>`;const c=document.getElementById("cp");c.focus();c.select()}}
-function acertoTxt(s){const r=saldoTxt(s);if(s.sinCom)return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}\nSin comisión (100%)`;const fx=s.nf||s.fijo?`\nClientes fijos: ${plural(s.nf,"entrega")} · diario ${gs(s.fijo)} (sin %)`:"";if(hideMoney())return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}${fx}`;return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}\nComisión${pctLabel(s)}: ${gs(s.com)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}\nMenos anotado: ${gs(s.anotado)}\n${r.t}: ${gs(r.v)}${fx}`}
+function acertoTxt(s){const r=saldoTxt(s);if(s.sinCom)return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}\nSin comisión (100%)`;const fx=s.nf||s.fijo?`\nClientes fijos: ${plural(s.nf,"entrega")} · diario ${gs(s.fijo)} (sin %)`:"";if(hideMoney())return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}${fx}`;return `Total: ${gs(s.total)} (${plural(s.n,"entrega")})\nEfectivo: ${gs(s.efectivo)} · Transferencia: ${gs(s.transferencia)} · Anotado: ${gs(s.anotado)}\nComisión${pctLabel(s)}: ${gs(s.com)}${s.pagado?" · Pedido pago: "+gs(s.pagado):""}\nMenos anotado: ${gs(s.anotOk)}${s.anotPend?" (por confirmar: "+gs(s.anotPend)+")":""}\n${r.t}: ${gs(r.v)}${fx}`}
 function resumo(title,list){const gr=groups(list);let t="Tú Delivery · "+(hideMoney()?title.replace("Liquidación","Resumen"):title);
   if(gr.length===1)t+=" · "+gr[0].name;t+="\n"+acertoTxt(stats(list));
   if(gr.length>1)for(const g of gr)t+="\n\n"+g.name+"\n"+acertoTxt(g.s);return t}
@@ -2841,6 +2859,9 @@ document.addEventListener("click",async e=>{
     const dia=today();cajas.delete(u+"|"+dia);render(true);try{await sendW(db.collection("turnos/"+u+"/caja").doc(dia).delete());toast("Caja de hoy borrada · ya podés abrirla de nuevo")}catch(err){toast("No se pudo borrar")}}
   else if(t.hasAttribute("data-cajaabrir")&&!t.closest("#layer"))openCaja("abrir",t.dataset.cajaabrir||"");
   else if(t.hasAttribute("data-cajacerrar")&&!t.closest("#layer"))openCaja("cerrar");
+  else if(t.dataset.confok||t.dataset.confno){const k=t.dataset.confok||t.dataset.confno;const ok=!!t.dataset.confok;const d=S.items.get(k);if(!d)return;
+    if(!ok&&!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Seguro?";return}
+    patchItem(k,{conf:ok?"ok":"no",confEm:Date.now()}).then(()=>toast(ok?"Recibido · se descuenta "+gs(d.valor)+" a "+(personName(d._u)||"").split(" ")[0]:"Marcado: no llegó · no se descuenta")).catch(()=>noPerm())}
   else if(t.hasAttribute("data-cajareabrir")&&!t.closest("#layer")){saveCaja("reabrir").then(w=>{toast("Caja abierta de nuevo · al terminar, cerrala otra vez")})}
   else if(t.hasAttribute("data-pasar")){S.asig="";openEntry(true,true)}
   else if(t.dataset.asig){S.asig=t.dataset.asig;const b=document.getElementById("asig-box");if(b)b.innerHTML=asigPicker();if(S.err&&S.err.startsWith("Elegí arriba")){S.err=""}refreshForm();const c=document.getElementById("cli");if(c&&!c.value)c.focus()}
