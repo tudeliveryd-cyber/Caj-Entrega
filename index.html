@@ -668,6 +668,8 @@ details.sec.fold{display:grid;gap:10px}
 .ns-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ns-two>div{display:grid;gap:2px}.ns-two span{color:var(--muted);font-size:13px}.ns-two b{font-size:19px}.ns-two small{font-size:12px}
 .ns-pasa{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:1px solid var(--line);padding-top:6px;font-weight:700}.ns-pasa b{font-size:20px}
 .nt-ctot{font-size:13px;color:var(--muted)}
+.nt-clr{display:grid;gap:8px}.nt-clr .ghost{display:flex;align-items:center;justify-content:center;gap:6px;border-color:var(--cash);color:var(--cash)}.nt-clr .ghost svg{width:18px;height:18px}.nt-clr .ghost.armed{background:var(--cash);color:#fff}
+.nt-hist{display:grid;gap:3px;font-size:13px;color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:8px 10px}.nt-hist b{color:var(--ink);font-size:12.5px}.nt-hist div{display:flex;justify-content:space-between;gap:10px}
 .cta-dia{flex-wrap:wrap}.cta-it span small{display:block;color:var(--muted);font-size:12px}
 .dia-paga{flex-basis:100%;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;border:1px solid var(--cash);background:none;color:var(--cash);border-radius:10px;padding:8px;font:600 14px var(--body)}
 .dia-paga svg{width:16px;height:16px}.dia-paga.armed{background:var(--cash);color:#fff}
@@ -926,7 +928,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="139";
+const APPV="140";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1423,15 +1425,15 @@ function openNotas(){subNotas();edit=null;NE=null;
 function drawNotas(){const el=document.getElementById("nt-list");if(!el)return;const l=ntSorted();
   el.innerHTML=l.length?`<div class="nt-grid">${l.map(n=>{const c=NCOL[n.color]||NCOL.gris;const ck=(n.texto||"").match(/^\s*[☐☑]/gm)||[];const done=(n.texto||"").match(/^\s*☑/gm)||[];
     return `<button type="button" class="nt-card" data-ntopen="${esc(n._id)}" style="--nc:${c}">${n.fijada?'<span class="nt-pin">📌</span>':""}
-      ${n.titulo?`<b>${esc(n.titulo)}</b>`:""}<span class="nt-pv">${ntPreview(n.texto)||(n.deu?(n.deudas||[]).filter(d=>ddSaldo(d)>0).slice(0,4).map(d=>esc(d.de)+" → "+esc(d.para||"Tú Delivery")+" "+gs(ddSaldo(d))).join("\n"):"")||"<i>Nota vacía</i>"}</span>
+      ${n.titulo?`<b>${esc(n.titulo)}</b>`:""}<span class="nt-pv">${ntPreview(n.texto)||(n.deu?(n.deudas||[]).filter(d=>ddSaldo(d)>0).slice(0,4).map(d=>esc(d.de)+" → "+esc(d.para||"Tú Delivery")+" "+gs(ddSaldo(d))).join("\n"):"")||((n.hist||[]).length?`<i>Último acerto ${ddmm(keyOf(new Date(n.hist[n.hist.length-1].em)))}: ${esc(n.hist[n.hist.length-1].t)}</i>`:"")||"<i>Nota vacía</i>"}</span>
       ${n.deu?(()=>{const r=deuRes(n.deudas||[]);return `<span class="nt-ctot">${r.pend.length?`${plural(r.pend.length,"deuda")} · <b class="num">${gs(r.tot)}</b>`:"Todo pagado"}</span>`})():""}
       ${n.acerto?(()=>{const k=acCalc({texto:n.texto||"",texto2:n.texto2||"",dos:!!n.dos,cobrado:n.cobrado||0,desc:n.desc||""});return `<span class="nt-ctot">${k.res>=0?"Pasar":"Nos debe"} <b class="num">${gs(Math.abs(k.res))}</b></span>`})():""}
       ${n.dos?(()=>{const a=notaSuma(n.texto),b=notaSuma(n.texto2);return `<span class="nt-ctot">${esc(n.n1||"Yo")} <b class="num">${gs(a.tot)}</b> · ${esc(n.n2||"Otro")} <b class="num">${gs(b.tot)}</b></span>`})():n.suma?(()=>{const r=notaSuma(n.texto);return `<span class="nt-ctot">Total <b class="num">${gs(r.tot)}</b>${r.ck&&r.pend?` · falta ${gs(r.pend)}`:""}</span>`})():""}
       <small>${ck.length?`☑ ${done.length}/${ck.length} · `:""}${ntWhen(n.upd||n.em||Date.now())}</small></button>`}).join("")}</div>`
     :`<div class="empty nt-empty">${NQ?"No hay notas con “"+esc(NQ)+"”.":"📝 Todavía no tenés notas.<br><small>Anotá direcciones, pedidos, recordatorios, listas… lo que quieras.</small>"}</div>`}
 function openNota(id,deu){subNotas();const n=id?notas.get(id):null;
-  NE=n?{id,deu:!!n.deu,deudas:JSON.parse(JSON.stringify(n.deudas||[])),titulo:n.titulo||"",texto:n.texto||"",texto2:n.texto2||"",n1:n.n1||"",n2:n.n2||"",dos:!!n.dos,acerto:!!n.acerto,cobrado:n.cobrado||0,desc:n.desc||"",color:n.color||"amarillo",fijada:!!n.fijada,suma:!!n.suma||!!n.dos,em:n.em||Date.now(),nueva:false,armed:false,lastTA:"nt-x"}
-      :{id:uid(),deu:false,deudas:[],titulo:"",texto:"",texto2:"",n1:"",n2:"",dos:false,acerto:false,cobrado:0,desc:"",color:"amarillo",fijada:false,suma:false,em:Date.now(),nueva:true,armed:false,lastTA:"nt-x"};
+  NE=n?{id,hist:(n.hist||[]).slice(),deu:!!n.deu,deudas:JSON.parse(JSON.stringify(n.deudas||[])),titulo:n.titulo||"",texto:n.texto||"",texto2:n.texto2||"",n1:n.n1||"",n2:n.n2||"",dos:!!n.dos,acerto:!!n.acerto,cobrado:n.cobrado||0,desc:n.desc||"",color:n.color||"amarillo",fijada:!!n.fijada,suma:!!n.suma||!!n.dos,em:n.em||Date.now(),nueva:false,armed:false,lastTA:"nt-x"}
+      :{id:uid(),hist:[],deu:false,deudas:[],titulo:"",texto:"",texto2:"",n1:"",n2:"",dos:false,acerto:false,cobrado:0,desc:"",color:"amarillo",fijada:false,suma:false,em:Date.now(),nueva:true,armed:false,lastTA:"nt-x"};
   if(deu&&NE.nueva){NE.deu=true;NE.titulo="Deudas";NE.color="rosa"}edit=null;drawNotaEd();if(NE.nueva&&!NE.deu)setTimeout(()=>{const x=document.getElementById("nt-x");if(x)x.focus()},80)}
 function drawNotaEd(){const c=NCOL[NE.color];
   const ta=(id,v,ph)=>`<textarea id="${id}" class="nt-text" placeholder="${ph}" maxlength="20000">${esc(v)}</textarea>`;
@@ -1453,6 +1455,7 @@ function drawNotaEd(){const c=NCOL[NE.color];
       <div class="field"><label for="ac-desc">Descontar (uno por línea)</label><textarea id="ac-desc" class="nt-text ac-desc" placeholder="Diaria 250.000&#10;Plástico 130.000&#10;Bebida 120.000">${esc(NE.desc)}</textarea></div>
       <div id="ac-res" class="acn-res"></div>
       <a class="wa-btn ac-wa" id="ac-wa" href="#" target="_blank" rel="noopener">📲 Enviar acerto por WhatsApp</a></div>`:""}
+    ${NE.acerto||NE.suma||NE.dos?`<div class="nt-clr"><button type="button" class="ghost" data-ntclr>${icSvg("checkc")} Acertado · limpiar y empezar de nuevo</button>${(NE.hist||[]).length?`<div class="nt-hist"><b>Acertos anteriores</b>${NE.hist.slice(-5).reverse().map(h=>`<div><span>${ddmm(keyOf(new Date(h.em)))} ${hhmm(h.em)}</span><span>${esc(h.t)}</span></div>`).join("")}</div>`:""}</div>`:""}
     <div class="nt-tools">
       <button type="button" class="chip" data-ntcheck>☐ Casilla</button>
       <button type="button" class="chip ${NE.suma?"on":""}" data-ntsuma>Σ Sumar valores</button>
@@ -1515,9 +1518,10 @@ function drawNtSum(){const el=document.getElementById("nt-sum");if(!el||!NE)retu
   const r=notaSuma(NE.texto);
   el.innerHTML=`<div class="ns-tot"><span>Total · ${r.n} ${r.n===1?"valor":"valores"}</span><b class="num">${gs(r.tot)}</b></div>${r.ck?`<div class="ns-sub"><span class="c-cash">Acertado ${gs(r.ok)}</span><span class="c-due">Falta ${gs(r.pend)}</span></div>`:`<small>Escribí un valor por línea, ej.: “Emir 30.000”. Con ☐ Casilla podés marcar lo que ya acertaste.</small>`}`}
 function ntDirty(){drawNtSum();drawAc();const st=document.getElementById("nt-st");if(st)st.textContent="Guardando…";updNtWa();clearTimeout(ntTimer);ntTimer=setTimeout(ntSave,700)}
-async function ntSave(){clearTimeout(ntTimer);if(!NE)return;const e=NE;if(!e.titulo.trim()&&!e.texto.trim()&&!(e.texto2||"").trim()&&!(e.deudas||[]).length){return}
+async function ntSave(){clearTimeout(ntTimer);if(!NE)return;const e=NE;if(!e.titulo.trim()&&!e.texto.trim()&&!(e.texto2||"").trim()&&!(e.deudas||[]).length&&!(e.hist||[]).length){return}
   const d={tipo:"nota",titulo:e.titulo.trim(),texto:e.texto,color:e.color,fijada:e.fijada,suma:!!e.suma,em:e.em,upd:Date.now()};
   if(e.acerto||e.desc){d.acerto=!!e.acerto;d.cobrado=e.cobrado||0;d.desc=e.desc||""}
+  if((e.hist||[]).length)d.hist=e.hist.slice(-20);
   if(e.deu||(e.deudas||[]).length){d.deu=!!e.deu;d.deudas=e.deudas||[]}
   if(e.dos||e.texto2){d.dos=!!e.dos;d.texto2=e.texto2||"";d.n1=(e.n1||"").trim();d.n2=(e.n2||"").trim()}
   notas.set(e.id,{...d,_id:e.id});e.nueva=false;
@@ -2978,6 +2982,9 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.temaac){const x=temaGet();x.accent=t.dataset.temaac;try{localStorage.setItem("caixa_tema",JSON.stringify(x))}catch(e){}temaApply(x);document.querySelectorAll("[data-temaac]").forEach(b=>b.classList.toggle("on",b===t));return}
   if(t.hasAttribute("data-ntnew")){openNota(null);return}
   if(t.hasAttribute("data-ntdeuopen")){const ex=[...notas.values()].filter(n=>n.deu).sort((a,b)=>(b.upd||0)-(a.upd||0))[0];openNota(ex?ex._id:null,true);return}
+  if(NE&&t.hasAttribute("data-ntclr")){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo: se borran los valores";return}
+    let txt;if(NE.acerto){const k=acCalc(NE);txt=(k.res>=0?"Pasé ":"Nos debía ")+gs(Math.abs(k.res))+" (cobrado "+gs(k.cob)+")"}else if(NE.dos){const a=notaSuma(NE.texto),b=notaSuma(NE.texto2);txt=(NE.n1||"Yo")+" "+gs(a.tot)+" · "+(NE.n2||"Otro")+" "+gs(b.tot)}else txt="Total "+gs(notaSuma(NE.texto).tot);
+    NE.hist=[...(NE.hist||[]),{em:Date.now(),t:txt}];NE.texto="";NE.texto2="";NE.desc="";NE.cobrado=0;drawNotaEd();ntDirty();toast("Acertado ✓ · nota limpia para empezar de nuevo");return}
   if(NE&&t.hasAttribute("data-ntdeu")){NE.deu=!NE.deu;drawNotaEd();ntDirty();return}
   if(NE&&t.hasAttribute("data-ddadd")){const q=document.getElementById("dd-q").value.trim(),de=document.getElementById("dd-de").value.trim(),pa=document.getElementById("dd-para").value.trim(),v=parseVal(document.getElementById("dd-v").value);
     if(!de){toast("Escribí quién debe");document.getElementById("dd-de").focus();return}if(!v){toast("Escribí el monto");document.getElementById("dd-v").focus();return}
