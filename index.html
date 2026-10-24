@@ -672,6 +672,7 @@ details.sec.fold{display:grid;gap:10px}
 .ns-two.c3{grid-template-columns:1fr 1fr 1fr}.ns-two.c3 b{font-size:16px}
 .ns-pasa{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:1px solid var(--line);padding-top:6px;font-weight:700}.ns-pasa b{font-size:20px}
 .nt-ctot{font-size:13px;color:var(--muted)}
+.quien{display:inline-flex;align-items:center;gap:3px;font-weight:600;color:#4a8fe0}.quien svg{width:13px;height:13px}
 .p-aux{background:color-mix(in srgb,#4a8fe0 18%,transparent);color:#4a8fe0}
 .rd-open.rd-live svg{color:#2e9e5b}
 .rd-sheet{display:grid;gap:12px}
@@ -918,8 +919,8 @@ function loadLocal(){const all=lsAll();S.items=new Map();const from=addDays(toda
   S.pagos=new Map(Object.entries(lsGet(LSP,{})));render()}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const colFor=u=>db.collection("turnos/"+u+"/entregas");
-async function addItem(d,u,id){id=id||uid();if(S.mode==="db"&&!S.owner&&d.metodo==="anotado"&&d.estado!=="camino")d={...d,conf:"pend"};if(db){await colFor(u).doc(id).set(d)}else{const a=lsAll();a[id]=d;lsSet(LS,a);loadLocal()}}
-async function patchItem(key,p){const it=S.items.get(key);if(!it)return;if(S.mode==="db"&&!S.owner&&p.metodo==="anotado"&&!p.conf)p={...p,conf:"pend"};if(db){await colFor(it._u).doc(it._id).update(p)}else{const a=lsAll();if(a[it._id]){Object.assign(a[it._id],p);lsSet(LS,a);loadLocal()}}}
+async function addItem(d,u,id){id=id||uid();if(S.mode==="db"&&!S.owner&&isAux(S.me)&&auxHoy(S.me)&&!d.quien)d={...d,quien:auxHoy(S.me)};if(S.mode==="db"&&!S.owner&&d.metodo==="anotado"&&d.estado!=="camino")d={...d,conf:"pend"};if(db){await colFor(u).doc(id).set(d)}else{const a=lsAll();a[id]=d;lsSet(LS,a);loadLocal()}}
+async function patchItem(key,p){const it=S.items.get(key);if(!it)return;if(S.mode==="db"&&!S.owner&&isAux(S.me)&&auxHoy(S.me)&&p.estado==="ok"&&!it.quien)p={...p,quien:auxHoy(S.me)};if(S.mode==="db"&&!S.owner&&p.metodo==="anotado"&&!p.conf)p={...p,conf:"pend"};if(db){await colFor(it._u).doc(it._id).update(p)}else{const a=lsAll();if(a[it._id]){Object.assign(a[it._id],p);lsSet(LS,a);loadLocal()}}}
 async function delItem(key){const it=S.items.get(key);if(!it)return;if(db){await colFor(it._u).doc(it._id).delete()}else{const a=lsAll();delete a[it._id];lsSet(LS,a);loadLocal()}}
 const gasCol=u=>db.collection("turnos/"+u+"/gastos");
 const privCol=u=>db.collection("turnos/"+u+"/privado");
@@ -949,7 +950,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="144";
+const APPV="145";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1191,7 +1192,7 @@ function startDemo(modo){
   put("ranking/_clientes",{list:[{id:"c1",n:"Divina Mesa",cat:"Restaurantes",ubic:"https://maps.google.com/?q=-25.7935,-55.0870",dir:"Av. Santa Rita c/ Mallorquín",tel:"0981 555 111",nota:"Entregar por la cocina"},{id:"c2",n:"Bom Corte Bar & Grill",cat:"Restaurantes",ubic:"https://maps.google.com/?q=-25.7912,-55.0851",dir:"Ruta PY06, frente a la estación",tel:"0983 222 333",nota:""}]});
   put("ranking/_mensaje",{texto:"Bienvenidos a la app de Tú Delivery. Registren todas las entregas del día y no se olviden de anotar los pedidos.",criadoEm:at(t,7,0)});};
   const seedFull=()=>{
-  put("turnos/demo",{nome:(/[?&]limpio/.test(location.search)?"Carlos":"Carlos Demo"),...(/[?&]sincom/.test(location.search)?{pct:0}:/[?&]pct=(\d+)/.test(location.search)?{pct:Number(location.search.match(/[?&]pct=(\d+)/)[1])}:{}),aprobado:true,baja:false});
+  put("turnos/demo",{nome:(/[?&]limpio/.test(location.search)?"Carlos":"Carlos Demo"),...(/[?&]aux\b/.test(location.search)?{aux:true,auxNombres:["Juan","Pedro"]}:{}),...(/[?&]sincom/.test(location.search)?{pct:0}:/[?&]pct=(\d+)/.test(location.search)?{pct:Number(location.search.match(/[?&]pct=(\d+)/)[1])}:{}),aprobado:true,baja:false});
   const E="turnos/demo/entregas/";
   put(E+"e1",{valor:15000,metodo:"efectivo",cliente:"Farmacia Central",obs:"",dia:t,criadoEm:at(t,9,10)});
   put(E+"e2",{valor:20000,metodo:"transferencia",cliente:"Super 6",obs:"Barrio Centro",dia:t,criadoEm:at(t,10,5)});
@@ -1424,7 +1425,7 @@ function addCredit(){if(!main||document.getElementById("credit"))return;if(main.
     <em class="cr-lema">Cada entrega cuenta.</em>
     <small class="cr-v">Santa Rita, Paraguay • © ${new Date().getFullYear()}</small>
     <button type="button" class="cr-tema" data-tema>Colores y tema</button></footer>`)}
-function render(full){if(full)builtKey="";if(raf)return;raf=setTimeout(()=>{raf=0;try{paint();addCredit()}catch(e){console.error(e)}},0)}
+function render(full){if(full)builtKey="";if(raf)return;raf=setTimeout(()=>{raf=0;try{paint();addCredit();if(S.mode==="db"&&!S.owner&&isAux(S.me)&&!auxHoy(S.me)&&S.tab==="dia"&&window.__auxAsk!==today()&&!layer.innerHTML.trim()){window.__auxAsk=today();openAuxQuien()}}catch(e){console.error(e)}},0)}
 /* ---------- notas privadas: turnos/<uid>/privado (tipo "nota", sin "dia") · solo las ve quien las escribe ---------- */
 var notas=new Map(),NQ="",NE=null,ntTimer=0,ntSubbed=false;
 const NCOL={amarillo:"#e8b93a",verde:"#3fae6a",azul:"#4a8fe0",rosa:"#e0679a",violeta:"#9b7be0",gris:"#8a8797"};
@@ -1560,7 +1561,7 @@ function ntBack(){const e=NE;if(e){clearTimeout(ntTimer);if(e.titulo.trim()||ntA
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
-  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b></span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-tema>${icSvg("palette")} Colores</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
+  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b>${isAux(S.me)?` · hoy: <b>${esc(auxHoy(S.me)||"¿quién?")}</b> <button type="button" class="linkbtn small-link" data-auxquien>${auxHoy(S.me)?"cambiar":"elegir"}</button>`:""}</span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-tema>${icSvg("palette")} Colores</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
   const ids=activos();
   const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
   return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
@@ -1883,7 +1884,7 @@ function viewSummary(list){
 }
 function rowHtml(key,d,showDate){const t=d.criadoEm?new Date(d.criadoEm):null;const pcb=pendingCambio(key);
   const showWho=S.mode!=="db"||(S.owner&&S.filter==="all");
-  const sub=[showWho&&("Delivery: "+esc(groupName(groupKey(d)))),d.metodo==="anotado"&&d.conf==="pend"?`<span class="conf-b pend">${icSvg("hourglass")} por confirmar</span>`:"",d.metodo==="anotado"&&d.conf==="no"?`<span class="conf-b no">no llegó a la empresa</span>`:"",d.metodo==="anotado"&&d.conf==="ok"?`<span class="conf-b ok">${icSvg("checkc")} recibido</span>`:"",d.pagoTipo==="prod"?"producto ya pagado":d.metodo==="pagado"?"✅ pedido pago":d.producto&&("Prod. "+gs(d.producto)+" · cobrado "+gs(d.producto+d.valor)),d.obs&&esc(d.obs)].filter(Boolean).join(" · ");
+  const sub=[showWho&&("Delivery: "+esc(groupName(groupKey(d)))),d.metodo==="anotado"&&d.conf==="pend"?`<span class="conf-b pend">${icSvg("hourglass")} por confirmar</span>`:"",d.metodo==="anotado"&&d.conf==="no"?`<span class="conf-b no">no llegó a la empresa</span>`:"",d.metodo==="anotado"&&d.conf==="ok"?`<span class="conf-b ok">${icSvg("checkc")} recibido</span>`:"",d.quien&&S.owner?`<span class="quien">${icSvg("users")} ${esc(d.quien)}</span>`:"",d.pagoTipo==="prod"?"producto ya pagado":d.metodo==="pagado"?"✅ pedido pago":d.producto&&("Prod. "+gs(d.producto)+" · cobrado "+gs(d.producto+d.valor)),d.obs&&esc(d.obs)].filter(Boolean).join(" · ");
   return `<button class="row" data-edit="${esc(key)}"><span class="time num">${showDate?ddmm(d.dia):(t?pad(t.getHours())+":"+pad(t.getMinutes()):"")}</span>
     <span class="who"><b>${esc(d.cliente)||"Sin cliente"}</b>${sub?`<small>${sub}</small>`:""}</span>
     <span class="amt"><b class="num">${d.metodo==="fijo"&&!d.diario?((d.cant||1)>1?"× "+d.cant:"—"):gs(d.valor)}</b>${d.metodo!=="fijo"&&(d.cant||1)>1?`<span class="pill p-fijo">× ${d.cant} entregas</span>`:""}<span class="pill p-${M[d.metodo].c}">${d.diario?"Diario":M[d.metodo].n}</span>${pends.has(d._u+"|"+d._id)?`<span class="pill p-due">⏳ Por cobrar</span>`:""}${pcb?`<span class="pill p-due">${pcb.tipo==="borrar"?"Pide borrar":"Cambio pedido"}</span>`:""}</span></button>`}
@@ -2056,7 +2057,7 @@ function openCuenta(u){edit=null;const c=cuentaDe(u);const ro=!S.owner;
     <div class="cta-big ${c.saldo>0?"due":c.saldo<0?"cash":""}"><span>${c.saldo>0?(ro?"Tenés que pagar":"Debe a la empresa"):c.saldo<0?(ro?"La empresa te debe":"La empresa le debe"):"Cuenta al día ✅"}</span><b class="num">${gs(Math.abs(c.saldo))}</b></div>
     ${isAux(u)?`<p class="hint aux-note" style="margin:0">${ro?"Sos auxiliar: el acerto se hace el mismo día, al terminar.":"Auxiliar: el acerto se hace el mismo día. Si quedan días anteriores, está atrasado."}</p>`:""}
     <div class="list">
-      ${c.dias.map(x=>`<div class="cta-it ${ro?"":"cta-dia"}"><span>${ddmm(x.dia)} · ${x.s.saldo>0?"debe del día":"la empresa le debe"}<small>${plural(x.s.n,"entrega")} · total ${gs(x.s.total)}</small></span><b class="num ${x.s.saldo>0?"c-due":"c-cash"}">${x.s.saldo>0?"":"− "}${gs(Math.abs(x.s.saldo))}</b>${ro?"":`<button type="button" class="dia-paga" data-diapaga="${esc(u)}|${esc(x.dia)}">${icSvg("checkc")} ${x.s.saldo>0?"Pagó este día":"Ya le pagué este día"}</button>`}</div>`).join("")}
+      ${c.dias.map(x=>`<div class="cta-it ${ro?"":"cta-dia"}"><span>${ddmm(x.dia)} · ${x.s.saldo>0?"debe del día":"la empresa le debe"}<small>${plural(x.s.n,"entrega")} · total ${gs(x.s.total)}${(()=>{const q=[...new Set(allItems().filter(([,d])=>d._u===u&&d.dia===x.dia&&d.quien).map(([,d])=>d.quien))];return q.length?" · "+esc(q.join(", ")):""})()}</small></span><b class="num ${x.s.saldo>0?"c-due":"c-cash"}">${x.s.saldo>0?"":"− "}${gs(Math.abs(x.s.saldo))}</b>${ro?"":`<button type="button" class="dia-paga" data-diapaga="${esc(u)}|${esc(x.dia)}">${icSvg("checkc")} ${x.s.saldo>0?"Pagó este día":"Ya le pagué este día"}</button>`}</div>`).join("")}
       ${c.ms.map(m=>`<div class="cta-it"><span>${ddmm(keyOf(new Date(m.em)))} · ${m.tipo==="deuda"?"Deuda":"Pagó"}${m.nota?" · "+esc(m.nota):""} ${ro?"":`<button type="button" class="linkbtn small-link" data-movdel="${esc(u)}|${esc(m._id)}">quitar</button>`}</span><b class="num ${m.tipo==="deuda"?"c-due":"c-cash"}">${m.tipo==="deuda"?"":"− "}${gs(m.monto)}</b></div>`).join("")}
       ${!c.dias.length&&!c.ms.length?`<div class="empty">Sin movimientos pendientes.</div>`:""}
     </div>
@@ -2189,6 +2190,18 @@ const toMin=t=>{const[a,b]=String(t||"0:0").split(":").map(Number);return a*60+(
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
 const msMin=ms=>{const d=new Date(ms);return d.getHours()*60+d.getMinutes()};
 const isAux=u=>!!(S.people.get(u)||{}).aux;
+const auxHoy=u=>{const p=S.people.get(u)||{};return p.auxHoy&&p.auxHoy.dia===today()?p.auxHoy.nome||"":""};
+/* cuenta de auxiliar compartida: cada día se elige quién trabaja; las entregas guardan "quien" */
+function openAuxQuien(){edit=null;const p=S.people.get(S.me)||{};const ns=(p.auxNombres||[]).slice(-12).reverse();
+  layer.innerHTML=`<div class="scrim"><div class="sheet" role="dialog" aria-label="Quién trabaja hoy">${sheetHead(icSvg("users")+" ¿Quién trabaja hoy?")}
+    <p class="hint" style="margin:0">Esta es la cuenta de <b>auxiliar</b>. Elegí tu nombre: tus entregas y el acerto de hoy quedan a tu nombre.</p>
+    ${ns.length?`<div class="chips">${ns.map(n=>`<button type="button" class="chip ${auxHoy(S.me)===n?"on":""}" data-auxpick="${esc(n)}">${esc(n)}</button>`).join("")}</div>`:""}
+    <div class="field"><label for="aux-n">${ns.length?"O escribí tu nombre":"Tu nombre"}</label><input id="aux-n" autocomplete="off" maxlength="30" placeholder="Ej.: Juan"></div>
+    <button type="button" class="primary" data-auxsave>Empezar a trabajar</button></div></div>`}
+async function saveAuxQuien(n){n=String(n||"").trim();if(!n){toast("Escribí tu nombre");return}const p=S.people.get(S.me)||{};
+  const ns=[...(p.auxNombres||[]).filter(x=>x.toLowerCase()!==n.toLowerCase()),n].slice(-20);const v={auxHoy:{dia:today(),nome:n,em:Date.now()},auxNombres:ns};
+  S.people.set(S.me,{...p,...v});closeSheet();render(true);toast("Hola "+n+" · tus entregas de hoy quedan a tu nombre");
+  try{await db.doc("turnos/"+S.me).set(v,{merge:true})}catch(e){}}
 function turnosHoy(u){if(isAux(u))return null;const h=(S.people.get(u)||{}).horario;if(!h)return null;
   if(h.res){const r=h.res[new Date().getDay()];if(r==="libre")return"libre";return Array.isArray(r)&&r.length?r.map(x=>typeof x==="string"?x.split("|"):x):null}if((h.libres||[]).includes(new Date().getDay()))return"libre";
   const ts=[h.t1,h.t2].filter(t=>t&&t[0]&&t[1]);return ts.length?ts:null}
@@ -2196,7 +2209,7 @@ const minTxt=m=>m>=60?Math.floor(m/60)+" h"+(m%60?" "+(m%60)+" min":""):m+" min"
 const horTxt=ts=>ts.map(t=>t[0]+"–"+t[1]).join(" y ");
 const inicioOf=u=>{const p=S.people.get(u);return p&&p.inicio&&p.inicio.dia===today()?p.inicio:null};
 function estadoDe(u){const l=allItems().filter(([,d])=>d._u===u&&d.dia===today());const n=stats(l.filter(([,d])=>!isCamino(d))).n;const cam=l.filter(([,d])=>isCamino(d)).length;
-  const c=cierreOf(u),i=inicioOf(u),ts=turnosHoy(u),nm=nowMin();let st,cls,ex=[];
+  const c=cierreOf(u),i=inicioOf(u),ts=turnosHoy(u),nm=nowMin();let st,cls,ex=[];if(isAux(u)&&auxHoy(u))ex.push("hoy: "+esc(auxHoy(u)));
   if(Array.isArray(ts))ex.push("🕒 "+horTxt(ts));else if(ts==="libre")ex.push("Día libre");
   const lastEnt=Math.max(0,...l.map(([,d])=>d.criadoEm||0));const vis=(S.people.get(u)||{}).visto||0;
   const reciente=Date.now()-lastEnt<45*60000;
@@ -2811,7 +2824,7 @@ function asigPicker(){const ids=activos().filter(u=>u!==S.me);
   const info=u=>{let cls="off",st="";try{const e=estadoDe(u);cls=e.cls==="cz-work"?"work":e.cls==="cz-ok"?"done":e.cls==="cz-late"?"late":"off";st=e.st.replace(/<[^>]+>/g,"").replace(/^[^A-Za-zÁÉÍÓÚáéíóúÑñ0-9¿¡]+/,"")}catch(x){}const c=[...S.items.values()].filter(d=>d._u===u&&isCamino(d)).length;return{cls,st:st+(c?" · "+c+" en camino":"")}};
   const rows=ids.map(u=>({u,...info(u)})).sort((a,b)=>(a.cls==="work"?0:1)-(b.cls==="work"?0:1)||personName(a.u).localeCompare(personName(b.u)));
   return `<div class="lbl">¿Quién lo lleva?</div><div class="asig-list">${rows.map(r=>`<button type="button" class="asig ${S.asig===r.u?"on":""}" data-asig="${esc(r.u)}"><span class="vp-dot ${r.cls}"></span><span class="who"><b>${esc(personName(r.u))}${roles.socios.includes(r.u)?' <span class="pill p-fijo">Socia/o</span>':""}</b><small>${esc(r.st)}</small></span></button>`).join("")||`<div class="empty">No hay deliverys activos.</div>`}</div>`}
-function openEntry(cm,pasar){edit=null;sinCliOk=false;S.pend=false;S.lote=false;LV=[];LVM="total";LVT=0;S.pagoTipo="";S.cmMet="efectivo";S.pasar=!!pasar;if(!pasar)S.asig="";if(!S.cliente){ubicTxt="";listaTxt="";retN="";retU="";retT="";cliTel=""}const isToday=S.dia===today();
+function openEntry(cm,pasar){if(S.mode==="db"&&!S.owner&&isAux(S.me)&&!auxHoy(S.me)){openAuxQuien();toast("Primero elegí quién trabaja hoy");return}edit=null;sinCliOk=false;S.pend=false;S.lote=false;LV=[];LVM="total";LVT=0;S.pagoTipo="";S.cmMet="efectivo";S.pasar=!!pasar;if(!pasar)S.asig="";if(!S.cliente){ubicTxt="";listaTxt="";retN="";retU="";retT="";cliTel=""}const isToday=S.dia===today();
   const forWho=S.pasar?"":S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   const presets=`<div class="chips">${PRESETS.map(v=>`<button type="button" class="chip ${S.val===v?"on":""}" data-preset="${v}">${v/1000} mil</button>`).join("")}<button type="button" class="chip other" data-other>✎ Otro monto</button></div>`;
   const cliente=`<div class="field"><label for="cli">${cm?"Nombre del cliente":"Cliente o comercio"}</label><input id="cli" autocomplete="off" placeholder="${cm?"Ej.: Super 6 – Barrio Centro":"Ej.: Farmacia Central"}" value="${esc(S.cliente)}">
@@ -2961,6 +2974,7 @@ document.addEventListener("click",async e=>{
     const dia=today();cajas.delete(u+"|"+dia);render(true);try{await sendW(db.collection("turnos/"+u+"/caja").doc(dia).delete());toast("Caja de hoy borrada · ya podés abrirla de nuevo")}catch(err){toast("No se pudo borrar")}}
   else if(t.hasAttribute("data-cajaabrir")&&!t.closest("#layer"))openCaja("abrir",t.dataset.cajaabrir||"");
   else if(t.hasAttribute("data-cajacerrar")&&!t.closest("#layer"))openCaja("cerrar");
+  else if(t.hasAttribute("data-auxquien")&&!t.closest("#layer"))openAuxQuien();
   else if(t.hasAttribute("data-radio")&&!t.closest("#layer")){rdUnlock();openRadio()}
   else if(t.dataset.confok||t.dataset.confno){const k=t.dataset.confok||t.dataset.confno;const ok=!!t.dataset.confok;const d=S.items.get(k);if(!d)return;
     if(!ok&&!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Seguro?";return}
@@ -3121,6 +3135,8 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.baja){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Confirmar baja?";return}
     try{await setBaja(t.dataset.baja,true);toast("Delivery dado de baja");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.dataset.aprobar){try{await aprobar(t.dataset.aprobar);toast("Delivery aprobado");setTimeout(openEquipo,400)}catch(err){toast("No se guardó.")}return}
+  if(t.dataset.auxpick){saveAuxQuien(t.dataset.auxpick);return}
+  if(t.hasAttribute("data-auxsave")){saveAuxQuien((document.getElementById("aux-n")||{}).value);return}
   if(t.dataset.aux){const u=t.dataset.aux,on=t.dataset.on==="1";try{S.people.set(u,{...(S.people.get(u)||{}),aux:on});await db.doc("turnos/"+u).set({aux:on},{merge:true});toast(on?personName(u)+" ahora es auxiliar: sin horario y acerto en el día":personName(u)+" ahora es fijo");openEquipo();render(true)}catch(err){toast("No se guardó.")}return}
   if(t.dataset.socio){try{await setSocio(t.dataset.socio,t.dataset.on==="1");toast(t.dataset.on==="1"?"Ahora es socio":"Ya no es socio");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-logout")){logout();return}
