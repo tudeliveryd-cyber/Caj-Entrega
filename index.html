@@ -957,7 +957,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="147";
+const APPV="148";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1234,6 +1234,7 @@ function startDemo(modo){
   const seedOwner=()=>{const G="turnos/gabi/entregas/";put("turnos/gabi",{nome:"Gabi (ejemplo)",aprobado:true,baja:false,horario:{res:{0:["09:00|23:00"],1:["09:00|23:00"],2:["09:00|23:00"],3:["09:00|23:00"],4:["09:00|23:00"],5:["09:00|23:00"],6:["09:00|23:00"]}}});
     [[4,[20000,15000,30000,25000]],[2,[15000,20000,18000]],[1,[25000,30000,15000,20000,15000]]].forEach(([dd,vs])=>{const dk=addDays(t,-dd);vs.forEach((v,i)=>put(G+"g"+dd+"_"+i,{valor:v,metodo:i%3===1?"transferencia":"efectivo",cliente:"Cliente "+(i+1),obs:"",dia:dk,criadoEm:at(dk,10+i,0)}))});
     put(G+"cf1",{valor:20000,metodo:"anotado",cliente:"Divina Mesa",obs:"",dia:t,criadoEm:at(t,9,15),conf:"pend"});put(G+"cf2",{valor:15000,metodo:"anotado",cliente:"Bom Corte",obs:"",dia:t,criadoEm:at(t,9,40),conf:"pend"});
+    if(/[?&]dup/.test(location.search)){put("turnos/gabi",{...store.get("turnos/gabi"),aux:true});put("turnos/gabi2",{nome:"Gabi (ejemplo)",aux:true,aprobado:true,baja:true,bajaEm:at(addDays(t,-40),20,0),criadoEm:at(addDays(t,-45),8,0)});put("turnos/gabi2/entregas/old1",{valor:30000,metodo:"efectivo",cliente:"Viejo",dia:addDays(t,-41),criadoEm:at(addDays(t,-41),10,0)})}
     put("ranking/gabi",{nome:"Gabi (ejemplo)",dias:{},pd:window.__demoPts.pd(110),cier:window.__demoPts.ci(110)})};
   seedBase();
   window.__demoAprobar=()=>{store.set("turnos/demo",{...(store.get("turnos/demo")||{}),aprobado:true});notify()};
@@ -2712,28 +2713,29 @@ function premiosBlock(){
     <p class="hint">La semana va de lunes a domingo y el mes es el mes calendario. Gana quien hace más entregas.</p>`}
 
 /* historial completo de un delivery (también desactivados): días trabajados, total, comisión, pagado */
-async function openHist(u){edit=null;const nm=personName(u)||"Delivery";
+const sameAux=u=>{if(!isAux(u))return[u];const k=norm((S.people.get(u)||{}).nome||"");if(!k)return[u];return[u,...[...S.people.keys()].filter(x=>x!==u&&isAux(x)&&norm((S.people.get(x)||{}).nome||"")===k)]};
+async function openHist(u){edit=null;const nm=personName(u)||"Delivery";const us=sameAux(u);
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Historial">${sheetHead(icSvg("calendar")+" Historial de "+esc(nm))}<div class="empty">Cargando…</div></div></div>`;
-  let items=[],pag={};try{const sn=await colFor(u).where("dia",">=","2000-01-01").limit(5000).get();items=sn.docs.map(d=>[d.id,{...d.data(),_u:u,_id:d.id}]).filter(([,d])=>!isCamino(d))}catch(e){items=allItems().filter(([,d])=>d._u===u&&!isCamino(d))}
-  try{const lq=await db.collection("liq/"+u+"/dias").limit(3000).get();for(const d of lq.docs)pag[d.id]=d.data()}catch(e){}
-  for(const[k,p]of S.pagos)if(k.startsWith(u+"|"))pag[k.split("|")[1]]=p;
-  const by=new Map();for(const e of items){const dia=e[1].dia;if(!dia)continue;if(!by.has(dia))by.set(dia,[]);by.get(dia).push(e)}
-  const dias=[...by].sort((a,b)=>a[0]<b[0]?1:-1).map(([dia,l])=>({dia,s:stats(l),q:[...new Set(l.map(([,d])=>d.quien).filter(Boolean))]}));
-  const T=stats(items);const pend=dias.filter(x=>x.s.saldo&&!pag[x.dia]);const pendS=pend.reduce((a,x)=>a+x.s.saldo,0);const p=S.people.get(u)||{};
-  const txt=`*Tú Delivery · Historial de ${nm}*\n${dias.length} días trabajados · ${T.n} entregas\nTotal cobrado: ${gs(T.total)}\n${T.sinCom?"Sin comisión":"Comisión"+(T.pct?" ("+T.pct+"%)":"")+": "+gs(T.com)}\n\n`+dias.map(x=>`• ${ddmm(x.dia)}: ${plural(x.s.n,"entrega")} · ${gs(x.s.total)}${x.s.sinCom?"":" · com. "+gs(x.s.com)}${x.s.saldo?(pag[x.dia]?" · pagado":" · pendiente"):""}`).join("\n");
+  let items=[],pag={};for(const x of us){try{const sn=await colFor(x).where("dia",">=","2000-01-01").limit(5000).get();items.push(...sn.docs.map(d=>[x+"|"+d.id,{...d.data(),_u:x,_id:d.id}]).filter(([,d])=>!isCamino(d)))}catch(e){items.push(...allItems().filter(([,d])=>d._u===x&&!isCamino(d)))}
+    try{const lq=await db.collection("liq/"+x+"/dias").limit(3000).get();for(const d of lq.docs)pag[x+"|"+d.id]=d.data()}catch(e){}}
+  for(const[k,p]of S.pagos)if(us.includes(k.split("|")[0]))pag[k]=p;
+  const by=new Map();for(const e of items){const dia=e[1].dia;if(!dia)continue;const kk=e[1]._u+"|"+dia;if(!by.has(kk))by.set(kk,[]);by.get(kk).push(e)}
+  const dias=[...by].map(([kk,l])=>({kk,dia:kk.split("|")[1],s:stats(l),q:[...new Set(l.map(([,d])=>d.quien).filter(Boolean))]})).sort((a,b)=>a.dia<b.dia?1:-1);
+  const T=stats(items);const pend=dias.filter(x=>x.s.saldo&&!pag[x.kk]);const pendS=pend.reduce((a,x)=>a+x.s.saldo,0);const p=S.people.get(u)||{};
+  const txt=`*Tú Delivery · Historial de ${nm}*\n${dias.length} días trabajados · ${T.n} entregas\nTotal cobrado: ${gs(T.total)}\n${T.sinCom?"Sin comisión":"Comisión"+(T.pct?" ("+T.pct+"%)":"")+": "+gs(T.com)}\n\n`+dias.map(x=>`• ${ddmm(x.dia)}: ${plural(x.s.n,"entrega")} · ${gs(x.s.total)}${x.s.sinCom?"":" · com. "+gs(x.s.com)}${x.s.saldo?(pag[x.kk]?" · pagado":" · pendiente"):""}`).join("\n");
   if(!layer.querySelector('[aria-label="Historial"]'))return;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Historial">${sheetHead(icSvg("calendar")+" Historial de "+esc(nm))}
-    <small class="hint" style="margin:0">${[p.baja?"Desactivado"+(p.bajaEm?" el "+ddmm(keyOf(new Date(p.bajaEm))):""):"Activo",isAux(u)?"Auxiliar":"",p.criadoEm?"desde "+ddmm(keyOf(new Date(p.criadoEm))):""].filter(Boolean).join(" · ")}</small>
+    <small class="hint" style="margin:0">${[p.baja?"Desactivado"+(p.bajaEm?" el "+ddmm(keyOf(new Date(p.bajaEm))):""):"Activo",isAux(u)?"Auxiliar":"",p.criadoEm?"desde "+ddmm(keyOf(new Date(p.criadoEm))):"",us.length>1?"junta "+us.length+" ingresos con el mismo nombre":""].filter(Boolean).join(" · ")}</small>
     <div class="hist-tot"><div><span>Días trabajados</span><b class="num">${dias.length}</b></div><div><span>Entregas</span><b class="num">${T.n}</b></div>
       <div><span>Total cobrado</span><b class="num">${gs(T.total)}</b></div><div><span>${T.sinCom?"Sin comisión":"Comisión"+(T.pct?" "+T.pct+"%":"")}</span><b class="num">${gs(T.com)}</b></div>
       <div class="ht-wide ${pendS>0?"due":pendS<0?"cash":"ok"}"><span>${pendS>0?"Debe a la empresa":pendS<0?"La empresa le debe":"Todo liquidado"}</span><b class="num">${gs(Math.abs(pendS))}</b></div></div>
-    <div class="list">${dias.map(x=>`<div class="cta-it hist-it"><span>${ddmm(x.dia)} · ${plural(x.s.n,"entrega")}<small>total ${gs(x.s.total)}${x.s.sinCom?"":" · comisión "+gs(x.s.com)}${x.q.length?" · "+esc(x.q.join(", ")):""}</small></span><b class="num ${x.s.saldo?(pag[x.dia]?"c-cash":"c-due"):""}">${x.s.saldo?(pag[x.dia]?"pagado":"pendiente"):"—"}</b></div>`).join("")||`<div class="empty">Sin entregas registradas.</div>`}</div>
+    <div class="list">${dias.map(x=>`<div class="cta-it hist-it"><span>${ddmm(x.dia)} · ${plural(x.s.n,"entrega")}<small>total ${gs(x.s.total)}${x.s.sinCom?"":" · comisión "+gs(x.s.com)}${x.q.length?" · "+esc(x.q.join(", ")):""}</small></span><b class="num ${x.s.saldo?(pag[x.kk]?"c-cash":"c-due"):""}">${x.s.saldo?(pag[x.kk]?"pagado":"pendiente"):"—"}</b></div>`).join("")||`<div class="empty">Sin entregas registradas.</div>`}</div>
     ${dias.length?`<a class="wa-big" href="${esc(waOpen(txt,u))}" target="_blank" rel="noopener">${icSvg("send")} Enviar historial por WhatsApp</a>`:""}
     ${pend.length?`<button type="button" class="ghost" data-cuenta="${esc(u)}">Ver cuenta y liquidar</button>`:""}</div></div>`}
 function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].filter(u=>u!==S.me);
   const pend=all.filter(u=>!isAprob(u)&&!isBaja(u)),act=all.filter(u=>isAprob(u)&&!isBaja(u)),inact=all.filter(isBaja);
   const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")+(p&&p.aux?" · sin horario · acerto en el día":p&&p.horario&&(p.horario.t1||p.horario.sem)?" · 🕒 "+esc(horLabel(p.horario)):"")};
-  const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b>${esc(personName(u))}</b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}</b><small>${kind==="pend"?"Esperando aprobación":kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
+  const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b>${esc(personName(u))}</b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}</b><small>${kind==="pend"?"Esperando aprobación"+(sameAux(u).length>1?' · <span class="cz-warn">ya trabajó antes con este nombre: el historial se junta</span>':""):kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button>${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?'<span class="pill p-aux">Pide volver hoy</span> ':""}<button type="button" class="small ${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?"ok":""}" data-reactivar="${esc(u)}">${isAux(u)?"Aceptar de nuevo":"Reactivar"}</button>`
       :`${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button><button type="button" class="small" data-aux="${esc(u)}" data-on="${isAux(u)?0:1}">${isAux(u)?"Pasar a fijo":"Es auxiliar"}</button><button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">${isAux(u)?"Terminó · desactivar":"Dar de baja"}</button>`}</div></div>`};
