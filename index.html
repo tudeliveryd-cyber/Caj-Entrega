@@ -903,7 +903,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="133";
+const APPV="134";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1748,7 +1748,7 @@ function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u
   const espC=c.cierraEm&&c.esp!=null?c.esp:K.esp;const dif=c.cierraEm?(c.cierra-espC):0;const despues=c.cierraEm&&c.esp!=null&&K.esp!==c.esp;
   const reab=(c.prev||[]).length?`<small class="caja-reab">Reabierta ${c.prev.length===1?"1 vez":c.prev.length+" veces"} · último cierre anterior ${hhmm(c.prev[c.prev.length-1].cierraEm)}</small>`:"";
   return `<section class="caja ${c.cierraEm?"cerrada":""}"><div class="caja-h"><b>💰 Caja ${c.cierraEm?"cerrada":"abierta"}</b><small>${yo?"":esc(personName(u))+" · "}${c.abreEm&&!c.auto?"abrió "+hhmm(c.abreEm):"no se abrió · empezó en ₲ 0"}${c.cierraEm?" · cerró "+hhmm(c.cierraEm):""}</small></div>
-    ${yo&&(!c.abreEm||c.auto)&&!c.cierraEm?`<button type="button" class="caja-ini" data-cajaabrir>${icSvg("pencil")}<span><b>¿Empezaste con plata?</b><small>Anotá con cuánto empezaste hoy. Se puede hacer una sola vez.</small></span></button>`:""}
+    ${!yo&&isRealOwner&&!c.cierraEm?`<button type="button" class="caja-ini" data-cajaabrir="${esc(u)}">${icSvg("pencil")}<span><b>${!c.abreEm||c.auto?"Anotar con cuánto empezó":"Corregir con cuánto empezó"}</b><small>Las entregas que ya hizo siguen contando.</small></span></button>`:""}${yo&&(!c.abreEm||c.auto)&&!c.cierraEm?`<button type="button" class="caja-ini" data-cajaabrir>${icSvg("pencil")}<span><b>¿Empezaste con plata?</b><small>Anotá con cuánto empezaste hoy. Se puede hacer una sola vez.</small></span></button>`:""}
     <div class="caja-rows"><div><span>Empezó con</span><b class="num">${gs(K.ab)}</b></div>
       <div><span>+ Delivery cobrado en efectivo</span><b class="num">${gs(c.cierraEm&&c.efC!=null?c.efC:K.ef+K.pago+K.diar)}</b></div>
       <div><span>− Gastos</span><b class="num c-due">${gs(c.cierraEm&&c.gasC!=null?c.gasC:K.gas)}</b></div>
@@ -1763,20 +1763,21 @@ function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u
       <div class="cf-tot"><span>Total de delivery hoy</span><b class="num">${gs(K.ef+K.pago+K.diar+K.tr+K.emp)}</b></div><small>Los productos no entran: los pagás con la plata de la caja y el cliente te los devuelve.</small></div>
     ${yo?(c.cierraEm?`<div class="caja-act"><button type="button" class="${despues?"primary":"ghost"}" data-cajareabrir>Seguir trabajando · reabrir caja</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajacerrar style="justify-self:start">Corregir cierre</button>`:""}</div><small class="caja-lock">Si saliste a trabajar de nuevo, reabrí la caja. Lo de antes queda guardado.</small>`:`<div class="caja-act"><button type="button" class="primary" data-cajacerrar>Cerrar caja · terminé el trabajo</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajaabrir>Cambiar inicio</button>`:""}</div>`):""}
     ${isRealOwner?`<button type="button" class="linkbtn small-link caja-reset" data-cajareset="${esc(u)}">🗑️ Borrar la caja de hoy${yo?"":" de "+esc((personName(u)||"").split(" ")[0])} y empezar de nuevo</button>`:""}</section>`}
-function openCaja(modo){edit=null;const K=cajaCalc(S.me,today());const ab=modo==="abrir";const cur=ab?(K.c.abre||""):(K.c.cierra||"");
-  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Caja">${sheetHead(ab?"💰 Abrir caja":"🔒 Cerrar caja")}
-    <p class="hint" style="margin:0">${ab?"¿Con cuánta plata empezás hoy? (el cambio que llevás)":"Contá toda la plata en efectivo que tenés ahora y escribí el total."}</p>
+var CJU=null;
+function openCaja(modo,u){edit=null;CJU=(isRealOwner&&u)||S.me;const otro=CJU!==S.me;const K=cajaCalc(CJU,today());const ab=modo==="abrir";const cur=ab?(K.c.abre||""):(K.c.cierra||"");
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Caja">${sheetHead(otro?(ab?"💰 Inicio de caja · ":"🔒 Cerrar caja · ")+esc((personName(CJU)||"").split(" ")[0]):ab?"💰 Abrir caja":"🔒 Cerrar caja")}
+    <p class="hint" style="margin:0">${ab?(otro?"¿Con cuánta plata empezó hoy? Las entregas que ya hizo siguen contando.":"¿Con cuánta plata empezás hoy? (el cambio que llevás)"):"Contá toda la plata en efectivo que tenés ahora y escribí el total."}</p>
     ${ab?"":`<div class="caja-rows mini"><div class="caja-esp"><span>Tendría que haber</span><b class="num">${gs(K.esp)}</b></div></div>`}
     <div class="money"><span>₲</span><input id="caja-v" inputmode="numeric" autocomplete="off" placeholder="${ab?"Ej.: 200.000":"Total contado"}" value="${cur?fmtInput(cur):""}"></div>
     ${ab?`<div class="chips">${[0,50000,100000,150000,200000,300000].map(v=>`<button type="button" class="chip" data-cajapre="${v}">${v?v/1000+" mil":"Sin cambio"}</button>`).join("")}</div>`:""}
     <button type="button" class="primary" data-cajasave="${ab?"abrir":"cerrar"}">${ab?"Abrir caja":"Cerrar caja"}</button></div></div>`;
   setTimeout(()=>{const i=document.getElementById("caja-v");if(i)i.focus()},80)}
-async function saveCaja(modo,v){const dia=today();const cur=cajaOf(S.me,dia)||{dia};const n={...cur,dia};
+async function saveCaja(modo,v){const U=(isRealOwner&&CJU)||S.me;CJU=null;const dia=today();const cur=cajaOf(U,dia)||{dia};const n={...cur,dia};
   if(!isRealOwner&&modo!=="reabrir"&&((modo==="abrir"&&((cur.abreEm&&!cur.auto)||cur.cierraEm))||(modo==="cerrar"&&cur.cierraEm))){toast("🔒 No se puede cambiar la caja de hoy");return"ok"}
   if(modo==="abrir"){n.abre=v;n.abreEm=cur.abreEm||Date.now();delete n.auto}else if(modo==="reabrir"){if(!cur.cierraEm)return"ok";n.prev=[...(cur.prev||[]),{cierra:cur.cierra||0,cierraEm:cur.cierraEm,esp:cur.esp!=null?cur.esp:null}];delete n.cierra;delete n.cierraEm;delete n.esp;delete n.efC;delete n.gasC}
-  else{n.cierra=v;n.cierraEm=Date.now();if(!n.abreEm){n.abreEm=Date.now();n.abre=0;n.auto=true}{const K0=cajaCalc(S.me,dia);n.esp=K0.esp;n.efC=K0.ef+K0.pago+K0.diar;n.gasC=K0.gas}}
-  delete n._u;delete n._id;cajas.set(S.me+"|"+dia,{...n,_u:S.me,_id:dia});render(true);
-  const w=await sendW(db.collection("turnos/"+S.me+"/caja").doc(dia).set(n));return w}
+  else{n.cierra=v;n.cierraEm=Date.now();if(!n.abreEm){n.abreEm=Date.now();n.abre=0;n.auto=true}{const K0=cajaCalc(U,dia);n.esp=K0.esp;n.efC=K0.ef+K0.pago+K0.diar;n.gasC=K0.gas}}
+  delete n._u;delete n._id;cajas.set(U+"|"+dia,{...n,_u:U,_id:dia});render(true);
+  const w=await sendW(db.collection("turnos/"+U+"/caja").doc(dia).set(n));return w}
 function viewSummary(list){
   const s=stats(list);const gr=groups(list);
   const single=gr.length===1?gr[0].k:null;
@@ -2807,7 +2808,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.cajareset&&!t.closest("#layer")){const u=t.dataset.cajareset;
     if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Seguro? Tocá de nuevo para borrar";setTimeout(()=>{if(t.isConnected){t.classList.remove("armed");const cb=document.getElementById("caja-box");if(cb)cb.dataset.h="";render(true)}},3000);return}
     const dia=today();cajas.delete(u+"|"+dia);render(true);try{await sendW(db.collection("turnos/"+u+"/caja").doc(dia).delete());toast("Caja de hoy borrada · ya podés abrirla de nuevo")}catch(err){toast("No se pudo borrar")}}
-  else if(t.hasAttribute("data-cajaabrir")&&!t.closest("#layer"))openCaja("abrir");
+  else if(t.hasAttribute("data-cajaabrir")&&!t.closest("#layer"))openCaja("abrir",t.dataset.cajaabrir||"");
   else if(t.hasAttribute("data-cajacerrar")&&!t.closest("#layer"))openCaja("cerrar");
   else if(t.hasAttribute("data-cajareabrir")&&!t.closest("#layer")){saveCaja("reabrir").then(w=>{toast("Caja abierta de nuevo · al terminar, cerrala otra vez")})}
   else if(t.hasAttribute("data-pasar")){S.asig="";openEntry(true,true)}
@@ -2892,8 +2893,8 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.cajapre!==undefined){const i=document.getElementById("caja-v");if(i)i.value=fmtInput(+t.dataset.cajapre)||"0";return}
   if(t.dataset.cajasave){const md=t.dataset.cajasave;const raw=(document.getElementById("caja-v")||{}).value||"";const v=parseVal(raw);
     if(md==="cerrar"&&!raw.trim()){toast("Escribí cuánto contaste");return}
-    closeSheet();try{const w=await saveCaja(md,v);if(md==="abrir")toast(w==="wait"?"Caja abierta · se envía al volver la señal":"💰 Caja abierta con "+gs(v));
-      else{const K=cajaCalc(S.me,today());const d=v-K.esp;toast(d===0?"✅ Caja cerrada · cuadra justo":d<0?"⚠️ Caja cerrada · falta "+gs(-d):"Caja cerrada · sobra "+gs(d))}}catch(err){toast("No se guardó.")}return}
+    const _cu=(isRealOwner&&CJU)||S.me;closeSheet();try{const w=await saveCaja(md,v);if(md==="abrir")toast(w==="wait"?"Caja abierta · se envía al volver la señal":"💰 Caja abierta con "+gs(v));
+      else{const K=cajaCalc(_cu,today());const d=v-K.esp;toast(d===0?"✅ Caja cerrada · cuadra justo":d<0?"⚠️ Caja cerrada · falta "+gs(-d):"Caja cerrada · sobra "+gs(d))}}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-cfnew")){openCfEdit(null);return}
   if(t.hasAttribute("data-geobuscar")){geoBuscar();return}
   if(t.hasAttribute("data-geomapa")){openMapPick();return}
