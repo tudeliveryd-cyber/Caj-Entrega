@@ -707,6 +707,7 @@ details.caja .caja-arr{color:var(--muted);transition:transform .2s;margin-left:4
 .dst{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid color-mix(in srgb,#e8b93a 50%,var(--line));background:color-mix(in srgb,#e8b93a 8%,var(--surface));color:var(--ink);border-radius:14px;padding:10px 12px;font:inherit}
 .dst>svg{width:22px;height:22px;color:#e8b93a;flex:none}.dst-b{display:grid;gap:6px;flex:1;min-width:0}
 .dst-r{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px}.dst-l{grid-column:1/-1;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:#c99a1c;font-weight:700}.dst-r b{font-size:15px}.dst-r small{color:var(--muted);font-size:12.5px;align-self:center}
+.cum-falta{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}.cum-falta.hoy{color:#e0679a;font-weight:700}
 .cum-row{display:grid;grid-template-columns:1fr 1.6fr;gap:10px}.cum-row select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--bg);color:var(--ink);font:16px var(--body)}
 .confeti{position:fixed;inset:0;pointer-events:none;z-index:200;overflow:hidden}.confeti i{position:absolute;top:-12px;width:8px;height:14px;border-radius:2px;animation:conf 3s ease-in forwards}
 @keyframes conf{to{top:110%;transform:rotate(720deg) translateX(40px)}}
@@ -993,7 +994,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="155";
+const APPV="156";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2849,7 +2850,7 @@ function cumpleAviso(){if(S.mode!=="db")return;const k="caixa_cumple_aviso";let 
   const yo=hoy.find(c=>c.u===S.me);if(yo){setTimeout(()=>{toast("¡Feliz cumpleaños! De parte de todo Tú Delivery");cumpleConfeti()},800)}
   else setTimeout(()=>toast("Hoy cumple años "+hoy.map(c=>(c.nome||"").split(" ")[0]+(c.f?" ("+c.f+")":"")).join(" y ")+" · ¡Felicidades!"),800)}
 function cumpleConfeti(){const cs=["#e8b93a","#9b7be0","#3fae6a","#e0679a","#4a8fe0"];const w=document.createElement("div");w.className="confeti";for(let i=0;i<60;i++){const p=document.createElement("i");p.style.left=Math.random()*100+"%";p.style.background=cs[i%cs.length];p.style.animationDelay=(Math.random()*.8)+"s";p.style.transform="rotate("+Math.random()*360+"deg)";w.appendChild(p)}document.body.appendChild(w);setTimeout(()=>w.remove(),3800)}
-function openCumple(pre){edit=null;if(!S.owner){toast("Los cumpleaños los carga la empresa");return}const l=cumples().sort((a,b)=>a.md<b.md?-1:1);const pn=pre&&pre!==S.me?(personName(pre)||""):"";
+function openCumple(pre){edit=null;if(!S.owner){toast("Los cumpleaños los carga la empresa");return}const l=cumples().sort((a,b)=>diasHasta(a.md)-diasHasta(b.md));const pn=pre&&pre!==S.me?(personName(pre)||""):"";
   const ex=pre?l.find(c=>c.u===pre):null;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Cumpleaños">${sheetHead(icSvg("cake")+" Cumpleaños")}
     <p class="hint" style="margin:0">Cargá nombre y día. En cada mes, todo el equipo ve los cumpleaños de ese mes y el día aparece la felicitación. Si en el mes no hay, no aparece nada.</p>
@@ -2860,7 +2861,7 @@ function openCumple(pre){edit=null;if(!S.owner){toast("Los cumpleaños los carga
       <div class="field"><label for="cum-m">Mes</label><select id="cum-m"><option value="">—</option>${MESES.map((m,i)=>`<option value="${i+1}" ${ex&&Number(ex.md.slice(0,2))===i+1?"selected":""}>${m}</option>`).join("")}</select></div></div>
     <button type="button" class="primary" data-cumsave="${esc(ex?ex.id:"")}" data-cumu="${esc(pre&&pre!==S.me?pre:ex&&ex.u||"")}">${ex?"Guardar cambios":"+ Agregar cumpleaños"}</button>
     <div class="lbl">Cargados (${l.length})</div>
-    <div class="list">${l.length?l.map(c=>`<div class="cta-it"><span><b>${Number(c.md.slice(3))} de ${MESES[Number(c.md.slice(0,2))-1]}</b> · ${esc(c.nome)}${c.f?` <span class="cm-f">${esc(c.f)}</span>`:""}</span><span><button type="button" class="linkbtn small-link" data-cumedit="${esc(c.id)}">editar</button> <button type="button" class="linkbtn small-link" data-cumdel="${esc(c.id)}">quitar</button></span></div>`).join(""):`<div class="empty">Todavía no cargaste ningún cumpleaños.</div>`}</div></div></div>`;
+    <div class="list">${l.length?l.map(c=>`<div class="cta-it"><span><b>${Number(c.md.slice(3))} de ${MESES[Number(c.md.slice(0,2))-1]}</b> · ${esc(c.nome)}${c.f?` <span class="cm-f">${esc(c.f)}</span>`:""}<small class="cum-falta ${diasHasta(c.md)===0?"hoy":""}">${(n=>n===0?"¡Es hoy!":n===1?"Falta 1 día · mañana":"Faltan "+n+" días")(diasHasta(c.md))}</small></span><span><button type="button" class="linkbtn small-link" data-cumedit="${esc(c.id)}">editar</button> <button type="button" class="linkbtn small-link" data-cumdel="${esc(c.id)}">quitar</button></span></div>`).join(""):`<div class="empty">Todavía no cargaste ningún cumpleaños.</div>`}</div></div></div>`;
   if(!ex)setTimeout(()=>{const n=document.getElementById("cum-n");if(n&&!n.value)n.focus()},80)}
 async function saveCumpleList(list,msg){cumpleL=list;render(true);try{await sendW(db.doc("ranking/_cumples").set({list,upd:Date.now()}));toast(msg)}catch(e){toast("No se guardó.")}}
 
