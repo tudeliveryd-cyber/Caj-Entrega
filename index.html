@@ -676,6 +676,9 @@ details.sec.fold{display:grid;gap:10px}
 .lg-aux-btn{display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;text-align:left;border:1px dashed var(--line);background:none;color:var(--ink);border-radius:14px;padding:12px 14px;font:inherit}
 .lg-aux-btn svg,.lg-aux-h svg{width:24px;height:24px;color:var(--accent);flex:none}.lg-aux-btn span{display:grid;gap:2px}.lg-aux-btn small{color:var(--muted);font-size:12.5px}
 .lg-aux-h{display:grid;justify-items:center;gap:4px;text-align:center}.lg-aux-h small{color:var(--muted)}
+.hist-tot{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hist-tot>div{display:grid;gap:2px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface)}.hist-tot span{color:var(--muted);font-size:12.5px}.hist-tot b{font-size:19px}
+.ht-wide{grid-column:1/-1}.ht-wide.due b{color:var(--due)}.ht-wide.cash b{color:var(--cash)}.ht-wide.ok b{color:var(--cash)}
+.hist-it span small{display:block;color:var(--muted);font-size:12px}
 .p-aux{background:color-mix(in srgb,#4a8fe0 18%,transparent);color:#4a8fe0}
 .rd-open.rd-live svg{color:#2e9e5b}
 .rd-sheet{display:grid;gap:12px}
@@ -954,7 +957,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="146";
+const APPV="147";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1589,6 +1592,7 @@ function openViewPick(){edit=null;const ids=activos();const t=today();
     <div class="vp-list">${row("all","🏢 Empresa","Todos juntos · "+plural(tot,"entrega")+" hoy","emp")}
     ${ids.map(u=>{let dot="",sub=plural(nOf(u),"entrega")+" hoy";if(u!==S.me){try{const e=estadoDe(u);dot=e.cls==="cz-work"?"work":e.cls==="cz-ok"?"done":e.cls==="cz-late"?"late":"off";sub+=" · "+e.st.replace(/<[^>]+>/g,"")}catch(x){}}
       return row(u,esc(personName(u))+(u===S.me?" (vos)":""),sub,dot)}).join("")}</div>
+    ${(()=>{const bj=[...S.people.keys()].filter(u=>u!==S.me&&isBaja(u));return bj.length?`<div class="lbl">Desactivados · ver historial</div><div class="vp-list">${bj.map(u=>`<button type="button" class="vp-row" data-hist="${esc(u)}"><span class="vp-dot off"></span><span class="who"><b>${esc(personName(u))}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}</b><small>${(()=>{const l=allItems().filter(([,d])=>d._u===u&&!isCamino(d));const ds=new Set(l.map(([,d])=>d.dia));return ds.size?plural(ds.size,"día")+" este mes · "+plural(stats(l).n,"entrega"):"ver historial"})()}</small></span><span class="caja-go">›</span></button>`).join("")}</div>`:""})()}
     <button type="button" class="ghost" data-equipo>👥 Equipo · horarios, teléfonos, aprobar</button></div></div>`}
 function paint(){
   try{checkAutoInicio()}catch(e){}
@@ -2706,13 +2710,33 @@ function premiosBlock(){
   return `<div class="prizes">${premioCard("Premio de la semana","Tanque lleno de nafta",ws,t,pws,addDays(ws,-1),"Ganador de la semana pasada")}
     ${premioCard("Premio del mes",gs(200000)+" de bono",ms,t,pms,pme,"Ganador de "+MESES[pm.getMonth()])}</div>
     <p class="hint">La semana va de lunes a domingo y el mes es el mes calendario. Gana quien hace más entregas.</p>`}
+
+/* historial completo de un delivery (también desactivados): días trabajados, total, comisión, pagado */
+async function openHist(u){edit=null;const nm=personName(u)||"Delivery";
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Historial">${sheetHead(icSvg("calendar")+" Historial de "+esc(nm))}<div class="empty">Cargando…</div></div></div>`;
+  let items=[],pag={};try{const sn=await colFor(u).where("dia",">=","2000-01-01").limit(5000).get();items=sn.docs.map(d=>[d.id,{...d.data(),_u:u,_id:d.id}]).filter(([,d])=>!isCamino(d))}catch(e){items=allItems().filter(([,d])=>d._u===u&&!isCamino(d))}
+  try{const lq=await db.collection("liq/"+u+"/dias").limit(3000).get();for(const d of lq.docs)pag[d.id]=d.data()}catch(e){}
+  for(const[k,p]of S.pagos)if(k.startsWith(u+"|"))pag[k.split("|")[1]]=p;
+  const by=new Map();for(const e of items){const dia=e[1].dia;if(!dia)continue;if(!by.has(dia))by.set(dia,[]);by.get(dia).push(e)}
+  const dias=[...by].sort((a,b)=>a[0]<b[0]?1:-1).map(([dia,l])=>({dia,s:stats(l),q:[...new Set(l.map(([,d])=>d.quien).filter(Boolean))]}));
+  const T=stats(items);const pend=dias.filter(x=>x.s.saldo&&!pag[x.dia]);const pendS=pend.reduce((a,x)=>a+x.s.saldo,0);const p=S.people.get(u)||{};
+  const txt=`*Tú Delivery · Historial de ${nm}*\n${dias.length} días trabajados · ${T.n} entregas\nTotal cobrado: ${gs(T.total)}\n${T.sinCom?"Sin comisión":"Comisión"+(T.pct?" ("+T.pct+"%)":"")+": "+gs(T.com)}\n\n`+dias.map(x=>`• ${ddmm(x.dia)}: ${plural(x.s.n,"entrega")} · ${gs(x.s.total)}${x.s.sinCom?"":" · com. "+gs(x.s.com)}${x.s.saldo?(pag[x.dia]?" · pagado":" · pendiente"):""}`).join("\n");
+  if(!layer.querySelector('[aria-label="Historial"]'))return;
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Historial">${sheetHead(icSvg("calendar")+" Historial de "+esc(nm))}
+    <small class="hint" style="margin:0">${[p.baja?"Desactivado"+(p.bajaEm?" el "+ddmm(keyOf(new Date(p.bajaEm))):""):"Activo",isAux(u)?"Auxiliar":"",p.criadoEm?"desde "+ddmm(keyOf(new Date(p.criadoEm))):""].filter(Boolean).join(" · ")}</small>
+    <div class="hist-tot"><div><span>Días trabajados</span><b class="num">${dias.length}</b></div><div><span>Entregas</span><b class="num">${T.n}</b></div>
+      <div><span>Total cobrado</span><b class="num">${gs(T.total)}</b></div><div><span>${T.sinCom?"Sin comisión":"Comisión"+(T.pct?" "+T.pct+"%":"")}</span><b class="num">${gs(T.com)}</b></div>
+      <div class="ht-wide ${pendS>0?"due":pendS<0?"cash":"ok"}"><span>${pendS>0?"Debe a la empresa":pendS<0?"La empresa le debe":"Todo liquidado"}</span><b class="num">${gs(Math.abs(pendS))}</b></div></div>
+    <div class="list">${dias.map(x=>`<div class="cta-it hist-it"><span>${ddmm(x.dia)} · ${plural(x.s.n,"entrega")}<small>total ${gs(x.s.total)}${x.s.sinCom?"":" · comisión "+gs(x.s.com)}${x.q.length?" · "+esc(x.q.join(", ")):""}</small></span><b class="num ${x.s.saldo?(pag[x.dia]?"c-cash":"c-due"):""}">${x.s.saldo?(pag[x.dia]?"pagado":"pendiente"):"—"}</b></div>`).join("")||`<div class="empty">Sin entregas registradas.</div>`}</div>
+    ${dias.length?`<a class="wa-big" href="${esc(waOpen(txt,u))}" target="_blank" rel="noopener">${icSvg("send")} Enviar historial por WhatsApp</a>`:""}
+    ${pend.length?`<button type="button" class="ghost" data-cuenta="${esc(u)}">Ver cuenta y liquidar</button>`:""}</div></div>`}
 function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].filter(u=>u!==S.me);
   const pend=all.filter(u=>!isAprob(u)&&!isBaja(u)),act=all.filter(u=>isAprob(u)&&!isBaja(u)),inact=all.filter(isBaja);
   const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")+(p&&p.aux?" · sin horario · acerto en el día":p&&p.horario&&(p.horario.t1||p.horario.sem)?" · 🕒 "+esc(horLabel(p.horario)):"")};
   const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b>${esc(personName(u))}</b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}</b><small>${kind==="pend"?"Esperando aprobación":kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
-      :kind==="baja"?`${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?'<span class="pill p-aux">Pide volver hoy</span> ':""}<button type="button" class="small ${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?"ok":""}" data-reactivar="${esc(u)}">${isAux(u)?"Aceptar de nuevo":"Reactivar"}</button>`
-      :`${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small" data-aux="${esc(u)}" data-on="${isAux(u)?0:1}">${isAux(u)?"Pasar a fijo":"Es auxiliar"}</button><button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">${isAux(u)?"Terminó · desactivar":"Dar de baja"}</button>`}</div></div>`};
+      :kind==="baja"?`<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button>${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?'<span class="pill p-aux">Pide volver hoy</span> ':""}<button type="button" class="small ${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?"ok":""}" data-reactivar="${esc(u)}">${isAux(u)?"Aceptar de nuevo":"Reactivar"}</button>`
+      :`${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button><button type="button" class="small" data-aux="${esc(u)}" data-on="${isAux(u)?0:1}">${isAux(u)?"Pasar a fijo":"Es auxiliar"}</button><button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">${isAux(u)?"Terminó · desactivar":"Dar de baja"}</button>`}</div></div>`};
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Equipo">
     ${sheetHead("Equipo")}
     ${pend.length?`<div class="lbl">Nuevos · esperando aprobación</div><div class="list">${pend.map(u=>row(u,"pend")).join("")}</div>`:""}
@@ -3149,6 +3173,7 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.baja){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Confirmar baja?";return}
     try{await setBaja(t.dataset.baja,true);toast("Delivery dado de baja");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.dataset.aprobar){try{await aprobar(t.dataset.aprobar);toast("Delivery aprobado");setTimeout(openEquipo,400)}catch(err){toast("No se guardó.")}return}
+  if(t.dataset.hist){openHist(t.dataset.hist);return}
   if(t.dataset.auxpick){saveAuxQuien(t.dataset.auxpick);return}
   if(t.hasAttribute("data-auxsave")){saveAuxQuien((document.getElementById("aux-n")||{}).value);return}
   if(t.dataset.aux){const u=t.dataset.aux,on=t.dataset.on==="1";try{S.people.set(u,{...(S.people.get(u)||{}),aux:on});await db.doc("turnos/"+u).set({aux:on},{merge:true});toast(on?personName(u)+" ahora es auxiliar: sin horario y acerto en el día":personName(u)+" ahora es fijo");openEquipo();render(true)}catch(err){toast("No se guardó.")}return}
