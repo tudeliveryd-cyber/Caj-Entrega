@@ -895,7 +895,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="125";
+const APPV="126";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1698,7 +1698,7 @@ function acertoBlock(s,label,pay,gt){
     <div class="ac-res"><span>${r.t}</span><b class="num ${r.c}">${gs(r.v)}</b></div>
     ${pay?`<div class="ac-pay">${pay}</div>`:""}
     <div class="ac-foot">${S.mode==="db"&&!S.owner?"Te quedan":"Delivery queda con"} ${gs(s.fica)} · ${S.mode==="db"&&!S.owner?"tenés":"tiene"} en mano ${gs(s.efectivo+s.transferencia+s.pagado+s.fijo-s.fijoEmp)}${s.fijo?" (incluye diario de clientes fijos)":s.pagado?" entre efectivo, transferencia y pedidos pagos":" entre efectivo y transferencia"}</div>
-    ${gt!==undefined?`<div class="ac-net"><span>Gastos ${gs(gt)}</span><span>Le queda limpio <b class="num ${s.fica-gt<0?"c-due":"c-cash"}">${gs(s.fica-gt)}</b></span></div>`:""}
+    ${gt!==undefined?`<div class="ac-net"><span>Gastos ${gs(gt)}</span><span>${S.mode==="db"&&!S.owner?"Te queda limpio":"Le queda limpio"} <b class="num ${s.fica-gt<0?"c-due":"c-cash"}">${gs(s.fica-gt)}</b></span></div>`:""}
   </div>`}
 function driverTable(gr,dia){
   if(gr.length<2)return"";
