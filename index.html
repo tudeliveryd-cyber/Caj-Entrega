@@ -668,6 +668,9 @@ details.sec.fold{display:grid;gap:10px}
 .ns-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ns-two>div{display:grid;gap:2px}.ns-two span{color:var(--muted);font-size:13px}.ns-two b{font-size:19px}.ns-two small{font-size:12px}
 .ns-pasa{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:1px solid var(--line);padding-top:6px;font-weight:700}.ns-pasa b{font-size:20px}
 .nt-ctot{font-size:13px;color:var(--muted)}
+.cta-dia{flex-wrap:wrap}.cta-it span small{display:block;color:var(--muted);font-size:12px}
+.dia-paga{flex-basis:100%;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;border:1px solid var(--cash);background:none;color:var(--cash);border-radius:10px;padding:8px;font:600 14px var(--body)}
+.dia-paga svg{width:16px;height:16px}.dia-paga.armed{background:var(--cash);color:#fff}
 .conf-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}.conf-row:first-child{border-top:0}
 .conf-row .who{display:grid;gap:2px}.conf-row .who small{color:var(--muted);font-size:12.5px}
 .conf-act{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -923,7 +926,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="137";
+const APPV="138";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1962,14 +1965,14 @@ function openCuenta(u){edit=null;const c=cuentaDe(u);const ro=!S.owner;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Cuenta">${sheetHead(ro?"💰 Mi cuenta":"💰 Cuenta de "+esc(personName(u)))}
     <div class="cta-big ${c.saldo>0?"due":c.saldo<0?"cash":""}"><span>${c.saldo>0?(ro?"Tenés que pagar":"Debe a la empresa"):c.saldo<0?(ro?"La empresa te debe":"La empresa le debe"):"Cuenta al día ✅"}</span><b class="num">${gs(Math.abs(c.saldo))}</b></div>
     <div class="list">
-      ${c.dias.map(x=>`<div class="cta-it"><span>${ddmm(x.dia)} · liquidación del día</span><b class="num ${x.s.saldo>0?"c-due":"c-cash"}">${x.s.saldo>0?"":"− "}${gs(Math.abs(x.s.saldo))}</b></div>`).join("")}
+      ${c.dias.map(x=>`<div class="cta-it ${ro?"":"cta-dia"}"><span>${ddmm(x.dia)} · ${x.s.saldo>0?"debe del día":"la empresa le debe"}<small>${plural(x.s.n,"entrega")} · total ${gs(x.s.total)}</small></span><b class="num ${x.s.saldo>0?"c-due":"c-cash"}">${x.s.saldo>0?"":"− "}${gs(Math.abs(x.s.saldo))}</b>${ro?"":`<button type="button" class="dia-paga" data-diapaga="${esc(u)}|${esc(x.dia)}">${icSvg("checkc")} ${x.s.saldo>0?"Pagó este día":"Ya le pagué este día"}</button>`}</div>`).join("")}
       ${c.ms.map(m=>`<div class="cta-it"><span>${ddmm(keyOf(new Date(m.em)))} · ${m.tipo==="deuda"?"Deuda":"Pagó"}${m.nota?" · "+esc(m.nota):""} ${ro?"":`<button type="button" class="linkbtn small-link" data-movdel="${esc(u)}|${esc(m._id)}">quitar</button>`}</span><b class="num ${m.tipo==="deuda"?"c-due":"c-cash"}">${m.tipo==="deuda"?"":"− "}${gs(m.monto)}</b></div>`).join("")}
       ${!c.dias.length&&!c.ms.length?`<div class="empty">Sin movimientos pendientes.</div>`:""}
     </div>
     ${ro?`<p class="hint" style="margin:0">Para pagar, hablá con la empresa. Cuando registren tu pago, se descuenta acá.</p>`:""}<div class="cta-acts" ${ro?"hidden":""}><button type="button" class="small pay" data-movnew="${esc(u)}|abono">+ Registrar pago</button><button type="button" class="small" data-movnew="${esc(u)}|deuda">+ Deuda anterior / préstamo</button></div>
     ${ro?"":`<a class="wa-big" href="${esc(cuentaWa(u,c))}" target="_blank" rel="noopener">📲 Enviar estado de cuenta</a>`}
     ${!ro&&(c.dias.length||c.ms.length)?`<button type="button" class="ghost" data-saldar="${esc(u)}">✓ Saldar todo (queda en cero)</button>`:""}
-    ${ro?"":`<p class="hint" style="margin:0">Pago parcial: registrá lo que pagó y el saldo baja. “Saldar todo” marca los días como pagados y cierra la cuenta.</p>`}</div></div>`}
+    ${ro?"":`<p class="hint" style="margin:0">Pago parcial: registrá lo que pagó y el saldo baja. <b>Pagó este día</b> salda solo ese día y deja los otros pendientes. “Saldar todo” marca todos los días como pagados y cierra la cuenta.</p>`}</div></div>`}
 function openMovNew(u,tipo){edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog">${sheetHead((tipo==="abono"?"💵 Registrar pago de ":"📌 Deuda de ")+esc(personName(u)))}
   <div class="money"><span>₲</span><input id="mv-val" inputmode="numeric" autocomplete="off" placeholder="Monto"></div>
   <div class="field"><label for="mv-nota">Detalle (opcional)</label><input id="mv-nota" autocomplete="off" placeholder="${tipo==="abono"?"Ej.: pagó en efectivo":"Ej.: deuda de septiembre, préstamo"}"></div>
@@ -3027,6 +3030,9 @@ layer.addEventListener("click",async e=>{
     try{await sendW(db.collection("liq/"+u+"/movs").doc(id).set(m));toast(tp==="abono"?"Pago registrado · "+gs(v):"Deuda registrada · "+gs(v))}catch(err){movs.delete(u+"|"+id);toast("No se guardó.");openCuenta(u)}return}
   if(t.dataset.movdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿quitar?";return}const[u,id]=t.dataset.movdel.split("|");movs.delete(u+"|"+id);openCuenta(u);
     try{await sendW(db.collection("liq/"+u+"/movs").doc(id).delete());toast("Quitado")}catch(err){toast("No se guardó.")}return}
+  if(t.dataset.diapaga){const[u,dia]=t.dataset.diapaga.split("|");const x=cuentaDe(u).dias.find(y=>y.dia===dia);if(!x)return;
+    if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo para confirmar "+ddmm(dia);return}
+    try{await setPago(u,dia,x.s);render(true);openCuenta(u);toast(ddmm(dia)+" saldado · "+gs(Math.abs(x.s.saldo)))}catch(err){toast("No se guardó.")}return}
   if(t.dataset.saldar){const u=t.dataset.saldar;if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Seguro? Tocá de nuevo para dejar en cero";return}
     const c=cuentaDe(u);closeSheet();try{for(const x of c.dias)await setPago(u,x.dia,x.s);
       for(const m of c.ms){movs.delete(u+"|"+m._id);await sendW(db.collection("liq/"+u+"/movs").doc(m._id).set({abierto:false,cerradoEm:Date.now()},{merge:true}))}
