@@ -672,6 +672,7 @@ details.sec.fold{display:grid;gap:10px}
 .ns-two.c3{grid-template-columns:1fr 1fr 1fr}.ns-two.c3 b{font-size:16px}
 .ns-pasa{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:1px solid var(--line);padding-top:6px;font-weight:700}.ns-pasa b{font-size:20px}
 .nt-ctot{font-size:13px;color:var(--muted)}
+.p-aux{background:color-mix(in srgb,#4a8fe0 18%,transparent);color:#4a8fe0}
 .rd-open.rd-live svg{color:#2e9e5b}
 .rd-sheet{display:grid;gap:12px}
 .rd-live-btn{display:flex;gap:12px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;padding:11px 12px;font:inherit}
@@ -948,7 +949,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="143";
+const APPV="144";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2043,16 +2044,17 @@ function cuentasBox(){if(S.mode!=="db"||!S.owner||!showEmp())return"";const ids=
   const rows=ids.map(u=>({u,c:cuentaDe(u)})).filter(r=>r.c.saldo).sort((a,b)=>b.c.saldo-a.c.saldo);if(!rows.length)return"";
   const debe=rows.filter(r=>r.c.saldo>0).reduce((a,r)=>a+r.c.saldo,0);
   return `<section class="sec"><div class="sec-h"><h2>💰 Cuentas de los deliverys</h2>${debe?`<span class="num c-due">Deben ${gs(debe)}</span>`:""}</div><div class="list">
-    ${rows.map(({u,c})=>`<button type="button" class="cta-row" data-cuenta="${esc(u)}"><span class="who"><b>${esc(personName(u))}</b><small>${c.saldo>0?"debe a la empresa":"la empresa le debe"}${c.dias.length?" · "+plural(c.dias.length,"día")+" sin liquidar":""}${c.old>2&&c.saldo>0?` · <span class="cz-warn">hace ${c.old} días</span>`:""}${c.deu?" · deuda anterior":""}</small></span>
-      <b class="num ${c.saldo>0?(c.old>2?"cta-red":"c-due"):"c-cash"}">${gs(Math.abs(c.saldo))} ›</b></button>`).join("")}</div></section>`}
+    ${rows.map(({u,c})=>`<button type="button" class="cta-row" data-cuenta="${esc(u)}"><span class="who"><b>${esc(personName(u))}</b><small>${isAux(u)?'<span class="pill p-aux">Auxiliar</span> ':""}${c.saldo>0?"debe a la empresa":"la empresa le debe"}${c.dias.length?" · "+plural(c.dias.length,"día")+" sin liquidar":""}${isAux(u)&&c.dias.some(x=>x.dia<today())?` · <span class="cz-warn">acerto en el día: está atrasado</span>`:""}${!isAux(u)&&c.old>2&&c.saldo>0?` · <span class="cz-warn">hace ${c.old} días</span>`:""}${c.deu?" · deuda anterior":""}</small></span>
+      <b class="num ${c.saldo>0?(c.old>2||(isAux(u)&&c.old>=1)?"cta-red":"c-due"):"c-cash"}">${gs(Math.abs(c.saldo))} ›</b></button>`).join("")}</div></section>`}
 function cuentaWa(u,c){const nm=(personName(u)||"").split(" ")[0];
   const ln=[...c.dias.map(x=>`• ${ddmm(x.dia)}: ${x.s.saldo>0?"liquidación":"la empresa te debe"} ${gs(Math.abs(x.s.saldo))}`),...c.ms.map(m=>`• ${ddmm(keyOf(new Date(m.em)))}: ${m.tipo==="deuda"?"deuda":"pagaste"} ${m.tipo==="deuda"?"":"− "}${gs(m.monto)}${m.nota?" ("+m.nota+")":""}`)].join("\n");
   return waOpen(`*Tú Delivery · Tu cuenta*\nHola ${nm} 👋\n\n${ln}\n\n*${c.saldo>0?"Saldo a pagar: "+gs(c.saldo):c.saldo<0?"La empresa te debe: "+gs(-c.saldo):"Cuenta al día ✅"}*`,u)}
 function miCuentaBox(){if(S.mode!=="db"||S.owner||S.dia!==today())return"";const c=cuentaDe(S.me);if(!c.saldo)return"";
-  return `<button type="button" class="cta-mine ${c.saldo>0?"due":"cash"}" data-micuenta><span>💰 <b>Mi cuenta</b><small>${c.saldo>0?"Tenés que pagar a la empresa":"La empresa te debe"}${c.dias.length?" · "+plural(c.dias.length,"día")+" sin liquidar":""}</small></span><b class="num">${gs(Math.abs(c.saldo))} ›</b></button>`}
+  return `<button type="button" class="cta-mine ${c.saldo>0?"due":"cash"}" data-micuenta><span>💰 <b>Mi cuenta</b><small>${c.saldo>0?"Tenés que pagar a la empresa":"La empresa te debe"}${c.dias.length?" · "+plural(c.dias.length,"día")+" sin liquidar":""}${isAux(S.me)?" · como auxiliar, el acerto es en el día":""}</small></span><b class="num">${gs(Math.abs(c.saldo))} ›</b></button>`}
 function openCuenta(u){edit=null;const c=cuentaDe(u);const ro=!S.owner;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Cuenta">${sheetHead(ro?"💰 Mi cuenta":"💰 Cuenta de "+esc(personName(u)))}
     <div class="cta-big ${c.saldo>0?"due":c.saldo<0?"cash":""}"><span>${c.saldo>0?(ro?"Tenés que pagar":"Debe a la empresa"):c.saldo<0?(ro?"La empresa te debe":"La empresa le debe"):"Cuenta al día ✅"}</span><b class="num">${gs(Math.abs(c.saldo))}</b></div>
+    ${isAux(u)?`<p class="hint aux-note" style="margin:0">${ro?"Sos auxiliar: el acerto se hace el mismo día, al terminar.":"Auxiliar: el acerto se hace el mismo día. Si quedan días anteriores, está atrasado."}</p>`:""}
     <div class="list">
       ${c.dias.map(x=>`<div class="cta-it ${ro?"":"cta-dia"}"><span>${ddmm(x.dia)} · ${x.s.saldo>0?"debe del día":"la empresa le debe"}<small>${plural(x.s.n,"entrega")} · total ${gs(x.s.total)}</small></span><b class="num ${x.s.saldo>0?"c-due":"c-cash"}">${x.s.saldo>0?"":"− "}${gs(Math.abs(x.s.saldo))}</b>${ro?"":`<button type="button" class="dia-paga" data-diapaga="${esc(u)}|${esc(x.dia)}">${icSvg("checkc")} ${x.s.saldo>0?"Pagó este día":"Ya le pagué este día"}</button>`}</div>`).join("")}
       ${c.ms.map(m=>`<div class="cta-it"><span>${ddmm(keyOf(new Date(m.em)))} · ${m.tipo==="deuda"?"Deuda":"Pagó"}${m.nota?" · "+esc(m.nota):""} ${ro?"":`<button type="button" class="linkbtn small-link" data-movdel="${esc(u)}|${esc(m._id)}">quitar</button>`}</span><b class="num ${m.tipo==="deuda"?"c-due":"c-cash"}">${m.tipo==="deuda"?"":"− "}${gs(m.monto)}</b></div>`).join("")}
@@ -2186,7 +2188,8 @@ function horLabel(h){if(h&&h.sem)return semLabel(h);if(!h)return"";if(h.refs&&h.
 const toMin=t=>{const[a,b]=String(t||"0:0").split(":").map(Number);return a*60+(b||0)};
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
 const msMin=ms=>{const d=new Date(ms);return d.getHours()*60+d.getMinutes()};
-function turnosHoy(u){const h=(S.people.get(u)||{}).horario;if(!h)return null;
+const isAux=u=>!!(S.people.get(u)||{}).aux;
+function turnosHoy(u){if(isAux(u))return null;const h=(S.people.get(u)||{}).horario;if(!h)return null;
   if(h.res){const r=h.res[new Date().getDay()];if(r==="libre")return"libre";return Array.isArray(r)&&r.length?r.map(x=>typeof x==="string"?x.split("|"):x):null}if((h.libres||[]).includes(new Date().getDay()))return"libre";
   const ts=[h.t1,h.t2].filter(t=>t&&t[0]&&t[1]);return ts.length?ts:null}
 const minTxt=m=>m>=60?Math.floor(m/60)+" h"+(m%60?" "+(m%60)+" min":""):m+" min";
@@ -2678,11 +2681,11 @@ function premiosBlock(){
     <p class="hint">La semana va de lunes a domingo y el mes es el mes calendario. Gana quien hace más entregas.</p>`}
 function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].filter(u=>u!==S.me);
   const pend=all.filter(u=>!isAprob(u)&&!isBaja(u)),act=all.filter(u=>isAprob(u)&&!isBaja(u)),inact=all.filter(isBaja);
-  const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")+(p&&p.horario&&(p.horario.t1||p.horario.sem)?" · 🕒 "+esc(horLabel(p.horario)):"")};
-  const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b>${esc(personName(u))}</b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}</b><small>${kind==="pend"?"Esperando aprobación":kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
+  const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")+(p&&p.aux?" · sin horario · acerto en el día":p&&p.horario&&(p.horario.t1||p.horario.sem)?" · 🕒 "+esc(horLabel(p.horario)):"")};
+  const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b>${esc(personName(u))}</b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}</b><small>${kind==="pend"?"Esperando aprobación":kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-reactivar="${esc(u)}">Reactivar</button>`
-      :`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button><button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">Dar de baja</button>`}</div></div>`};
+      :`${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small" data-aux="${esc(u)}" data-on="${isAux(u)?0:1}">${isAux(u)?"Pasar a fijo":"Es auxiliar"}</button><button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">Dar de baja</button>`}</div></div>`};
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Equipo">
     ${sheetHead("Equipo")}
     ${pend.length?`<div class="lbl">Nuevos · esperando aprobación</div><div class="list">${pend.map(u=>row(u,"pend")).join("")}</div>`:""}
@@ -3118,6 +3121,7 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.baja){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Confirmar baja?";return}
     try{await setBaja(t.dataset.baja,true);toast("Delivery dado de baja");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.dataset.aprobar){try{await aprobar(t.dataset.aprobar);toast("Delivery aprobado");setTimeout(openEquipo,400)}catch(err){toast("No se guardó.")}return}
+  if(t.dataset.aux){const u=t.dataset.aux,on=t.dataset.on==="1";try{S.people.set(u,{...(S.people.get(u)||{}),aux:on});await db.doc("turnos/"+u).set({aux:on},{merge:true});toast(on?personName(u)+" ahora es auxiliar: sin horario y acerto en el día":personName(u)+" ahora es fijo");openEquipo();render(true)}catch(err){toast("No se guardó.")}return}
   if(t.dataset.socio){try{await setSocio(t.dataset.socio,t.dataset.on==="1");toast(t.dataset.on==="1"?"Ahora es socio":"Ya no es socio");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-logout")){logout();return}
   if(t.dataset.cuenta){openCuenta(t.dataset.cuenta);return}
@@ -3189,7 +3193,7 @@ layer.addEventListener("click",async e=>{
     try{const w=await sendW(v?db.doc("ranking/_meta").set({n:v,criadoEm:Date.now()}):db.doc("ranking/_meta").delete());toast(v?"Meta: "+plural(v,"entrega")+" por día":"Meta quitada")}catch(err){toast("No se guardó.")}return}
   if(t.hasAttribute("data-cierreok")){const n=stats(listDay(today()).filter(([,d])=>d._u===S.me)).n;const c={dia:today(),em:Date.now(),n};closeSheet();
     const cur=S.people.get(S.me)||{};S.people.set(S.me,{...cur,cierre:c});render(true);scheduleRank(S.me);
-    try{const w=await sendW(db.doc("turnos/"+S.me).set({cierre:c},{merge:true}));toast(w==="wait"?"Cierre guardado · se envía al volver la señal":"Día cerrado · ¡buen trabajo!")}catch(err){toast("No se guardó.")}return}
+    try{const w=await sendW(db.doc("turnos/"+S.me).set({cierre:c},{merge:true}));toast(w==="wait"?"Cierre guardado · se envía al volver la señal":(isAux(S.me)?"Día cerrado · como auxiliar, hacé el acerto hoy con la empresa":"Día cerrado · ¡buen trabajo!"))}catch(err){toast("No se guardó.")}return}
   if(t.dataset.reactivar){try{await setBaja(t.dataset.reactivar,false);toast("Delivery reactivado");openEquipo()}catch(err){toast("No se guardó.")}return}
   if(t.dataset.dvia){layer.querySelectorAll("[data-dvia]").forEach(b=>b.setAttribute("aria-pressed",b===t));return}
   if(t.dataset.dsave){const v=parseVal(document.getElementById("d-val").value);if(!v){toast("Escribí el monto del diario");return}
