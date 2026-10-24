@@ -901,7 +901,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="131";
+const APPV="132";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1740,8 +1740,9 @@ function cajaCalc(u,dia){const l=allItems().filter(([,d])=>d._u===u&&d.dia===dia
   const c=cajaOf(u,dia)||{};const ab=c.abre||0;return{ab,ef,prod,prodOut,pago,diar,gas,tr,ntr,emp,nemp,esp:ab+ef+pago+diar-gas,c}}
 function cajaPuedeAbrir(u){return isRealOwner||!allItems().some(([,d])=>d._u===u&&d.dia===today()&&!isCamino(d))}
 function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u=S.filter==="all"?S.me:S.filter;const yo=u===S.me;const K=cajaCalc(u,S.dia);const c=K.c;
-  if(!c.abreEm){if(cajaPuedeAbrir(u))return yo?`<button type="button" class="caja-open" data-cajaabrir><span class="caja-ic">💰</span><span><b>Abrir caja</b><small>Al empezar el día, antes de la primera entrega: anotá con cuánto empezás</small></span><span class="caja-go">›</span></button>`
-      :`<section class="caja cerrada"><div class="caja-h"><b>💰 Caja sin abrir</b><small>${esc(personName(u))}</small></div><small class="hint" style="margin:0">Todavía no empezó el día.</small></section>`}
+  const tieneEnt=allItems().some(([,d])=>d._u===u&&d.dia===today()&&!isCamino(d));
+  if(!c.abreEm&&(yo?cajaPuedeAbrir(u):!tieneEnt)){{return yo?`<button type="button" class="caja-open" data-cajaabrir><span class="caja-ic">💰</span><span><b>Abrir caja</b><small>Al empezar el día, antes de la primera entrega: anotá con cuánto empezás</small></span><span class="caja-go">›</span></button>`
+      :`<section class="caja cerrada"><div class="caja-h"><b>💰 Caja sin abrir</b><small>${esc(personName(u))}</small></div><small class="hint" style="margin:0">Todavía no abrió la caja ni registró entregas hoy.</small></section>`}}
   const espC=c.cierraEm&&c.esp!=null?c.esp:K.esp;const dif=c.cierraEm?(c.cierra-espC):0;const despues=c.cierraEm&&c.esp!=null&&K.esp!==c.esp;
   const reab=(c.prev||[]).length?`<small class="caja-reab">Reabierta ${c.prev.length===1?"1 vez":c.prev.length+" veces"} · último cierre anterior ${hhmm(c.prev[c.prev.length-1].cierraEm)}</small>`:"";
   return `<section class="caja ${c.cierraEm?"cerrada":""}"><div class="caja-h"><b>💰 Caja ${c.cierraEm?"cerrada":"abierta"}</b><small>${yo?"":esc(personName(u))+" · "}${c.abreEm&&!c.auto?"abrió "+hhmm(c.abreEm):"no se abrió · empezó en ₲ 0"}${c.cierraEm?" · cerró "+hhmm(c.cierraEm):""}</small></div>
