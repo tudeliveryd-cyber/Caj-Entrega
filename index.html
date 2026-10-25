@@ -1230,7 +1230,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="166";
+const APPV="167";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1883,10 +1883,13 @@ function openViewPick(){edit=null;const ids=activos();const t=today();
     <button type="button" class="ghost" data-equipo>👥 Equipo · horarios, teléfonos, aprobar</button></div></div>`}
 /* pantalla para sacar captura y publicar cuántos deliverys hay */
 let DSP="ahora";
+/* ¿está dentro de su horario configurado en este momento? (también turnos que pasan la medianoche) */
+function enTurno(u){const ts=turnosHoy(u);if(!Array.isArray(ts))return false;const nm=nowMin();
+  return ts.some(t=>{const a=toMin(t[0]),b=toMin(t[1]);return b>a?(nm>=a&&nm<b):(nm>=a||nm<b)})}
 function dispLista(){const t=today();const out=[];
   for(const u of activos()){if(u===S.me||roles.socios.includes(u)||sinComU(u))continue;
-    if(DSP==="ahora"){let w=false;try{w=estadoDe(u).cls==="cz-work"}catch(e){}if(!w)continue;out.push({u,n:isAux(u)?(auxHoy(u)||"Auxiliar"):personName(u)})}
-    else{if(isAux(u))continue;out.push({u,n:personName(u)})}}
+    if(DSP==="ahora"){let w=false;try{const e=estadoDe(u);w=e.cls==="cz-work"||(!e.done&&enTurno(u))||(isAux(u)&&!e.done&&!!auxHoy(u))}catch(e){}if(!w)continue;out.push({u,n:isAux(u)?(auxHoy(u)||personName(u)||"Auxiliar"):personName(u)})}
+    else out.push({u,n:personName(u)||"Auxiliar"})}
   const nom=x=>{const f=String(x||"").trim().split(/\s+/)[0]||"";return f.charAt(0).toUpperCase()+f.slice(1).toLowerCase()};
   return out.map(x=>({...x,f:nom(x.n)})).sort((a,b)=>a.f.localeCompare(b.f))}
 function openDisp(){edit=null;const L=dispLista(),n=L.length,d=new Date();
