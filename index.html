@@ -1279,7 +1279,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="175";
+const APPV="176";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2279,10 +2279,10 @@ function viewDiaShell(){
 /* Deliverys (no dueño) no ven comisión ni liquidación: solo entregas, montos cobrados y gastos */
 const hideMoney=()=>false;/* desde v90 los deliverys ven su comisión y liquidación (lo mismo que ve el dueño de ellos) */
 /* Deliverys solo cambian el día de hoy y mientras no esté liquidado; el dueño cambia todo */
-var CARGA_DESDE="2026-10-19",CARGA_HASTA="2026-10-23";
+var CARGA_DESDE="2026-10-19",CARGA_HASTA="2026-10-26";
 function lockReason(dia){if(S.mode!=="db"||S.owner)return"";
   if(dia>today())return"No se puede registrar en días que todavía no llegaron.";
-  /* liberado solo al empezar a usar la app: hasta el 23/10 se puede cargar desde el lunes 19/10; después, solo el día de hoy */
+  /* liberado al empezar a usar la app: hasta el lunes 26/10 se puede cargar toda la semana desde el lunes 19/10; después, solo hoy y ayer */
   const ayer=addDays(today(),-1);const libre=(today()<=CARGA_HASTA&&dia>=CARGA_DESDE)||dia===ayer;
   if(dia!==today()&&!libre)return"Solo podés registrar entregas y gastos de hoy y de ayer. Si hay que corregir otro día, pedíselo al dueño.";
   {const c=(S.people.get(S.me)||{}).cierre;if(dia===today()&&c&&c.dia===dia)return"Ya cerraste el día de hoy. Si te faltó registrar algo, pedíselo al dueño (o mañana podés cargarlo como día de ayer).";}
