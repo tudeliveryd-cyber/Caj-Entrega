@@ -1274,7 +1274,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="173";
+const APPV="174";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2025,7 +2025,7 @@ function openQRPrev(){const r=QRIMG;if(!r)return;layer.innerHTML=`<div class="sc
     <button type="button" class="primary" data-qrok>Guardar mi QR</button><button type="button" class="ghost" data-qrpick>Elegir otra imagen</button></div></div>`}
 async function openQR(key){QRK=key||"";edit=null;const d=key?S.items.get(key):null;const v=await qrGet();const m=d?cobrarDe(d):0;
   if(!v||!v.img){layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="QR">${sheetHead("Cobrar con QR")}
-    <div class="qr-empty">${icSvg("image")}<b>Todavía no cargaste tu QR</b><span>Abrí la app de tu banco o billetera, buscá <b>“Cobrar con QR”</b> o <b>“Mi QR”</b> y sacá un print. Después elegí ese print acá: se carga una sola vez.</span></div>
+    <div class="qr-empty">${icSvg("image")}<b>Todavía no cargaste tu QR</b><span>Abrí la app de tu banco o billetera, buscá <b>“Generar QR”</b>, <b>“Cobrar con QR”</b> o <b>“Mi QR”</b> (sin poner monto) y sacá un print. Después elegí ese print acá: se carga una sola vez.</span></div>
     <button type="button" class="primary" data-qrpick>Elegir el print del QR</button>${/[?&]demo/.test(location.search)?`<button type="button" class="ghost" data-qrej>Ver con un QR de ejemplo</button>`:""}</div></div>`;return}
   layer.innerHTML=`<div class="qr-full"><div class="qr-card">
     <div class="qr-top"><img src="icon-192.png" alt=""><b>Tú Delivery</b></div>
