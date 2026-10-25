@@ -1114,6 +1114,32 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .disp-p.jefe .av{border-color:#E8C46A;box-shadow:0 0 0 4px rgba(232,196,106,.22)}
 
 .hdr-right .sync.is-fecha{font-size:12px;font-weight:600;color:#DCD0F2;opacity:1}
+
+/* pedidos programados */
+.prog-box{border:1px solid color-mix(in srgb,#5AA9F0 45%,var(--line));background:linear-gradient(180deg,color-mix(in srgb,#5AA9F0 10%,var(--surface)),var(--surface));border-radius:20px;padding:14px 16px;display:grid;gap:10px}
+.prog-box .cm-h{display:flex;align-items:center;gap:8px}.prog-box .cm-h svg{width:20px;height:20px;color:#7DBBF5}.prog-box .cm-h b{flex:1;font-size:16px}
+.pg-list{display:grid;gap:8px}
+.pg-it{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,var(--ink) 4%,transparent);border:1px solid var(--line)}
+.pg-h{font-weight:800;font-size:18px;display:grid;line-height:1.1}.pg-h small{font-size:11px;font-weight:600;color:var(--muted)}
+.pg-n{min-width:0;display:grid}.pg-n b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pg-n small{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.pg-r{display:grid;justify-items:end;gap:4px}.pg-r small{font-size:12px;color:var(--muted);white-space:nowrap}
+.pg-ed{display:flex;gap:10px}
+.pg-it.soon{border-color:#E8B93A}.pg-it.soon .pg-f{color:#E8B93A;font-weight:700}
+.pg-it.late{border-color:#E0675A;background:color-mix(in srgb,#E0675A 10%,transparent)}.pg-it.late .pg-f{color:#F08A7E;font-weight:700}
+.pg-it.done{opacity:.55}
+.pg-vacio,.pg-man{margin:0;font-size:13px;color:var(--muted)}
+.pg-dh{display:grid;grid-template-columns:1.3fr 1fr;gap:10px}.pg-o{align-self:center;font-size:13px;color:var(--muted)}
+.pg-sheet select,.pg-sheet input[type=date],.pg-sheet input[type=time]{width:100%;border:1px solid var(--line);border-radius:14px;padding:11px 12px;background:var(--bg);color:var(--ink);font:inherit;min-height:46px}
+.pg-alert{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 10px);z-index:120;display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 12px;padding:14px;border-radius:18px;background:#1E3A5F;color:#fff;border:1px solid #5AA9F0;box-shadow:0 12px 40px rgba(0,0,0,.5);animation:pgIn .3s ease}
+.pga-ic{width:40px;height:40px;border-radius:50%;background:#5AA9F0;display:grid;place-items:center;color:#0B1E33}.pga-ic svg{width:22px;height:22px}
+.pga-t{display:grid;gap:2px;min-width:0}.pga-t small{color:#BFDDF8;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.pga-t b{font-size:17px}.pga-t span{font-size:13px;color:#DCEBFA}
+.pga-b{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
+@keyframes pgIn{from{transform:translateY(-20px);opacity:0}to{transform:none;opacity:1}}
+
+/* barra del delivery: 4 accesos en una fila */
+.wb-act{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.wb-act .nt-open{font-size:12px}
+.wb-act .linkbtn[data-rename]{grid-column:1/3}.wb-act .linkbtn[data-logout]{grid-column:3/5}
 </style>
 
 </head>
@@ -1235,7 +1261,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="170";
+const APPV="171";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1867,15 +1893,99 @@ async function ntSave(){clearTimeout(ntTimer);if(!NE)return;const e=NE;if(!e.tit
   catch(err){const st=document.getElementById("nt-st");if(st)st.textContent="⚠️ No se guardó";}}
 function ntBack(){const e=NE;if(e){clearTimeout(ntTimer);if(e.titulo.trim()||ntAnyText(e))ntSave()}openNotas();render()}
 
+/* ---------- Pedidos programados: cliente que pide para un horario; el app avisa antes ---------- */
+/* cada uno guarda los suyos en ranking/<uid>.prog; "listo" en ranking/<uid>.progOk (así un delivery puede marcar uno que cargó el dueño) */
+var PG={id:"",dia:"",hora:"",cli:"",det:"",para:"",av:30};
+function progAll(){const out=[],ok={};for(const[u,r]of rank){for(const x of (r.prog||[]))if(x&&x.id&&x.dia&&x.hora)out.push({...x,_u:u});Object.assign(ok,r.progOk||{})}
+  return out.map(x=>({...x,hecho:ok[x.id]||0})).sort((a,b)=>progWhen(a)-progWhen(b))}
+function progWhen(x){const[h,m]=String(x.hora).split(":").map(Number);const d=fromKey(x.dia);d.setHours(h||0,m||0,0,0);return d.getTime()}
+function progFalta(x){const m=Math.round((progWhen(x)-Date.now())/60000);
+  if(m<=0)return{t:m>-2?"¡es ahora!":"atrasado "+minTxt(-m),c:"late"};if(m<=60)return{t:"en "+m+" min",c:"soon"};
+  return{t:x.dia===today()?"en "+minTxt(m):x.dia===addDays(today(),1)?"mañana":ddmm(x.dia),c:""}}
+const progMio=x=>S.owner||x.para===S.me||x._u===S.me;
+const progPuede=x=>S.owner||x._u===S.me;
+function progRow(x,full){const f=progFalta(x);const para=x.para?(personName(x.para)||"").split(" ")[0]:"";
+  return `<div class="pg-it ${x.hecho?"done":f.c}"><span class="pg-h num">${esc(x.hora)}${full&&x.dia!==today()?`<small>${x.dia===addDays(today(),1)?"mañana":ddmm(x.dia)}</small>`:""}</span>
+    <span class="pg-n"><b>${esc(x.cli||"Pedido")}</b><small>${[x.det?esc(x.det):"",para?"lo lleva "+esc(para):""].filter(Boolean).join(" · ")}</small></span>
+    <span class="pg-r">${x.hecho?`<small>listo</small>${full?`<button type="button" class="linkbtn small-link" data-progno="${esc(x.id)}">desmarcar</button>`:""}`:`<small class="pg-f">${f.t}</small><button type="button" class="small ok" data-progok="${esc(x.id)}">Listo</button>`}
+    ${full&&progPuede(x)?`<span class="pg-ed"><button type="button" class="linkbtn small-link" data-progedit="${esc(x.id)}">editar</button><button type="button" class="linkbtn small-link" data-progdel="${esc(x.id)}">quitar</button></span>`:""}</span></div>`}
+function progBox(){if(S.mode!=="db"||S.dia!==today())return"";const t=today(),ay=addDays(t,-1),man=addDays(t,1);
+  const all=progAll().filter(x=>!x.hecho);const hoy=all.filter(x=>x.dia===t||(x.dia===ay&&progWhen(x)>Date.now()-12*3600000));const nm=all.filter(x=>x.dia===man).length;
+  if(!hoy.length&&!nm)return`<div id="prog-box"></div>`;
+  return `<section class="prog-box" id="prog-box"><div class="cm-h">${icSvg("clock")}<b>Pedidos programados</b><button type="button" class="linkbtn small-link" data-prog>ver / agregar</button></div>
+    ${hoy.length?`<div class="pg-list">${hoy.map(x=>progRow(x,false)).join("")}</div>`:`<p class="pg-vacio">Hoy no hay más pedidos programados.</p>`}
+    ${nm?`<p class="pg-man">Mañana: ${plural(nm,"pedido programado")}</p>`:""}</section>`}
+function progRefresh(){const b=document.getElementById("prog-box");if(b)b.outerHTML=progBox();if(layer.querySelector(".pg-sheet"))drawProgList()}
+function openProg(id){edit=null;const x=id?progAll().find(y=>y.id===id):null;
+  PG=x?{id:x.id,dia:x.dia,hora:x.hora,cli:x.cli||"",det:x.det||"",para:x.para||"",av:x.av||30,_u:x._u}:{id:"",dia:today(),hora:"",cli:"",det:"",para:"",av:30,_u:S.me};
+  const t=today(),m=addDays(t,1);const gente=activos().filter(u=>!isBaja(u));
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet pg-sheet" role="dialog" aria-label="Pedidos programados">${sheetHead(icSvg("clock")+" Pedidos programados")}
+    <p class="hint" style="margin:0">Para clientes que piden con horario. El pedido aparece en la pantalla de todos y el app avisa antes de la hora a quien lo lleva y al dueño.</p>
+    <div class="field"><label for="pg-cli">Cliente</label><input id="pg-cli" autocomplete="off" maxlength="60" placeholder="Ej.: Farmacia Central" value="${esc(PG.cli)}" list="pg-cl"><datalist id="pg-cl">${clisF.map(c=>`<option value="${esc(c.n||c.nome||"")}">`).join("")}</datalist></div>
+    <div class="field"><label for="pg-det">Pedido o detalle (opcional)</label><textarea id="pg-det" rows="2" maxlength="300" placeholder="Qué hay que llevar, dirección…">${esc(PG.det)}</textarea></div>
+    <div class="field"><label>Día</label><div class="chips"><button type="button" class="chip ${PG.dia===t?"on":""}" data-pgdia="${t}">Hoy</button><button type="button" class="chip ${PG.dia===m?"on":""}" data-pgdia="${m}">Mañana</button><span class="pg-o">u otra fecha:</span></div></div>
+    <div class="pg-dh"><div class="field"><label for="pg-dia">Fecha</label><input type="date" id="pg-dia" value="${esc(PG.dia)}" min="${t}"></div>
+      <div class="field"><label for="pg-hora">Hora</label><input type="time" id="pg-hora" value="${esc(PG.hora)}"></div></div>
+    <div class="field"><label for="pg-para">Quién lo lleva</label><select id="pg-para"><option value="">Todavía no sé · cualquiera</option>${gente.map(u=>`<option value="${esc(u)}" ${PG.para===u?"selected":""}>${esc(personName(u)||"")}${u===S.me?" (vos)":""}</option>`).join("")}</select></div>
+    <div class="field"><label>Avisar antes</label><div class="chips">${[15,30,60].map(n=>`<button type="button" class="chip ${PG.av===n?"on":""}" data-pgav="${n}">${n===60?"1 hora":n+" min"}</button>`).join("")}</div></div>
+    <button type="button" class="primary" data-progsave>${PG.id?"Guardar cambios":"+ Programar pedido"}</button>
+    <div id="pg-all"></div></div></div>`;
+  drawProgList();if(!id)setTimeout(()=>{const n=document.getElementById("pg-cli");if(n)n.focus()},80)}
+function drawProgList(){const el=document.getElementById("pg-all");if(!el)return;const t=today();const all=progAll();
+  const prox=all.filter(x=>!x.hecho&&x.dia>=addDays(t,-1)),hechos=all.filter(x=>x.hecho&&x.dia===t);
+  el.innerHTML=`<div class="lbl">Próximos (${prox.length})</div><div class="pg-list">${prox.length?prox.map(x=>progRow(x,true)).join(""):`<div class="empty">No hay pedidos programados.</div>`}</div>
+    ${hechos.length?`<div class="lbl">Listos hoy</div><div class="pg-list">${hechos.map(x=>progRow(x,true)).join("")}</div>`:""}`}
+async function progWrite(u,fields){const cur=rank.get(u)||{};rank.set(u,{...cur,...fields});progRefresh();try{return await sendW(db.doc("ranking/"+u).set(fields,{merge:true}))}catch(e){toast("No se guardó.")}}
+async function progSave(){const cli=(document.getElementById("pg-cli").value||"").trim(),det=(document.getElementById("pg-det").value||"").trim();
+  const dia=document.getElementById("pg-dia").value||PG.dia,hora=document.getElementById("pg-hora").value,para=document.getElementById("pg-para").value;
+  if(!cli&&!det){toast("Escribí el cliente o el pedido");return}if(!hora){toast("Elegí la hora");return}if(!dia){toast("Elegí el día");return}
+  const u=PG.id?PG._u:S.me;const it={id:PG.id||uid(),dia,hora,cli,det,para,av:PG.av,em:Date.now(),por:S.me};
+  const lim=addDays(today(),-3);const list=((rank.get(u)||{}).prog||[]).filter(x=>x&&x.id!==it.id&&x.dia>=lim);list.push(it);
+  try{localStorage.removeItem("caixa_pg_"+it.id+"_a");localStorage.removeItem("caixa_pg_"+it.id+"_b")}catch(e){}
+  const w=await progWrite(u,{prog:list});closeSheet();render(true);toast(w==="wait"?"Programado · se envía al volver la señal":"Pedido programado para las "+hora+(dia===today()?"":dia===addDays(today(),1)?" de mañana":" del "+ddmm(dia)))}
+async function progOk(id,on){const mine=(rank.get(S.me)||{}).progOk||{};const o={};const ks=Object.entries(mine).sort((a,b)=>b[1]-a[1]).slice(0,60);for(const[k,v]of ks)o[k]=v;
+  if(on)o[id]=Date.now();else{delete o[id];for(const[u,r]of rank)if(u!==S.me&&r.progOk&&r.progOk[id]&&S.owner){const p={...r.progOk};delete p[id];progWrite(u,{progOk:p})}}
+  await progWrite(S.me,{progOk:o});if(on)toast("Pedido programado listo");const al=document.querySelector(".pg-alert");if(al&&al.dataset.id===id)al.remove()}
+async function progDel(id){const x=progAll().find(y=>y.id===id);if(!x)return;const list=((rank.get(x._u)||{}).prog||[]).filter(y=>y.id!==id);await progWrite(x._u,{prog:list});toast("Pedido programado quitado")}
+/* aviso con el app abierto: X min antes y a la hora */
+function progBeep(){try{const A=window.AudioContext||window.webkitAudioContext;if(!A)return;const c=window.__pgAC||(window.__pgAC=new A());if(c.state==="suspended")c.resume();
+  [0,.25,.5].forEach(t=>{const o=c.createOscillator(),g=c.createGain();o.frequency.value=880;g.gain.setValueAtTime(.0001,c.currentTime+t);g.gain.exponentialRampToValueAtTime(.3,c.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+t+.2);o.connect(g);g.connect(c.destination);o.start(c.currentTime+t);o.stop(c.currentTime+t+.22)})}catch(e){}
+  try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}
+function progCheck(){if(S.mode!=="db"||document.hidden)return;const now=Date.now();
+  for(const x of progAll()){if(x.hecho||!progMio(x))continue;const w=progWhen(x);if(now>w+3*3600000)continue;
+    const ka="caixa_pg_"+x.id+"_a",kb="caixa_pg_"+x.id+"_b";let a=null,b=null;try{a=localStorage.getItem(ka);b=localStorage.getItem(kb)}catch(e){}
+    let msg="";if(now>=w&&!b){msg=now-w>3*60000?"atrasado "+minTxt(Math.round((now-w)/60000)):"es la hora";try{localStorage.setItem(kb,"1");localStorage.setItem(ka,"1")}catch(e){}}
+    else if(now>=w-(x.av||30)*60000&&now<w&&!a){msg="En "+Math.max(1,Math.round((w-now)/60000))+" min";try{localStorage.setItem(ka,"1")}catch(e){}}
+    if(msg){progAlert(x,msg);break}}
+  progRefresh()}
+function progAlert(x,msg){document.querySelectorAll(".pg-alert").forEach(e=>e.remove());const d=document.createElement("div");d.className="pg-alert";d.dataset.id=x.id;
+  const para=x.para?(personName(x.para)||"").split(" ")[0]:"";
+  d.innerHTML=`<div class="pga-ic">${icSvg("clock")}</div><div class="pga-t"><small>Pedido programado · ${esc(msg)}</small><b>${esc(x.hora)} · ${esc(x.cli||"Pedido")}</b>${x.det||para?`<span>${[x.det?esc(x.det):"",para?"lo lleva "+esc(para):"sin delivery asignado"].filter(Boolean).join(" · ")}</span>`:""}</div>
+    <div class="pga-b"><button type="button" class="small ok" data-progok="${esc(x.id)}">Listo</button><button type="button" class="small" data-pgcerrar>Entendido</button></div>`;
+  document.body.appendChild(d);progBeep()}
+setInterval(()=>{try{progCheck()}catch(e){}},30000);
+document.addEventListener("change",e=>{if(e.target&&e.target.id==="pg-dia"){PG.dia=e.target.value;document.querySelectorAll("[data-pgdia]").forEach(b=>b.classList.toggle("on",b.dataset.pgdia===PG.dia))}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{progCheck()}catch(e){}},1500)});
+document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.hasAttribute("data-prog")){openProg();return}
+  if(t.dataset.progok){progOk(t.dataset.progok,true);return}
+  if(t.dataset.progno){progOk(t.dataset.progno,false);return}
+  if(t.dataset.progedit){openProg(t.dataset.progedit);return}
+  if(t.dataset.progdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿seguro?";return}progDel(t.dataset.progdel);return}
+  if(t.hasAttribute("data-progsave")){progSave();return}
+  if(t.dataset.pgdia){PG.dia=t.dataset.pgdia;const i=document.getElementById("pg-dia");if(i)i.value=PG.dia;layer.querySelectorAll("[data-pgdia]").forEach(b=>b.classList.toggle("on",b===t));return}
+  if(t.dataset.pgav){PG.av=+t.dataset.pgav;layer.querySelectorAll("[data-pgav]").forEach(b=>b.classList.toggle("on",b===t));return}
+  if(t.hasAttribute("data-pgcerrar")){const a=t.closest(".pg-alert");if(a)a.remove();return}});
+
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
-  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b>${isAux(S.me)?` · hoy: <b>${esc(auxHoy(S.me)||"¿quién?")}</b> <button type="button" class="linkbtn small-link" data-auxquien>${auxHoy(S.me)?"cambiar":"elegir"}</button>`:""}</span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
+  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b>${isAux(S.me)?` · hoy: <b>${esc(auxHoy(S.me)||"¿quién?")}</b> <button type="button" class="linkbtn small-link" data-auxquien>${auxHoy(S.me)?"cambiar":"elegir"}</button>`:""}</span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-prog>${icSvg("clock")} Agenda</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
   const ids=activos();
   const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
   return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
     <button type="button" class="vp-team" data-equipo>👥 Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button></div>
-    <div class="tools-row"><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
+    <div class="tools-row"><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button><button type="button" class="nt-open" data-prog>${icSvg("clock")} Programados</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
 }
 function openViewPick(){edit=null;const ids=activos();const t=today();
   const nOf=u=>stats(allItems().filter(([,d])=>d._u===u&&d.dia===t&&!isCamino(d))).n;const tot=stats(allItems().filter(([,d])=>d.dia===t&&!isCamino(d))).n;
@@ -2055,7 +2165,7 @@ function openMsg(){edit=null;const cur=msgDia&&msgDia.texto||"";
 function viewDiaShell(){
   const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · para ${esc(personName(writeTarget()))}`:"";
-  return `${saludoHtml()}<div id="clima-box"></div>${avisoHtml()}<div id="pts-box"></div>${destacadosBox()}${cumpleBox()}
+  return `${saludoHtml()}<div id="clima-box"></div>${avisoHtml()}${progBox()}<div id="pts-box"></div>${destacadosBox()}${cumpleBox()}
   <div class="daynav"><button data-day="-1" aria-label="Día anterior">‹</button>
     <label class="daylabel pick" for="dpick"><b>${dayName(S.dia)} <svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></b><span>${dayLong(S.dia)}</span>
       <input type="date" id="dpick" value="${S.dia}" max="${today()}" aria-label="Elegir día"></label>
