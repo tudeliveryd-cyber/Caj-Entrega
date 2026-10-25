@@ -1109,6 +1109,9 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .cumple-mes .hoy .cm-n .av{box-shadow:0 0 0 2px #e0679a}
 .ch-av{position:relative;flex:none}.ch-av .av{width:52px;height:52px;font-size:17px;box-shadow:0 0 0 3px #e0679a}
 .ch-av i{position:absolute;right:-4px;bottom:-4px;width:24px;height:24px;border-radius:50%;background:#e0679a;color:#fff;display:grid;place-items:center}.ch-av i svg{width:14px;height:14px}
+
+.disp-p em{font-style:normal;font-size:11.5px;font-weight:700;color:#E8C46A;margin-top:-4px;letter-spacing:.2px}
+.disp-p.jefe .av{border-color:#E8C46A;box-shadow:0 0 0 4px rgba(232,196,106,.22)}
 </style>
 
 </head>
@@ -1230,7 +1233,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="167";
+const APPV="168";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1887,18 +1890,20 @@ let DSP="ahora";
 function enTurno(u){const ts=turnosHoy(u);if(!Array.isArray(ts))return false;const nm=nowMin();
   return ts.some(t=>{const a=toMin(t[0]),b=toMin(t[1]);return b>a?(nm>=a&&nm<b):(nm>=a||nm<b)})}
 function dispLista(){const t=today();const out=[];
-  for(const u of activos()){if(u===S.me||roles.socios.includes(u)||sinComU(u))continue;
+  const jefe=u=>u===S.me||roles.socios.includes(u)||sinComU(u);
+  for(const u of activos()){if(DSP==="equipo"&&jefe(u)){const c=cumples().find(c=>cumpleU(c)===u);out.push({u,n:personName(u)||"",j:u===S.me?0:roles.socios.includes(u)?1:2,fn:c&&c.f||""});continue}
+    if(jefe(u))continue;
     if(DSP==="ahora"){let w=false;try{const e=estadoDe(u);w=e.cls==="cz-work"||(!e.done&&enTurno(u))||(isAux(u)&&!e.done&&!!auxHoy(u))}catch(e){}if(!w)continue;out.push({u,n:isAux(u)?(auxHoy(u)||personName(u)||"Auxiliar"):personName(u)})}
     else out.push({u,n:personName(u)||"Auxiliar"})}
   const nom=x=>{const f=String(x||"").trim().split(/\s+/)[0]||"";return f.charAt(0).toUpperCase()+f.slice(1).toLowerCase()};
-  return out.map(x=>({...x,f:nom(x.n)})).sort((a,b)=>a.f.localeCompare(b.f))}
+  return out.map(x=>({...x,f:nom(x.n)})).sort((a,b)=>(a.j??9)-(b.j??9)||a.f.localeCompare(b.f))}
 function openDisp(){edit=null;const L=dispLista(),n=L.length,d=new Date();
   const fecha=d.toLocaleDateString("es-PY",{weekday:"long",day:"numeric",month:"long"});
-  const tit=DSP==="ahora"?(n===1?"delivery disponible ahora":"deliverys disponibles ahora"):(n===1?"delivery en nuestro equipo":"deliverys en nuestro equipo");
+  const tit=DSP==="ahora"?(n===1?"delivery disponible ahora":"deliverys disponibles ahora"):(n===1?"persona en nuestro equipo":"personas en nuestro equipo");
   layer.innerHTML=`<div class="disp" data-dsptog><div class="disp-in">
     <div class="disp-brand"><img src="icon-192.png" alt=""><b>Tú Delivery</b></div>
     <div class="disp-n num">${n}</div><div class="disp-t">${tit}</div>
-    ${n?`<div class="disp-grid ${n>12?"sm":""}">${L.map(x=>`<div class="disp-p">${avatarHtml(x.n,x.u)}<span>${esc(x.f)}</span></div>`).join("")}</div>`:`<p class="disp-0">${DSP==="ahora"?"Nadie marcado como trabajando en este momento.":"Todavía no hay deliverys aprobados."}</p>`}
+    ${n?`<div class="disp-grid ${n>12?"sm":""}">${L.map(x=>`<div class="disp-p ${x.j!=null?"jefe":""}">${avatarHtml(x.n,x.u)}<span>${esc(x.f)}</span>${x.fn?`<em>${esc(x.fn)}</em>`:""}</div>`).join("")}</div>`:`<p class="disp-0">${DSP==="ahora"?"Nadie marcado como trabajando en este momento.":"Todavía no hay deliverys aprobados."}</p>`}
     <div class="disp-f">Santa Rita · ${esc(fecha)}${DSP==="ahora"?" · "+hhmm(Date.now()):""}</div></div>
     <div class="disp-ctl"><div class="seg"><button type="button" data-dspm="ahora" class="${DSP==="ahora"?"on":""}">Ahora</button><button type="button" data-dspm="equipo" class="${DSP==="equipo"?"on":""}">Todo el equipo</button></div>
     <button type="button" class="disp-x" data-cancel>Cerrar</button><small>Tocá la pantalla para ocultar los botones y sacar la captura</small></div></div>`}
