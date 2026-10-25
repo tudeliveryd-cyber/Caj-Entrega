@@ -1233,7 +1233,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="168";
+const APPV="169";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1891,7 +1891,7 @@ function enTurno(u){const ts=turnosHoy(u);if(!Array.isArray(ts))return false;con
   return ts.some(t=>{const a=toMin(t[0]),b=toMin(t[1]);return b>a?(nm>=a&&nm<b):(nm>=a||nm<b)})}
 function dispLista(){const t=today();const out=[];
   const jefe=u=>u===S.me||roles.socios.includes(u)||sinComU(u);
-  for(const u of activos()){if(DSP==="equipo"&&jefe(u)){const c=cumples().find(c=>cumpleU(c)===u);out.push({u,n:personName(u)||"",j:u===S.me?0:roles.socios.includes(u)?1:2,fn:c&&c.f||""});continue}
+  for(const u of activos()){if(DSP==="equipo"&&jefe(u)){const c=cumples().find(c=>cumpleU(c)===u);const j=u===S.me?0:roles.socios.includes(u)?1:2;out.push({u,n:personName(u)||"",j,fn:(c&&c.f)||["Patrón","Patrona","Gerente"][j]});continue}
     if(jefe(u))continue;
     if(DSP==="ahora"){let w=false;try{const e=estadoDe(u);w=e.cls==="cz-work"||(!e.done&&enTurno(u))||(isAux(u)&&!e.done&&!!auxHoy(u))}catch(e){}if(!w)continue;out.push({u,n:isAux(u)?(auxHoy(u)||personName(u)||"Auxiliar"):personName(u)})}
     else out.push({u,n:personName(u)||"Auxiliar"})}
