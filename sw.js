@@ -1,6 +1,6 @@
 // Caja de Entregas: guarda la app para abrir sin señal; busca la versión nueva primero,
 // pero si la señal está lenta (más de 3 s) abre la copia guardada y actualiza por detrás.
-const CACHE="caja-v171";
+const CACHE="caja-v172";
 const SHELL=["./","index.html","firebase-config.js","manifest.webmanifest","icon-192.png","icon-512.png","apple-touch-icon.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
