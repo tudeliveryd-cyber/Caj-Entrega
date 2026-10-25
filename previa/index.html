@@ -1044,6 +1044,9 @@ body{background:radial-gradient(700px 380px at 15% -80px,rgba(139,92,246,.22),tr
 .tools-row .nt-open small,.tools-row .nt-open .badge-in,.wb-act .nt-open small,.wb-act .nt-open .badge-in{position:absolute;top:5px;right:6px}
 .wb-act{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;align-items:stretch}
 .wb-act .linkbtn{align-self:center;justify-self:center;font-size:13px}
+.who-bar{justify-items:center;text-align:center;grid-template-columns:minmax(0,1fr);justify-content:stretch}.who-bar>span:first-child{justify-self:center}
+.wb-act{max-width:420px;margin-inline:auto;justify-self:stretch;width:100%}.who-bar>span:first-child{width:100%;text-align:center}
+.wb-act .linkbtn{grid-row:2}.wb-act .linkbtn[data-rename]{grid-column:1/3;justify-self:end;margin-right:14px}.wb-act .linkbtn[data-logout]{grid-column:3;justify-self:start}
 .wb-act .nt-open{width:100%}
 .wb-act .linkbtn{justify-self:start;padding:4px 2px}
 .who-bar{display:grid;gap:10px}
@@ -1823,7 +1826,7 @@ function ntBack(){const e=NE;if(e){clearTimeout(ntTimer);if(e.titulo.trim()||ntA
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
-  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b>${isAux(S.me)?` · hoy: <b>${esc(auxHoy(S.me)||"¿quién?")}</b> <button type="button" class="linkbtn small-link" data-auxquien>${auxHoy(S.me)?"cambiar":"elegir"}</button>`:""}</span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-tema>${icSvg("palette")} Colores</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
+  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b>${isAux(S.me)?` · hoy: <b>${esc(auxHoy(S.me)||"¿quién?")}</b> <button type="button" class="linkbtn small-link" data-auxquien>${auxHoy(S.me)?"cambiar":"elegir"}</button>`:""}</span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
   const ids=activos();
   const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
   return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
