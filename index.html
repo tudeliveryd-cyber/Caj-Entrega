@@ -1038,7 +1038,7 @@ body{background:radial-gradient(700px 380px at 15% -80px,rgba(139,92,246,.22),tr
 .split>div:nth-child(3){background:linear-gradient(160deg,color-mix(in srgb,var(--due) 16%,var(--surface)),var(--surface))}
 
 /* accesos rápidos como grilla de botones */
-.tools-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:0}
+.tools-row{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:0}.tools-row .nt-open{flex:0 0 calc((100% - 16px)/3)}
 .tools-row .nt-open,.wb-act .nt-open{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:14px;padding:9px 4px 8px;font-size:12.5px;line-height:1.15;text-align:center;background:var(--card-grad);border:1px solid var(--bd);box-shadow:var(--shadow);position:relative;min-width:0}
 .tools-row .nt-open svg,.wb-act .nt-open svg{width:21px;height:21px;color:var(--accent);flex:none}
 .tools-row .nt-open small,.tools-row .nt-open .badge-in,.wb-act .nt-open small,.wb-act .nt-open .badge-in{position:absolute;top:5px;right:6px}
@@ -1831,7 +1831,7 @@ function whoBar(){
   const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
   return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
     <button type="button" class="vp-team" data-equipo>👥 Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button></div>
-    <div class="tools-row"><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button><button type="button" class="nt-open" data-tema>${icSvg("palette")} Colores</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
+    <div class="tools-row"><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
 }
 function openViewPick(){edit=null;const ids=activos();const t=today();
   const nOf=u=>stats(allItems().filter(([,d])=>d._u===u&&d.dia===t&&!isCamino(d))).n;const tot=stats(allItems().filter(([,d])=>d.dia===t&&!isCamino(d))).n;
