@@ -1072,6 +1072,30 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 :root[data-theme="light"] nav.tabs button[aria-selected="true"]{color:var(--accent)}
 
 
+
+/* deliverys disponibles (captura) */
+.disp{position:fixed;inset:0;z-index:90;overflow:auto;background:radial-gradient(120% 70% at 50% 0%,#4B2A86 0%,#24123F 55%,#140A24 100%);color:#fff;display:flex;flex-direction:column;align-items:center;padding:calc(env(safe-area-inset-top) + 36px) 20px calc(env(safe-area-inset-bottom) + 24px)}
+.disp-in{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;text-align:center;flex:1}
+.disp-brand{display:flex;align-items:center;gap:10px;font-size:20px;letter-spacing:.3px}
+.disp-brand img{width:44px;height:44px;border-radius:12px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.disp-n{font-size:120px;font-weight:800;line-height:1;margin-top:34px;background:linear-gradient(180deg,#fff,#CDB8F5);-webkit-background-clip:text;background-clip:text;color:transparent}
+.disp-t{font-size:22px;font-weight:600;margin-top:6px;color:#E6DCFA}
+.disp-grid{display:flex;flex-wrap:wrap;justify-content:center;row-gap:18px;width:100%;margin-top:34px}
+.disp-grid>.disp-p{width:33.33%}
+.disp-grid.sm{row-gap:14px}.disp-grid.sm>.disp-p{width:25%}
+.disp-p{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0}
+.disp-p .av{width:64px;height:64px;font-size:22px;border:2px solid rgba(255,255,255,.55);box-shadow:0 0 0 4px rgba(124,224,160,.18)}
+.disp-grid.sm .av{width:52px;height:52px;font-size:18px}
+.disp-p span{font-size:14px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.disp-0{margin-top:30px;color:#CBBDE8}
+.disp-f{margin-top:auto;padding-top:30px;font-size:13px;color:#B9A8DC;text-transform:none}
+.disp-ctl{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:22px}
+.disp-ctl .seg{display:flex;background:rgba(255,255,255,.1);border-radius:999px;padding:4px}
+.disp-ctl .seg button{border:0;background:none;color:#E6DCFA;font:inherit;font-weight:600;padding:9px 16px;border-radius:999px}
+.disp-ctl .seg button.on{background:#fff;color:#2A1550}
+.disp-x{border:1px solid rgba(255,255,255,.3);background:none;color:#fff;font:inherit;padding:9px 22px;border-radius:999px}
+.disp-ctl small{color:#B9A8DC;font-size:12px}
+.disp.clean .disp-ctl{display:none}
 </style>
 
 </head>
@@ -1193,7 +1217,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="163";
+const APPV="164";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1842,7 +1866,27 @@ function openViewPick(){edit=null;const ids=activos();const t=today();
       return ids.map((u,i)=>({u,i,r:rk(u),n:nOf(u)})).sort((a,b)=>a.r-b.r||b.n-a.n||a.i-b.i).map(x=>x.u)})().map(u=>{let dot="",sub=plural(nOf(u),"entrega")+" hoy";if(u!==S.me){try{const e=estadoDe(u);dot=e.cls==="cz-work"?"work":e.cls==="cz-ok"?"done":e.cls==="cz-late"?"late":"off";sub+=" · "+e.st.replace(/<[^>]+>/g,"")}catch(x){}}
       return row(u,esc(personName(u))+(u===S.me?" (vos)":"")+(isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""),sub,dot)}).join("")}</div>
     ${(()=>{const bj=[...S.people.keys()].filter(u=>u!==S.me&&isBaja(u));return bj.length?`<div class="lbl">Desactivados · ver historial</div><div class="vp-list">${bj.map(u=>`<button type="button" class="vp-row" data-hist="${esc(u)}"><span class="vp-dot off"></span><span class="who"><b>${esc(personName(u))}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}</b><small>${(()=>{const l=allItems().filter(([,d])=>d._u===u&&!isCamino(d));const ds=new Set(l.map(([,d])=>d.dia));return ds.size?plural(ds.size,"día")+" este mes · "+plural(stats(l).n,"entrega"):"ver historial"})()}</small></span><span class="caja-go">›</span></button>`).join("")}</div>`:""})()}
+    <button type="button" class="ghost" data-disp>${icSvg("users")} Deliverys disponibles · para compartir</button>
     <button type="button" class="ghost" data-equipo>👥 Equipo · horarios, teléfonos, aprobar</button></div></div>`}
+/* pantalla para sacar captura y publicar cuántos deliverys hay */
+let DSP="ahora";
+function dispLista(){const t=today();const out=[];
+  for(const u of activos()){if(u===S.me||roles.socios.includes(u)||sinComU(u))continue;
+    if(DSP==="ahora"){let w=false;try{w=estadoDe(u).cls==="cz-work"}catch(e){}if(!w)continue;out.push({u,n:isAux(u)?(auxHoy(u)||"Auxiliar"):personName(u)})}
+    else{if(isAux(u))continue;out.push({u,n:personName(u)})}}
+  const nom=x=>{const f=String(x||"").trim().split(/\s+/)[0]||"";return f.charAt(0).toUpperCase()+f.slice(1).toLowerCase()};
+  return out.map(x=>({...x,f:nom(x.n)})).sort((a,b)=>a.f.localeCompare(b.f))}
+function openDisp(){edit=null;const L=dispLista(),n=L.length,d=new Date();
+  const fecha=d.toLocaleDateString("es-PY",{weekday:"long",day:"numeric",month:"long"});
+  const tit=DSP==="ahora"?(n===1?"delivery disponible ahora":"deliverys disponibles ahora"):(n===1?"delivery en nuestro equipo":"deliverys en nuestro equipo");
+  layer.innerHTML=`<div class="disp" data-dsptog><div class="disp-in">
+    <div class="disp-brand"><img src="icon-192.png" alt=""><b>Tú Delivery</b></div>
+    <div class="disp-n num">${n}</div><div class="disp-t">${tit}</div>
+    ${n?`<div class="disp-grid ${n>12?"sm":""}">${L.map(x=>`<div class="disp-p">${avatarHtml(x.n,x.u)}<span>${esc(x.f)}</span></div>`).join("")}</div>`:`<p class="disp-0">${DSP==="ahora"?"Nadie marcado como trabajando en este momento.":"Todavía no hay deliverys aprobados."}</p>`}
+    <div class="disp-f">Santa Rita · ${esc(fecha)}${DSP==="ahora"?" · "+hhmm(Date.now()):""}</div></div>
+    <div class="disp-ctl"><div class="seg"><button type="button" data-dspm="ahora" class="${DSP==="ahora"?"on":""}">Ahora</button><button type="button" data-dspm="equipo" class="${DSP==="equipo"?"on":""}">Todo el equipo</button></div>
+    <button type="button" class="disp-x" data-cancel>Cerrar</button><small>Tocá la pantalla para ocultar los botones y sacar la captura</small></div></div>`}
+
 function paint(){
   try{checkAutoInicio()}catch(e){}
   {const f=document.getElementById("fab");if(f)f.hidden=(S.mode==="db"&&showEmp())||S.tab==="chat"}
@@ -3529,8 +3573,11 @@ layer.addEventListener("input",e=>{const id=e.target.id;
 layer.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="n-val"){e.preventDefault();layer.querySelector("[data-nsave]").click()}});
 layer.addEventListener("click",async e=>{
   if(e.target.hasAttribute&&e.target.hasAttribute("data-close")){closeSheet();return}
+  {const dp=e.target.closest(".disp");if(dp&&!e.target.closest(".disp-ctl button")){dp.classList.toggle("clean");return}}
   const t=e.target.closest("button");if(!t)return;
   if(t.hasAttribute("data-cancel")){closeSheet();return}
+  if(t.dataset.dspm){DSP=t.dataset.dspm;openDisp();return}
+  if(t.hasAttribute("data-disp")){openDisp();return}
   if(t.dataset.cajapre!==undefined){const i=document.getElementById("caja-v");if(i)i.value=fmtInput(+t.dataset.cajapre)||"0";return}
   if(t.dataset.cajasave){const md=t.dataset.cajasave;const raw=(document.getElementById("caja-v")||{}).value||"";const v=parseVal(raw);
     if(md==="cerrar"&&!raw.trim()){toast("Escribí cuánto contaste");return}
