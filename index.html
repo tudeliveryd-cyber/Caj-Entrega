@@ -1153,6 +1153,11 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .qr-full .ghost{background:#fff;color:#2A1550;border-color:#D9D0EA}
 .qr-prev{display:grid;place-items:center;background:#fff;border-radius:16px;padding:12px}.qr-prev img{max-width:260px;width:100%;image-rendering:pixelated}
 .qr-empty{display:grid;justify-items:center;text-align:center;gap:8px;padding:10px 6px}.qr-empty svg{width:40px;height:40px;color:var(--accent)}.qr-empty span{color:var(--muted);font-size:14px}
+
+.qr-pill{border:0;font:inherit;font-size:11px;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.qr-res{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:16px;border:1px solid color-mix(in srgb,#E8B93A 45%,var(--line));background:color-mix(in srgb,#E8B93A 8%,var(--surface))}
+.qr-res.all{border-color:color-mix(in srgb,var(--cash) 45%,var(--line));background:color-mix(in srgb,var(--cash) 8%,var(--surface))}
+.qr-res svg{width:26px;height:26px;flex:none;color:var(--accent)}.qr-res span{display:grid}.qr-res small{color:var(--muted);font-size:12.5px}
 </style>
 
 </head>
@@ -1274,7 +1279,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="174";
+const APPV="175";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2000,7 +2005,14 @@ function qrLocal(){try{return JSON.parse(localStorage.getItem("caixa_qr_"+S.me)|
 async function qrGet(){const l=qrLocal();if(l&&l.img)return l;if(S.mode!=="db"||!db)return null;
   try{const d=await getT(db.doc("turnos/"+S.me+"/qr/main"));if(d&&d.exists){const v=d.data();try{localStorage.setItem("caixa_qr_"+S.me,JSON.stringify(v))}catch(e){}return v}}catch(e){}return null}
 async function qrSave(v){try{localStorage.setItem("caixa_qr_"+S.me,JSON.stringify(v))}catch(e){}
-  if(S.mode==="db"&&db){try{return await sendW(db.doc("turnos/"+S.me+"/qr/main").set(v))}catch(e){}}return "ok"}
+  if(S.mode==="db"&&db){try{qrFlag(v);return await sendW(db.doc("turnos/"+S.me+"/qr/main").set(v))}catch(e){}}return "ok"}
+/* marca en turnos/<uid> para que el dueño vea quién ya cargó su QR */
+function qrFlag(v){const f={qrEm:(v&&v.em)||Date.now(),qrTit:(v&&v.tit)||""};const p=S.people.get(S.me);if(p)S.people.set(S.me,{...p,...f});try{db.doc("turnos/"+S.me).set(f,{merge:true}).catch(()=>{})}catch(e){}}
+setTimeout(function qrBack(){try{if(S.mode==="db"&&!S.owner&&S.people.get(S.me)){const l=qrLocal();if(l&&l.img&&!(S.people.get(S.me)||{}).qrEm)qrFlag(l);return}}catch(e){}setTimeout(qrBack,8000)},6000);
+async function openVerQR(u){edit=null;let v=null;try{const d=await getT(db.doc("turnos/"+u+"/qr/main"));if(d&&d.exists)v=d.data()}catch(e){}
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="QR">${sheetHead("QR de "+esc((personName(u)||"").split(" ")[0]))}
+    ${v&&v.img?`<div class="qr-prev"><img src="${v.img}" alt="QR"></div>${v.tit?`<p class="hint" style="margin:0;text-align:center"><b>${esc(v.tit)}</b></p>`:""}<p class="hint" style="margin:0;text-align:center">Cargado el ${ddmm(keyOf(new Date(v.em||Date.now())))}. Es el QR que ve el cliente al pagarle.</p>`:`<div class="empty">No se pudo abrir el QR. Probá de nuevo con señal.</div>`}
+    <button type="button" class="ghost" data-equipo>Volver al equipo</button></div></div>`}
 /* recorta solo el QR de un print de la app del banco (busca el bloque cuadrado con muchos cambios blanco/negro) */
 async function qrRecortar(file){const url=URL.createObjectURL(file);try{const img=await new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ko;i.src=url});
   const sc=Math.min(1,900/Math.max(img.width,img.height));const W=Math.round(img.width*sc),H=Math.round(img.height*sc);
@@ -2043,6 +2055,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.c
     for(const[a,b]of[[0,0],[n-7,0],[0,n-7]]){x.fillRect((a+2)*c,(b+2)*c,7*c,7*c);x.fillStyle="#fff";x.fillRect((a+3)*c,(b+3)*c,5*c,5*c);x.fillStyle="#111";x.fillRect((a+4)*c,(b+4)*c,3*c,3*c)}
     await qrSave({img:cv.toDataURL("image/png"),tit:"Ejemplo · Banco de prueba",em:Date.now()});openQR(QRK);return}
   if(t.hasAttribute("data-cfgqr")){openQR("");return}
+  if(t.dataset.verqr){openVerQR(t.dataset.verqr);return}
   if(t.hasAttribute("data-qrback")){if(QRK&&S.items.get(QRK))openCamino(QRK);else closeSheet();return}
   if(t.hasAttribute("data-qrok")){const tit=(document.getElementById("qr-tit").value||"").trim();const v={img:QRIMG.img,tit,em:Date.now()};const w=await qrSave(v);toast(w==="wait"?"QR guardado en el celular · se sube al volver la señal":"QR guardado");openQR(QRK);return}});
 
@@ -3405,7 +3418,7 @@ async function openHist(u){edit=null;const nm=personName(u)||"Delivery";const us
 function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].filter(u=>u!==S.me);
   const pend=all.filter(u=>!isAprob(u)&&!isBaja(u)),act=all.filter(u=>isAprob(u)&&!isBaja(u)),inact=all.filter(isBaja);
   const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")+(p&&p.aux?" · sin horario · acerto en el día":p&&p.horario&&(p.horario.t1||p.horario.sem)?" · 🕒 "+esc(horLabel(p.horario)):"")};
-  const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b class="tm-n">${avatarHtml(personName(u),u)}<span>${esc(personName(u))}</span></b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}</b><small>${kind==="pend"?"Esperando aprobación"+(sameAux(u).length>1?' · <span class="cz-warn">ya trabajó antes con este nombre: el historial se junta</span>':""):kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
+  const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b class="tm-n">${avatarHtml(personName(u),u)}<span>${esc(personName(u))}</span></b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}${kind==="act"&&!soc&&!sinComU(u)?((S.people.get(u)||{}).qrEm?` <button type="button" class="pill p-cash qr-pill" data-verqr="${esc(u)}">QR listo</button>`:' <span class="pill p-muted">Sin QR</span>'):""}</b><small>${kind==="pend"?"Esperando aprobación"+(sameAux(u).length>1?' · <span class="cz-warn">ya trabajó antes con este nombre: el historial se junta</span>':""):kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button>${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?'<span class="pill p-aux">Pide volver hoy</span> ':""}<button type="button" class="small ${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?"ok":""}" data-reactivar="${esc(u)}">${isAux(u)?"Aceptar de nuevo":"Reactivar"}</button>`
       :`${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button><button type="button" class="small" data-fotoeq="${esc(u)}">${icSvg("users")} Foto</button><button type="button" class="small" data-cumple="${esc(u)}">${icSvg("cake")} ${(()=>{const c=cumples().find(x=>x.u===u);return c?mdTxt(c.md):"Cumpleaños"})()}</button><button type="button" class="small" data-aux="${esc(u)}" data-on="${isAux(u)?0:1}">${isAux(u)?"Pasar a fijo":"Es auxiliar"}</button><button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">${isAux(u)?"Terminó · desactivar":"Dar de baja"}</button>`}</div></div>`};
@@ -3414,6 +3427,8 @@ function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].fil
     ${pend.length?`<div class="lbl">Nuevos · esperando aprobación</div><div class="list">${pend.map(u=>row(u,"pend")).join("")}</div>`:""}
     <button type="button" class="ghost" data-tfedit>🕒 Turnos fijos: ${TF.filter(x=>x.a&&x.b).map(x=>esc(x.n)+" "+tfTxt(x)).join(" · ")}</button>
     <div class="lbl">Activos</div>
+    ${(()=>{const ds=act.filter(u=>!roles.socios.includes(u)&&!sinComU(u));if(!ds.length)return"";const ok=ds.filter(u=>(S.people.get(u)||{}).qrEm);const sin=ds.filter(u=>!(S.people.get(u)||{}).qrEm);
+      return `<div class="qr-res ${sin.length?"":"all"}">${icSvg("qr")}<span><b>QR de cobro: ${ok.length} de ${ds.length} ${ds.length===1?"configurado":"configurados"}</b>${sin.length?`<small>Falta: ${sin.map(u=>esc((personName(u)||"").split(" ")[0])).join(", ")}</small>`:"<small>Todos ya cargaron su QR</small>"}</span></div>`})()}
     <div class="list">${act.length?act.map(u=>row(u,"act")).join(""):`<div class="team-row"><small>Todavía no hay deliverys aprobados. Mandales el link de la app: se registran y aparecen acá para aprobar.</small></div>`}</div>
     ${inact.length?`<div class="lbl">Dados de baja</div><div class="list">${inact.map(u=>row(u,"baja")).join("")}</div>`:""}
     <p class="hint" style="margin:0">Dar de baja le quita el acceso a la app. Su historial queda guardado en los totales de la empresa. Un socio ve todo, igual que vos.</p>
