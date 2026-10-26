@@ -1284,7 +1284,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="182";
+const APPV="183";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1843,9 +1843,9 @@ function drawNotaEd(){const c=NCOL[NE.color];
     ${NE.acerto||NE.suma||NE.dos?`<div class="nt-clr"><button type="button" class="ghost" data-ntclr>${icSvg("checkc")} Acertado · limpiar y empezar de nuevo</button>${(NE.hist||[]).length?`<div class="nt-hist"><b>Acertos anteriores</b>${NE.hist.slice(-5).reverse().map(h=>`<div><span>${ddmm(keyOf(new Date(h.em)))} ${hhmm(h.em)}</span><span>${esc(h.t)}</span></div>`).join("")}</div>`:""}</div>`:""}
     <div class="nt-tools">
       <button type="button" class="chip" data-ntcheck>☐ Casilla</button>
-      <button type="button" class="chip ${NE.suma?"on":""}" data-ntsuma>Σ Sumar valores</button>
-      <button type="button" class="chip ${NE.dos?"on":""}" data-ntdos>Columnas</button>
-      <button type="button" class="chip ${NE.acerto?"on":""}" data-ntacerto>Acerto (descontar)</button>
+      ${S.owner||NE.suma?`<button type="button" class="chip ${NE.suma?"on":""}" data-ntsuma>Σ Sumar valores</button>`:""}
+      ${S.owner||NE.dos?`<button type="button" class="chip ${NE.dos?"on":""}" data-ntdos>Columnas</button>`:""}
+      ${S.owner||NE.acerto?`<button type="button" class="chip ${NE.acerto?"on":""}" data-ntacerto>Acerto (descontar)</button>`:""}
       ${S.owner||NE.deu?`<button type="button" class="chip ${NE.deu?"on":""}" data-ntdeu>Deudas</button>`:""}
       <button type="button" class="chip ${NE.fijada?"on":""}" data-ntpin>📌 ${NE.fijada?"Fijada":"Fijar"}</button>
       <span class="nt-colors">${Object.entries(NCOL).map(([k,v])=>`<button type="button" class="nt-dot ${NE.color===k?"on":""}" data-ntcolor="${k}" style="background:${v}" aria-label="Color ${k}"></button>`).join("")}</span>
