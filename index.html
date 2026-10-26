@@ -1165,6 +1165,10 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .paid-w{display:grid;justify-items:end;gap:2px}.paid-w small{color:var(--muted);font-size:11.5px}
 
 .fd-ch{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}.fijo-dia{display:grid;gap:8px}
+
+.fc-box{display:grid;gap:8px;padding:14px 16px;border-top:1px solid var(--line)}.fc-h{display:flex;gap:8px;align-items:center}.fc-h svg{width:20px;height:20px;color:var(--accent)}
+.fc-box small{color:var(--muted);font-size:12.5px;line-height:1.35}.fc-res{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--ink) 5%,transparent);font-weight:700}
+.fc-res b{font-size:20px}.fc-res.due b{color:var(--due)}.fc-res.cash b{color:var(--cash)}.fc-box .linkbtn{justify-self:start}
 </style>
 
 </head>
@@ -1286,7 +1290,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="185";
+const APPV="186";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2388,7 +2392,7 @@ function acertoBlock(s,label,pay,gt){
     ${s.fijoDesc?`<div class="ac-row"><span>Diario de clientes fijos · lo cobró la empresa</span><b class="num">${gs(s.fijoDesc)}</b></div><div class="ac-res"><span>${yo?"La empresa te paga":"La empresa le paga"}</span><b class="num c-cash">${gs(s.fijoDesc)}</b></div>${pay?`<div class="ac-pay">${pay}</div>`:""}`:""}
     ${gt!==undefined?`<div class="ac-net"><span>Gastos ${gs(gt)}</span><span>${yo?"Te queda limpio":"Queda limpio"} <b class="num ${s.total-gt<0?"c-due":"c-cash"}">${gs(s.total-gt)}</b></span></div>`:""}</div>`}
   if(hideMoney())return pay?`<div class="acerto"><div class="ac-h">Liquidación del día</div><div class="ac-pay">${pay}</div></div>`:"";
-  const r=saldoTxt(s);
+  const r=saldoTxt(s);if(s.fijoDesc&&s.saldo<0){const dv=S.mode==="db"&&!S.owner;r.t=dv?"A tu favor hoy · se descuenta de lo que debés":"A favor del delivery hoy · se descuenta de lo que debe"}
   return `<div class="acerto">
     <div class="ac-h">${label}</div>
     <div class="ac-row"><span>Comisión Tú Delivery${pctLabel(s)}</span><b class="num">${gs(s.com)}</b></div>
@@ -2486,7 +2490,8 @@ function viewSummary(list){
     ${fijosBlock(list)}
     ${(()=>{const pr=list.reduce((a,[,d])=>a+prodCobra(d),0);return pr?`<div class="prod-note">Además se cobró ${gs(pr)} de productos para los comercios. No entra en la comisión.</div>`:""})()}
     ${showEmp()?empresaBlock(s,egStats(egRange(S.dia,S.dia)).total,"Resultado de la empresa hoy"):""}
-    ${acertoBlock(s,acertoLabel("Liquidación del día",gr),single?payControl(single,S.dia,s,false):"",myGt(S.dia,S.dia))}
+    ${acertoBlock(s,acertoLabel("Liquidación del día",gr),single&&!(S.mode==="db"&&s.fijoDesc&&s.saldo<0&&cuentaDe(single).saldo>0)?payControl(single,S.dia,s,false):"",myGt(S.dia,S.dia))}
+    ${single&&s.fijoDesc&&S.mode==="db"?fijoCuentaBox(single,s):""}
     ${driverTable(gr,S.dia)}
     <div class="sum-actions">${canPct?`<button type="button" class="linkbtn" data-pct>Comisiones · cambiar</button>`:"<span></span>"}<button type="button" class="linkbtn" data-copy>Copiar resumen del día</button></div>`;
 }
@@ -2638,6 +2643,12 @@ async function sendChat(){const ta=document.getElementById("chat-txt");if(!ta)re
 var movs=new Map();
 function diasPend(u){const by=new Map();for(const[,d]of S.items){if(d._u!==u||isCamino(d)||isLegacy(d))continue;if(!by.has(d.dia))by.set(d.dia,[]);by.get(d.dia).push([0,d])}
   const out=[];for(const[dia,l]of by){const st=stats(l);if(!st.saldo)continue;const pg=pagoState(u,dia,st);if(pg&&!pg.changed)continue;out.push({dia,s:st})}return out.sort((a,b)=>a.dia<b.dia?-1:1)}
+/* el diario que cobró la empresa se descuenta de TODO lo que el delivery debe (su cuenta), no solo de la comisión del día */
+function fijoCuentaBox(u,s){const c=cuentaDe(u);const yo=u===S.me&&!S.owner;const v=c.saldo;
+  return `<div class="fc-box"><div class="fc-h">${icSvg("wallet")}<b>${yo?"Tu cuenta con la empresa":"Cuenta de "+esc((personName(u)||"").split(" ")[0])+" con la empresa"}</b></div>
+    <small>El diario de clientes fijos que cobró la empresa (${gs(s.fijoDesc)}) se descuenta de todo lo que ${yo?"debés":"debe"}, no solo de la comisión de hoy.</small>
+    <div class="fc-res ${v>0?"due":v<0?"cash":""}"><span>${v>0?(yo?"Todavía debés":"Todavía debe"):v<0?(yo?"La empresa te pasa":"La empresa le pasa"):"Cuenta en cero"}</span><b class="num">${gs(Math.abs(v))}</b></div>
+    <button type="button" class="linkbtn small-link" ${yo?"data-micuenta":`data-cuenta="${esc(u)}"`}>Ver la cuenta completa</button></div>`}
 function cuentaDe(u){const dias=diasPend(u);const ms=[...movs.values()].filter(m=>m._u===u&&m.abierto).sort((a,b)=>(a.em||0)-(b.em||0));
   const sd=dias.reduce((a,x)=>a+x.s.saldo,0),deu=ms.filter(m=>m.tipo==="deuda").reduce((a,m)=>a+m.monto,0),abo=ms.filter(m=>m.tipo==="abono").reduce((a,m)=>a+m.monto,0);
   const old=dias.length?Math.floor((Date.now()-fromKey(dias[0].dia).getTime())/864e5):0;
