@@ -1284,7 +1284,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="183";
+const APPV="184";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2379,6 +2379,7 @@ function acertoBlock(s,label,pay,gt){
   if(s.sinCom&&!hideMoney()){const yo=S.mode==="db"&&!S.owner;return `<div class="acerto sincom">
     <div class="ac-h">${String(label).replace("Liquidación","Resumen")}</div>
     <div class="ac-row"><span>Sin comisión · el 100% es ${yo?"tuyo":"suyo"}</span><b class="num">${gs(s.total)}</b></div>
+    ${s.fijoDesc?`<div class="ac-row"><span>Diario de clientes fijos · lo cobró la empresa</span><b class="num">${gs(s.fijoDesc)}</b></div><div class="ac-res"><span>${yo?"La empresa te paga":"La empresa le paga"}</span><b class="num c-cash">${gs(s.fijoDesc)}</b></div>${pay?`<div class="ac-pay">${pay}</div>`:""}`:""}
     ${gt!==undefined?`<div class="ac-net"><span>Gastos ${gs(gt)}</span><span>${yo?"Te queda limpio":"Queda limpio"} <b class="num ${s.total-gt<0?"c-due":"c-cash"}">${gs(s.total-gt)}</b></span></div>`:""}</div>`}
   if(hideMoney())return pay?`<div class="acerto"><div class="ac-h">Liquidación del día</div><div class="ac-pay">${pay}</div></div>`:"";
   const r=saldoTxt(s);
