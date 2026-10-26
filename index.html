@@ -1169,6 +1169,8 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .fc-box{display:grid;gap:8px;padding:14px 16px;border-top:1px solid var(--line)}.fc-h{display:flex;gap:8px;align-items:center}.fc-h svg{width:20px;height:20px;color:var(--accent)}
 .fc-box small{color:var(--muted);font-size:12.5px;line-height:1.35}.fc-res{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--ink) 5%,transparent);font-weight:700}
 .fc-res b{font-size:20px}.fc-res.due b{color:var(--due)}.fc-res.cash b{color:var(--cash)}.fc-box .linkbtn{justify-self:start}
+
+.fc-l{display:flex;justify-content:space-between;font-size:14px}.fc-l.sm{font-size:13px;color:var(--muted)}
 </style>
 
 </head>
@@ -1290,7 +1292,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="186";
+const APPV="187";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1685,7 +1687,7 @@ function stats(list){
     if(d.metodo==="fijo"){s.fijo+=d.valor;if(d.via==="empresa"){s.fijoEmp+=d.valor;if(d.desc&&!(isRealOwner&&d._u===S.me))s.fijoDesc+=d.valor}if(!d.diario){const c=d.cant||1;s.nf+=c;s.n+=c}continue}
     const cq=d.cant||1;s.n+=cq;s[d.metodo]+=d.valor;s[{efectivo:"ne",transferencia:"nt",anotado:"na",pagado:"np"}[d.metodo]||"na"]+=cq;
     const p=pctOf(d._u);s.pcts.add(p);s.com+=d.valor*p/100;if(d.metodo==="anotado"){if(d.conf==="pend"){s.anotPend+=d.valor;s.nPend++}else if(d.conf==="no")s.anotNo+=d.valor;else if(p)s.anotCom+=d.valor}}
-  s.com=Math.round(s.com);s.fica=s.total-s.com;s.anotOk=s.anotado-s.anotPend-s.anotNo;s.enEmp=s.anotOk;s.saldo=s.com-s.anotCom-s.fijoDesc;s.sinCom=s.pcts.size>0&&[...s.pcts].every(p=>p===0);
+  s.com=Math.round(s.com);s.fica=s.total-s.com;s.anotOk=s.anotado-s.anotPend-s.anotNo;s.enEmp=s.anotOk;s.saldo=s.com-s.anotCom;s.sinCom=s.pcts.size>0&&[...s.pcts].every(p=>p===0);
   s.pct=s.pcts.size===1?[...s.pcts][0]:(s.pcts.size?null:pctOf(S.filter==="all"?S.me:S.filter));return s}
 function groups(list){const m=new Map();for(const e of list){const k=groupKey(e[1]);if(!m.has(k))m.set(k,[]);m.get(k).push(e)}
   return[...m.entries()].map(([k,l])=>({k,name:groupName(k),list:l,s:stats(l)})).sort((a,b)=>b.s.total-a.s.total)}
@@ -2127,11 +2129,15 @@ document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.c
 
 document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("button[data-fijodesc]");if(!t||t.closest("#layer"))return;
   const on=t.dataset.on==="1";const ks=t.dataset.fijodesc.split(",").filter(k=>S.items.get(k));
-  try{await Promise.all(ks.map(k=>patchItem(k,{desc:on?1:0})));render(true);toast(on?"Se vuelve a descontar de la liquidación":"No se descuenta · se lo pagás aparte")}catch(err){toast("No se guardó.")}});
+  try{for(const k of ks){if(on)await fijoAplicar(k);else{await fijoQuitar(k);await patchItem(k,{desc:0,abono:0,pasar:0})}}render(true);toast(on?"Se vuelve a descontar de la liquidación":"No se descuenta · se lo pagás aparte")}catch(err){toast("No se guardó.")}});
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button[data-fdvia]");if(!t)return;document.querySelectorAll("[data-fdvia]").forEach(b=>b.classList.toggle("on",b===t))});
 document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("button[data-fijoset]");if(!t)return;const v=t.dataset.v;const ks=t.dataset.fijoset.split(",").filter(k=>S.items.get(k));
-  const p=v==="efectivo"?{via:"efectivo"}:{via:"empresa",desc:v==="empresa"?1:0};try{await Promise.all(ks.map(k=>patchItem(k,p)));render(true);toast(v==="empresa"?"Se descuenta de lo que debe":v==="empresa_pag"?"Pagado aparte · no se descuenta":"Lo cobró el delivery")}catch(err){toast("No se guardó.")}});
+  try{if(v==="empresa"){for(const k of ks)await fijoAplicar(k)}else{for(const k of ks){await fijoQuitar(k);await patchItem(k,v==="efectivo"?{via:"efectivo",desc:0,abono:0,pasar:0}:{via:"empresa",desc:0,abono:0,pasar:0})}}render(true);toast(v==="empresa"?"Se descuenta de lo que debe":v==="empresa_pag"?"Pagado aparte · no se descuenta":"Lo cobró el delivery")}catch(err){toast("No se guardó.")}});
 document.addEventListener("input",e=>{if(e.target&&e.target.id==="fd-val"){const v=parseVal(e.target.value);e.target.value=v?fmtInput(v):""}});
+document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("button[data-fijopase]");if(!t||!S.owner)return;const ks=t.dataset.fijopase.split(",").filter(k=>S.items.get(k));
+  try{for(const k of ks)await patchItem(k,{pasado:true,pasadoEm:Date.now()});render(true);if(layer.querySelector('[aria-label="Cuenta"]')){const u=(S.items.get(ks[0])||{})._u;if(u)openCuenta(u)}toast("Listo · marcado como pasado")}catch(err){toast("No se guardó.")}});
+var FJMIG=new Set();function fijoMigrar(){if(!S.owner||S.mode!=="db")return;for(const[k,d]of S.items){if(d.metodo==="fijo"&&d.via==="empresa"&&d.desc&&d.abono==null&&(d.valor||0)>0&&!FJMIG.has(k)){FJMIG.add(k);fijoAplicar(k).catch(()=>{})}}}
+setInterval(()=>{try{fijoMigrar()}catch(e){}},5000);
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
@@ -2389,15 +2395,13 @@ function acertoBlock(s,label,pay,gt){
   if(s.sinCom&&!hideMoney()){const yo=S.mode==="db"&&!S.owner;return `<div class="acerto sincom">
     <div class="ac-h">${String(label).replace("Liquidación","Resumen")}</div>
     <div class="ac-row"><span>Sin comisión · el 100% es ${yo?"tuyo":"suyo"}</span><b class="num">${gs(s.total)}</b></div>
-    ${s.fijoDesc?`<div class="ac-row"><span>Diario de clientes fijos · lo cobró la empresa</span><b class="num">${gs(s.fijoDesc)}</b></div><div class="ac-res"><span>${yo?"La empresa te paga":"La empresa le paga"}</span><b class="num c-cash">${gs(s.fijoDesc)}</b></div>${pay?`<div class="ac-pay">${pay}</div>`:""}`:""}
     ${gt!==undefined?`<div class="ac-net"><span>Gastos ${gs(gt)}</span><span>${yo?"Te queda limpio":"Queda limpio"} <b class="num ${s.total-gt<0?"c-due":"c-cash"}">${gs(s.total-gt)}</b></span></div>`:""}</div>`}
   if(hideMoney())return pay?`<div class="acerto"><div class="ac-h">Liquidación del día</div><div class="ac-pay">${pay}</div></div>`:"";
-  const r=saldoTxt(s);if(s.fijoDesc&&s.saldo<0){const dv=S.mode==="db"&&!S.owner;r.t=dv?"A tu favor hoy · se descuenta de lo que debés":"A favor del delivery hoy · se descuenta de lo que debe"}
+  const r=saldoTxt(s);
   return `<div class="acerto">
     <div class="ac-h">${label}</div>
     <div class="ac-row"><span>Comisión Tú Delivery${pctLabel(s)}</span><b class="num">${gs(s.com)}</b></div>
     <div class="ac-row"><span>Anotado, ${s.anotPend||s.anotNo?"confirmado por la empresa":"ya en la cuenta de la empresa"}</span><b class="num c-due">− ${gs(s.anotOk)}</b></div>
-    ${s.fijoDesc?`<div class="ac-row"><span>Diario de clientes fijos · lo cobró la empresa</span><b class="num c-due">− ${gs(s.fijoDesc)}</b></div>`:""}
     ${s.anotPend?`<div class="ac-row ac-pend"><span>Anotado por confirmar · no se descuenta todavía</span><b class="num">${gs(s.anotPend)}</b></div>`:""}
     ${s.anotNo?`<div class="ac-row ac-no"><span>Anotado que no llegó a la empresa · no se descuenta</span><b class="num">${gs(s.anotNo)}</b></div>`:""}
     <div class="ac-res"><span>${r.t}</span><b class="num ${r.c}">${gs(r.v)}</b></div>
@@ -2490,8 +2494,8 @@ function viewSummary(list){
     ${fijosBlock(list)}
     ${(()=>{const pr=list.reduce((a,[,d])=>a+prodCobra(d),0);return pr?`<div class="prod-note">Además se cobró ${gs(pr)} de productos para los comercios. No entra en la comisión.</div>`:""})()}
     ${showEmp()?empresaBlock(s,egStats(egRange(S.dia,S.dia)).total,"Resultado de la empresa hoy"):""}
-    ${acertoBlock(s,acertoLabel("Liquidación del día",gr),single&&!(S.mode==="db"&&s.fijoDesc&&s.saldo<0&&cuentaDe(single).saldo>0)?payControl(single,S.dia,s,false):"",myGt(S.dia,S.dia))}
-    ${single&&s.fijoDesc&&S.mode==="db"?fijoCuentaBox(single,s):""}
+    ${acertoBlock(s,acertoLabel("Liquidación del día",gr),single?payControl(single,S.dia,s,false):"",myGt(S.dia,S.dia))}
+    ${single&&S.mode==="db"?fijoCuentaBox(single,list):""}
     ${driverTable(gr,S.dia)}
     <div class="sum-actions">${canPct?`<button type="button" class="linkbtn" data-pct>Comisiones · cambiar</button>`:"<span></span>"}<button type="button" class="linkbtn" data-copy>Copiar resumen del día</button></div>`;
 }
@@ -2643,12 +2647,22 @@ async function sendChat(){const ta=document.getElementById("chat-txt");if(!ta)re
 var movs=new Map();
 function diasPend(u){const by=new Map();for(const[,d]of S.items){if(d._u!==u||isCamino(d)||isLegacy(d))continue;if(!by.has(d.dia))by.set(d.dia,[]);by.get(d.dia).push([0,d])}
   const out=[];for(const[dia,l]of by){const st=stats(l);if(!st.saldo)continue;const pg=pagoState(u,dia,st);if(pg&&!pg.changed)continue;out.push({dia,s:st})}return out.sort((a,b)=>a.dia<b.dia?-1:1)}
-/* el diario que cobró la empresa se descuenta de TODO lo que el delivery debe (su cuenta), no solo de la comisión del día */
-function fijoCuentaBox(u,s){const c=cuentaDe(u);const yo=u===S.me&&!S.owner;const v=c.saldo;
-  return `<div class="fc-box"><div class="fc-h">${icSvg("wallet")}<b>${yo?"Tu cuenta con la empresa":"Cuenta de "+esc((personName(u)||"").split(" ")[0])+" con la empresa"}</b></div>
-    <small>El diario de clientes fijos que cobró la empresa (${gs(s.fijoDesc)}) se descuenta de todo lo que ${yo?"debés":"debe"}, no solo de la comisión de hoy.</small>
-    <div class="fc-res ${v>0?"due":v<0?"cash":""}"><span>${v>0?(yo?"Todavía debés":"Todavía debe"):v<0?(yo?"La empresa te pasa":"La empresa le pasa"):"Cuenta en cero"}</span><b class="num">${gs(Math.abs(v))}</b></div>
-    <button type="button" class="linkbtn small-link" ${yo?"data-micuenta":`data-cuenta="${esc(u)}"`}>Ver la cuenta completa</button></div>`}
+/* cliente fijo cobrado por la empresa: NO toca la comisión del día. Abate solo la deuda del delivery (vales/adelantos)
+   y lo que sobra la empresa se lo pasa. El descuento queda como un pago en su cuenta (liq/<uid>/movs, id "fj"+entrega). */
+function deudaDe(u){const ms=[...movs.values()].filter(m=>m._u===u&&m.abierto);const deu=ms.filter(m=>m.tipo==="deuda").reduce((a,m)=>a+m.monto,0),abo=ms.filter(m=>m.tipo==="abono").reduce((a,m)=>a+m.monto,0);return Math.max(0,deu-abo)}
+function fijoCalc(u,d,id){const v=d.valor||0;const used=S.mode==="db"&&db?Math.min(v,deudaDe(u)):0;d.via="empresa";d.desc=1;d.abono=used;d.pasar=v-used;d.pasado=false;
+  if(used){const m={tipo:"abono",monto:used,nota:"Cliente fijo "+(d.cliente||"")+" · lo cobró la empresa",em:Date.now(),abierto:true,por:S.me,ref:id,fijo:1};const mid="fj"+id;movs.set(u+"|"+mid,{...m,_u:u,_id:mid});sendW(db.collection("liq/"+u+"/movs").doc(mid).set(m)).catch(()=>{})}return d}
+async function fijoAplicar(key){const d=S.items.get(key);if(!d||!S.owner)return;await fijoQuitar(key);const x=fijoCalc(d._u,{valor:d.valor,cliente:d.cliente},d._id);await patchItem(key,{via:x.via,desc:1,abono:x.abono,pasar:x.pasar,pasado:false})}
+async function fijoQuitar(key){const d=S.items.get(key);if(!d||!db)return;const u=d._u,mid="fj"+d._id;movs.delete(u+"|"+mid);try{await sendW(db.collection("liq/"+u+"/movs").doc(mid).delete())}catch(e){}}
+const fijoPasarDe=u=>allItems().filter(([,d])=>d._u===u&&d.metodo==="fijo"&&d.desc&&d.pasar>0&&!d.pasado);
+function fijoCuentaBox(u,list){const its=list.filter(([,d])=>d._u===u&&d.metodo==="fijo"&&d.via==="empresa"&&d.desc&&(d.valor||0)>0);if(!its.length)return"";
+  const yo=u===S.me&&!S.owner;const tot=its.reduce((a,[,d])=>a+d.valor,0),ab=its.reduce((a,[,d])=>a+(d.abono||0),0),pend=its.filter(([,d])=>d.pasar>0&&!d.pasado),pa=pend.reduce((a,[,d])=>a+d.pasar,0),ya=its.filter(([,d])=>d.pasar>0&&d.pasado).reduce((a,[,d])=>a+d.pasar,0);
+  const nm=esc((personName(u)||"").split(" ")[0]);
+  return `<div class="fc-box"><div class="fc-h">${icSvg("wallet")}<b>Cliente fijo · lo cobró la empresa ${gs(tot)}</b></div>
+    <small>No cambia la comisión del día. ${yo?"Se descuenta solo de tu deuda con la empresa; lo que sobra te lo pasan.":"Se descuenta solo de la deuda de "+nm+"; lo que sobra se le pasa."}</small>
+    ${ab?`<div class="fc-l"><span>Descontado de ${yo?"tu":"su"} deuda</span><b class="num c-due">− ${gs(ab)}</b></div><div class="fc-l sm"><span>${yo?"Tu deuda ahora":"Deuda ahora"}</span><b class="num">${gs(deudaDe(u))}</b></div>`:`<div class="fc-l sm"><span>${yo?"No tenés":"No tiene"} deuda para descontar</span><b class="num">₲ 0</b></div>`}
+    ${pa?`<div class="fc-res cash"><span>${yo?"La empresa te pasa":"La empresa le pasa"}</span><b class="num">${gs(pa)}</b></div>${S.owner?`<button type="button" class="primary" data-fijopase="${esc(pend.map(([k])=>k).join(","))}">Ya se lo pasé · ${gs(pa)}</button>`:""}`:""}
+    ${ya?`<div class="fc-l sm"><span>${yo?"Ya te pasaron":"Ya se le pasó"}</span><b class="num c-cash">${gs(ya)}</b></div>`:""}</div>`}
 function cuentaDe(u){const dias=diasPend(u);const ms=[...movs.values()].filter(m=>m._u===u&&m.abierto).sort((a,b)=>(a.em||0)-(b.em||0));
   const sd=dias.reduce((a,x)=>a+x.s.saldo,0),deu=ms.filter(m=>m.tipo==="deuda").reduce((a,m)=>a+m.monto,0),abo=ms.filter(m=>m.tipo==="abono").reduce((a,m)=>a+m.monto,0);
   const old=dias.length?Math.floor((Date.now()-fromKey(dias[0].dia).getTime())/864e5):0;
@@ -2679,6 +2693,7 @@ function openCuenta(u){edit=null;const c=cuentaDe(u);const ro=!S.owner;
       ${c.dias.map(x=>`<div class="cta-it ${ro?"":"cta-dia"}"><span>${ddmm(x.dia)} · ${x.s.saldo>0?"debe del día":"la empresa le debe"}<small>${plural(x.s.n,"entrega")} · total ${gs(x.s.total)}${(()=>{const q=[...new Set(allItems().filter(([,d])=>d._u===u&&d.dia===x.dia&&d.quien).map(([,d])=>d.quien))];return q.length?" · "+esc(q.join(", ")):""})()}</small></span><b class="num ${x.s.saldo>0?"c-due":"c-cash"}">${x.s.saldo>0?"":"− "}${gs(Math.abs(x.s.saldo))}</b>${ro?"":`<button type="button" class="dia-paga" data-diapaga="${esc(u)}|${esc(x.dia)}">${icSvg("checkc")} ${x.s.saldo>0?"Pagó este día":"Ya le pagué este día"}</button>`}</div>`).join("")}
       ${c.ms.map(m=>`<div class="cta-it"><span>${ddmm(keyOf(new Date(m.em)))} · ${m.tipo==="deuda"?"Deuda":"Pagó"}${m.nota?" · "+esc(m.nota):""} ${ro?"":`<button type="button" class="linkbtn small-link" data-movdel="${esc(u)}|${esc(m._id)}">quitar</button>`}</span><b class="num ${m.tipo==="deuda"?"c-due":"c-cash"}">${m.tipo==="deuda"?"":"− "}${gs(m.monto)}</b></div>`).join("")}
       ${!c.dias.length&&!c.ms.length?`<div class="empty">Sin movimientos pendientes.</div>`:""}
+      ${(()=>{const fp=fijoPasarDe(u);if(!fp.length)return"";const t=fp.reduce((a,[,d])=>a+d.pasar,0);return `<div class="cta-it"><span>Clientes fijos · ${ro?"la empresa te pasa":"la empresa le pasa"}<small>${fp.map(([,d])=>ddmm(d.dia)+" "+esc(d.cliente||"")).join(" · ")}</small>${ro?"":` <button type="button" class="linkbtn small-link" data-fijopase="${esc(fp.map(([k])=>k).join(","))}">ya se lo pasé</button>`}</span><b class="num c-cash">${gs(t)}</b></div>`})()}
     </div>
     ${ro?`<p class="hint" style="margin:0">Para pagar, hablá con la empresa. Cuando registren tu pago, se descuenta acá.</p>`:""}<div class="cta-acts" ${ro?"hidden":""}><button type="button" class="small pay" data-movnew="${esc(u)}|abono">+ Registrar pago</button><button type="button" class="small" data-movnew="${esc(u)}|deuda">+ Deuda anterior / préstamo</button></div>
     ${ro?"":`<a class="wa-big" href="${esc(cuentaWa(u,c))}" target="_blank" rel="noopener">📲 Enviar estado de cuenta</a>`}
@@ -3063,14 +3078,14 @@ function fijosBlock(list){
   if(!m.size)return"";const can=!lockReason(S.dia)&&(S.mode!=="db"||S.owner);
   return `<div class="fijos"><div class="ac-h">Clientes fijos · pagan diario, sin %</div>
     ${[...m.values()].map(r=>`<div class="fijo-row"><div class="who"><b>${esc(r.nome)}</b><small>${plural(r.n,"entrega")}${r.diario?" · diario "+gs(r.diario):" · diario sin registrar"}</small></div>
-      ${r.diario&&r.sv.length&&S.owner&&S.mode==="db"?`<span class="paid-w"><small>¿Quién cobró ${gs(r.diario)}?</small><span class="fd-ch">${[["empresa","La empresa · descontar"],["empresa_pag","Ya se lo pagué"],["efectivo","Lo cobró él"]].map(([v,l])=>`<button type="button" class="chip" data-fijoset="${esc(r.sv.join(","))}" data-v="${v}">${l}</button>`).join("")}</span></span>`:r.diario?`<span class="paid-w"><span class="paid">${r.emp?(r.desc?"Cobró la empresa":"Pagado al delivery"):"Cobrado"} ${gs(r.diario)}</span>${r.emp&&r.ks.length?(S.owner?`<button type="button" class="linkbtn small-link" data-fijodesc="${esc(r.ks.join(","))}" data-on="${r.desc?0:1}">${r.desc?"No descontar · se lo pago aparte":"Volver a descontar"}</button>${r.desc?"":`<small>No se descuenta</small>`}`:`<small>${r.desc?"se descuenta de lo que debés":"la empresa ya te lo pagó aparte"}</small>`):""}</span>`:can?`<button type="button" class="small pay" data-diario="${esc(r.nome)}">Registrar diario</button>`:`<span class="unpaid">${S.mode==="db"&&!S.owner?"Diario: lo carga la empresa":"Pendiente"}</span>`}</div>`).join("")}</div>`}
+      ${r.diario&&r.sv.length&&S.owner&&S.mode==="db"?`<span class="paid-w"><small>¿Quién cobró ${gs(r.diario)}?</small><span class="fd-ch">${[["empresa","La empresa · a su deuda"],["empresa_pag","Ya se lo pagué"],["efectivo","Lo cobró él"]].map(([v,l])=>`<button type="button" class="chip" data-fijoset="${esc(r.sv.join(","))}" data-v="${v}">${l}</button>`).join("")}</span></span>`:r.diario?`<span class="paid-w"><span class="paid">${r.emp?(r.desc?"Cobró la empresa":"Pagado al delivery"):"Cobrado"} ${gs(r.diario)}</span>${r.emp&&r.ks.length?(S.owner?`<button type="button" class="linkbtn small-link" data-fijodesc="${esc(r.ks.join(","))}" data-on="${r.desc?0:1}">${r.desc?"Ya se lo pagué todo · no descontar":"Descontar de su deuda"}</button>${r.desc?"":`<small>No se descuenta</small>`}`:`<small>${r.desc?"va a tu deuda · lo que sobra te lo pasan":"la empresa ya te lo pagó aparte"}</small>`):""}</span>`:can?`<button type="button" class="small pay" data-diario="${esc(r.nome)}">Registrar diario</button>`:`<span class="unpaid">${S.mode==="db"&&!S.owner?"Diario: lo carga la empresa":"Pendiente"}</span>`}</div>`).join("")}</div>`}
 function openDiario(nome){edit=null;
   const forWho=S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Registrar diario">
     ${sheetHead("Diario · "+esc(nome)+forWho)}
     <p class="hint" style="margin:0">Monto del cliente fijo por las entregas de hoy. Es todo del delivery (sin comisión). El delivery lo ve en su app, pero solo vos lo cargás.</p>
     <div class="money"><span>₲</span><input id="d-val" inputmode="numeric" autocomplete="off" placeholder="Ej.: 100.000"></div>
-    <div class="methods two">${S.mode==="db"&&!(isRealOwner&&writeTarget()===S.me)?`<button type="button" class="method m-due dvia-emp" data-dvia="empresa" aria-pressed="true">💼 La empresa cobró<small>se descuenta de lo que el delivery debe</small></button><button type="button" class="method m-cash" data-dvia="empresa_pag" aria-pressed="false">${ICON.pagado}Ya se lo pagué<small>la empresa le pagó aparte · no se descuenta</small></button>`:""}${["efectivo","transferencia"].map(k=>`<button type="button" class="method m-${M[k].c}" data-dvia="${k}" aria-pressed="${k==="efectivo"&&!(S.mode==="db"&&!(isRealOwner&&writeTarget()===S.me))}">${ICON[k]}${M[k].n}<small>${k==="efectivo"?"lo cobró el delivery":"al delivery"}</small></button>`).join("")}</div>
+    <div class="methods two">${S.mode==="db"&&!(isRealOwner&&writeTarget()===S.me)?`<button type="button" class="method m-due dvia-emp" data-dvia="empresa" aria-pressed="true">💼 La empresa cobró<small>abate su deuda · lo que sobra se le pasa</small></button><button type="button" class="method m-cash" data-dvia="empresa_pag" aria-pressed="false">${ICON.pagado}Ya se lo pagué<small>la empresa le pagó aparte · no se descuenta</small></button>`:""}${["efectivo","transferencia"].map(k=>`<button type="button" class="method m-${M[k].c}" data-dvia="${k}" aria-pressed="${k==="efectivo"&&!(S.mode==="db"&&!(isRealOwner&&writeTarget()===S.me))}">${ICON[k]}${M[k].n}<small>${k==="efectivo"?"lo cobró el delivery":"al delivery"}</small></button>`).join("")}</div>
     <button type="button" class="primary" data-dsave="${esc(nome)}">Guardar diario</button></div></div>`;
   setTimeout(()=>{const v=document.getElementById("d-val");if(v)v.focus()},60)}
 /* búsqueda y filtro de la lista del día: solo oculta filas en pantalla, no cambia datos */
@@ -3659,8 +3674,8 @@ function openEntry(cm,pasar){if(S.mode==="db"&&!S.owner&&isAux(S.me)&&!auxHoy(S.
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet entry-sheet" role="dialog" aria-label="${cm?"Anotar pedido":"Nueva entrega"}">
     ${sheetHead((S.pasar?"📦 Pasar pedido":cm?"Anotar pedido":"Nueva entrega")+(isToday?"":" · "+ddmm(S.dia))+forWho)}
     ${S.pasar?`<div id="asig-box">${asigPicker()}</div>`:""}
-    ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${methodBtns("data-cmet",S.cmMet)}</div>`+(S.pasar?retF:"")+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+cliente+telF+listaF+prod+presets+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div><div id="lote-vals" class="lote-vals" hidden></div>${S.mode==="db"&&S.owner&&writeTarget()!==S.me?`<div id="fijo-dia" class="fijo-dia" hidden><div class="field"><label for="fd-val">Diario del cliente (opcional)</label><div class="money small-money"><span>₲</span><input id="fd-val" inputmode="numeric" autocomplete="off" placeholder="Ej.: 100.000"></div></div><div class="chips">${[["empresa","La empresa cobró · descontar"],["empresa_pag","Ya se lo pagué"],["efectivo","Lo cobró el delivery"]].map(([k,l])=>`<button type="button" class="chip ${k==="empresa"?"on":""}" data-fdvia="${k}">${l}</button>`).join("")}</div></div>`:""}`+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
-       :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+`<div id="pend-wrap" hidden><button type="button" class="chip pend-chip" data-pend>⏳ El cliente me transfiere después</button></div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+telF+listaF+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div><div id="lote-vals" class="lote-vals" hidden></div>${S.mode==="db"&&S.owner&&writeTarget()!==S.me?`<div id="fijo-dia" class="fijo-dia" hidden><div class="field"><label for="fd-val">Diario del cliente (opcional)</label><div class="money small-money"><span>₲</span><input id="fd-val" inputmode="numeric" autocomplete="off" placeholder="Ej.: 100.000"></div></div><div class="chips">${[["empresa","La empresa cobró · descontar"],["empresa_pag","Ya se lo pagué"],["efectivo","Lo cobró el delivery"]].map(([k,l])=>`<button type="button" class="chip ${k==="empresa"?"on":""}" data-fdvia="${k}">${l}</button>`).join("")}</div></div>`:""}`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
+    ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${methodBtns("data-cmet",S.cmMet)}</div>`+(S.pasar?retF:"")+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+cliente+telF+listaF+prod+presets+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div><div id="lote-vals" class="lote-vals" hidden></div>${S.mode==="db"&&S.owner&&writeTarget()!==S.me?`<div id="fijo-dia" class="fijo-dia" hidden><div class="field"><label for="fd-val">Diario del cliente (opcional)</label><div class="money small-money"><span>₲</span><input id="fd-val" inputmode="numeric" autocomplete="off" placeholder="Ej.: 100.000"></div></div><div class="chips">${[["empresa","La empresa cobró · a su deuda"],["empresa_pag","Ya se lo pagué"],["efectivo","Lo cobró el delivery"]].map(([k,l])=>`<button type="button" class="chip ${k==="empresa"?"on":""}" data-fdvia="${k}">${l}</button>`).join("")}</div></div>`:""}`+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
+       :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+`<div id="pend-wrap" hidden><button type="button" class="chip pend-chip" data-pend>⏳ El cliente me transfiere después</button></div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+telF+listaF+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div><div id="lote-vals" class="lote-vals" hidden></div>${S.mode==="db"&&S.owner&&writeTarget()!==S.me?`<div id="fijo-dia" class="fijo-dia" hidden><div class="field"><label for="fd-val">Diario del cliente (opcional)</label><div class="money small-money"><span>₲</span><input id="fd-val" inputmode="numeric" autocomplete="off" placeholder="Ej.: 100.000"></div></div><div class="chips">${[["empresa","La empresa cobró · a su deuda"],["empresa_pag","Ya se lo pagué"],["efectivo","Lo cobró el delivery"]].map(([k,l])=>`<button type="button" class="chip ${k==="empresa"?"on":""}" data-fdvia="${k}">${l}</button>`).join("")}</div></div>`:""}`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
     <p class="err" id="err" ${S.err?"":"hidden"}>${esc(S.err)}</p>
     ${cm?`<button type="button" class="primary" id="savecamino" ${S.val?"":"disabled"}>${S.pasar?"Enviar pedido":"Guardar pedido"}</button>`
        :`<button type="button" class="primary" id="save" ${S.val?"":"disabled"}>Registrar ${S.val?gs(S.val):"entrega"}</button>
@@ -3739,8 +3754,7 @@ async function save(camino){
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   saving=true;refreshForm();drawSug();
   {const fdv=FDV;if(fdv){const via=FDVIA;const pagAp=via==="empresa_pag";
-    const dd={valor:fdv,metodo:"fijo",diario:true,via:pagAp?"empresa":via,cliente:d.cliente,obs:pagAp?"Diario · la empresa ya le pagó":via==="empresa"?"Diario · cobra la empresa":"Diario",dia:d.dia,criadoEm:d.criadoEm+1};if(via==="empresa")dd.desc=1;
-    const wt0=writeTarget();setTimeout(()=>{addItem(dd,wt0).catch(()=>toast("No se guardó el diario"))},50)}}
+    const dd={valor:fdv,metodo:"fijo",diario:true,via:pagAp?"empresa":via,cliente:d.cliente,obs:pagAp?"Diario · la empresa ya le pagó":via==="empresa"?"Diario · cobra la empresa":"Diario",dia:d.dia,criadoEm:d.criadoEm+1};const wt0=writeTarget(),did=uid();if(via==="empresa")fijoCalc(wt0,dd,did);setTimeout(()=>{addItem(dd,wt0,did).catch(()=>toast("No se guardó el diario"))},50)}}
   const pasarA=camino&&S.pasar?S.asig:"";if(pasarA){d.central={por:S.me,em:Date.now()};if(PGP){const pid=PGP;PGP="";setTimeout(()=>progOk(pid,true,true),300)}}S.pasar=false;
   const nid=uid(),wt=pasarA||writeTarget();if(pendNow)addPend(wt,nid,d).catch(()=>{});
   /* varias entregas juntas anotadas "en camino": se separan en pedidos individuales para finalizar uno por uno */
@@ -4063,8 +4077,8 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.dsave){const v=parseVal(document.getElementById("d-val").value);if(!v){toast("Escribí el monto del diario");return}
     const via=(layer.querySelector('[data-dvia][aria-pressed="true"]')||{dataset:{dvia:"efectivo"}}).dataset.dvia;
     const when=S.dia===today()?new Date():new Date(fromKey(S.dia).setHours(20,0,0,0));
-    const pagAp=via==="empresa_pag";const d={valor:v,metodo:"fijo",diario:true,via:pagAp?"empresa":via,cliente:t.dataset.dsave,obs:pagAp?"Diario · la empresa ya le pagó":via==="empresa"?"Diario · cobra la empresa":"Diario",dia:S.dia,criadoEm:when.getTime()};if(via==="empresa")d.desc=1;
-    const wt=writeTarget(),eid=uid();
+    const pagAp=via==="empresa_pag";const d={valor:v,metodo:"fijo",diario:true,via:pagAp?"empresa":via,cliente:t.dataset.dsave,obs:pagAp?"Diario · la empresa ya le pagó":via==="empresa"?"Diario · cobra la empresa":"Diario",dia:S.dia,criadoEm:when.getTime()};if(pagAp)d.desc=0;
+    const wt=writeTarget(),eid=uid();if(via==="empresa")fijoCalc(wt,d,eid);
     if(false&&via==="empresa"&&db){const m={tipo:"abono",monto:v,nota:"Diario "+t.dataset.dsave+" (cobró la empresa)",em:Date.now(),abierto:true,por:S.me,ref:eid};const mid=uid();movs.set(wt+"|"+mid,{...m,_u:wt,_id:mid});sendW(db.collection("liq/"+wt+"/movs").doc(mid).set(m)).catch(()=>toast("No se guardó el descuento en la cuenta"))}
     closeSheet();try{const w=await sendW(addItem(d,wt,eid));if(w==="wait"){toast("Guardado en el celular · se envía al volver la señal")}else toast(via==="empresa_pag"?"Diario "+gs(v)+" · ya pagado, no se descuenta":via==="empresa"?"Diario "+gs(v)+" · se descuenta de lo que "+(wt===S.me?"tenés que pagar":personName(wt).split(" ")[0]+" tiene que pagar"):"Diario guardado: "+gs(v))}catch(e){if(e&&(e.code==="invalid_argument"||e.code==="permission-denied"))noPerm();else toast("No se guardó.")}return}
   if(t.dataset.camprod){const k=t.dataset.camprod;const d=S.items.get(k);if(!d)return;const v=d.pagoTipo==="prod"?null:"prod";d.pagoTipo=v;openCamino(k);render();
