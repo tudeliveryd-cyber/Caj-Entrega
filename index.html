@@ -1161,6 +1161,8 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 
 .rk-prev{border-radius:18px;overflow:hidden;border:1px solid var(--line);max-height:52vh;overflow-y:auto}.rk-prev img{width:100%;display:block}
 .rk-per{flex-wrap:wrap}.rk-sh{display:flex;align-items:center;justify-content:center;gap:8px}.rk-sh svg{width:18px;height:18px}
+
+.paid-w{display:grid;justify-items:end;gap:2px}.paid-w small{color:var(--muted);font-size:11.5px}
 </style>
 
 </head>
@@ -1282,7 +1284,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="180";
+const APPV="181";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2117,6 +2119,9 @@ document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.c
   if(t.hasAttribute("data-rkimg")){if(!RKIMG)return;const P=rkPeriodo(RKP);shareFile(RKIMG.blob,(P.tit+" "+P.sub).replace(/[^\w\sáéíóúñ-]/gi,"").replace(/\s+/g,"-")+".png");return}
   if(t.hasAttribute("data-rktxt")){const P=rkPeriodo(RKP);copy(rkTexto(P,rkFilas(P)));return}});
 
+document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("button[data-fijodesc]");if(!t||t.closest("#layer"))return;
+  const on=t.dataset.on==="1";const ks=t.dataset.fijodesc.split(",").filter(k=>S.items.get(k));
+  try{await Promise.all(ks.map(k=>patchItem(k,{desc:on?1:0})));render(true);toast(on?"Se vuelve a descontar de la liquidación":"No se descuenta · se lo pagás aparte")}catch(err){toast("No se guardó.")}});
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
@@ -3033,11 +3038,11 @@ function viewCamino(cl){
       <div class="amt"><small>Cobrar</small><b class="num">${gs(cobrarDe(d))}</b></div></div>
     <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.pagoTipo!=="todo"&&(!S.owner||S.filter===S.me)?`<button type="button" class="map-btn" data-qr="${esc(k)}">${icSvg("qr")} QR</button>`:""}${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>!x.nota&&x.ok!==null&&x.ok!==undefined).length}/${d.lista.filter(x=>!x.nota).length}</button>`:""}${d.ret&&(d.ret.n||d.ret.ubic)?`<a class="map-btn" href="${esc(mapUrl(d.ret.n||"",d.ret.ubic))}" target="_blank" rel="noopener">🏪 Retirar</a>`:""}${d.ret&&d.ret.tel?`<button type="button" class="map-btn" data-tel="${esc(d.ret.tel)}" data-teln="${esc(d.ret.n||"Retiro")}">📞 Retiro</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${d.ret?"Entregar":linkIn(d.ubic)?"Ubicación":"Mapa"}</a>${d.tel?`<button type="button" class="map-btn" data-tel="${esc(d.tel)}" data-teln="${esc(d.cliente||"Cliente")}">📞 Cliente</button>`:""}<button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
 function fijosBlock(list){
-  const m=new Map();for(const[,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0});const r=m.get(k);if(d.diario){r.diario+=d.valor;if(d.via==="empresa")r.emp=1}else r.n+=(d.cant||1)}
+  const m=new Map();for(const[key,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0,ks:[],desc:0});const r=m.get(k);if(d.diario){r.diario+=d.valor;if(d.via==="empresa"){r.emp=1;r.ks.push(key);if(d.desc)r.desc=1}}else r.n+=(d.cant||1)}
   if(!m.size)return"";const can=!lockReason(S.dia);
   return `<div class="fijos"><div class="ac-h">Clientes fijos · pagan diario, sin %</div>
     ${[...m.values()].map(r=>`<div class="fijo-row"><div class="who"><b>${esc(r.nome)}</b><small>${plural(r.n,"entrega")}${r.diario?" · diario "+gs(r.diario):" · diario sin registrar"}</small></div>
-      ${r.diario?`<span class="paid">${r.emp?"Cobra la empresa":"Cobrado"} ${gs(r.diario)}</span>`:can?`<button type="button" class="small pay" data-diario="${esc(r.nome)}">Registrar diario</button>`:`<span class="unpaid">Pendiente</span>`}</div>`).join("")}</div>`}
+      ${r.diario?`<span class="paid-w"><span class="paid">${r.emp?"Cobra la empresa":"Cobrado"} ${gs(r.diario)}</span>${r.emp&&r.ks.length?(S.owner?`<button type="button" class="linkbtn small-link" data-fijodesc="${esc(r.ks.join(","))}" data-on="${r.desc?0:1}">${r.desc?"No descontar · se lo pago aparte":"Volver a descontar"}</button>${r.desc?"":`<small>Pagado aparte · no se descuenta</small>`}`:`<small>${r.desc?"se descuenta de lo que debés":"la empresa te lo paga aparte"}</small>`):""}</span>`:can?`<button type="button" class="small pay" data-diario="${esc(r.nome)}">Registrar diario</button>`:`<span class="unpaid">Pendiente</span>`}</div>`).join("")}</div>`}
 function openDiario(nome){edit=null;
   const forWho=S.mode==="db"&&S.owner?` · ${esc(personName(writeTarget()))}`:"";
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Registrar diario">
