@@ -1282,7 +1282,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="178";
+const APPV="179";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2437,7 +2437,7 @@ function cajaBox(){if(S.mode!=="db"||S.dia!==today()||showEmp())return"";const u
       <div><span>🏢 A la cuenta de Tú Delivery (anotado)${K.nemp?" · "+plural(K.nemp,"entrega"):""}</span><b class="num c-due">${gs(K.emp)}</b></div>
       ${K.emp?`<small>Lo que entra a la empresa ya se descuenta de la comisión en la liquidación.</small>`:""}
       <div class="cf-tot"><span>Total de delivery hoy</span><b class="num">${gs(K.ef+K.pago+K.diar+K.tr+K.emp)}</b></div><small>Los productos no entran: los pagás con la plata de la caja y el cliente te los devuelve.</small></div>
-    ${yo?(c.cierraEm?`<div class="caja-act"><button type="button" class="${despues?"primary":"ghost"}" data-cajareabrir>Seguir trabajando · reabrir caja</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajacerrar style="justify-self:start">Corregir cierre</button>`:""}</div><small class="caja-lock">Si saliste a trabajar de nuevo, reabrí la caja. Lo de antes queda guardado.</small>`:`<div class="caja-act"><button type="button" class="primary" data-cajacerrar>Cerrar caja · terminé el trabajo</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajaabrir>Cambiar inicio</button>`:""}</div>`):""}
+    ${yo?(c.cierraEm?`<div class="caja-act"><button type="button" class="${despues?"primary":"ghost"}" data-cajareabrir>Seguir trabajando · reabrir caja</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajacerrar style="justify-self:start">Corregir cierre</button>`:""}</div><small class="caja-lock">Si saliste a trabajar de nuevo, reabrí la caja. Lo de antes queda guardado.</small>`:`<div class="caja-act"><button type="button" class="primary" data-cajacerrar>Cerrar caja · terminé el trabajo</button>${isRealOwner?`<button type="button" class="linkbtn small-link" data-cajaabrir>Cambiar inicio</button>`:""}</div>`):isRealOwner?(c.cierraEm?`<div class="caja-act"><button type="button" class="${despues?"primary":"ghost"}" data-cajareabrir="${esc(u)}">Reabrir la caja de ${esc((personName(u)||"").split(" ")[0])}</button><button type="button" class="linkbtn small-link" data-cajacerrar="${esc(u)}" style="justify-self:start">Corregir cierre</button></div><small class="caja-lock">Al reabrir, lo de antes queda guardado. Después se cierra de nuevo con lo que cuente al final.</small>`:`<div class="caja-act"><button type="button" class="ghost" data-cajacerrar="${esc(u)}">Cerrar la caja de ${esc((personName(u)||"").split(" ")[0])}</button></div>`):""}
     ${isRealOwner?`<button type="button" class="linkbtn small-link caja-reset" data-cajareset="${esc(u)}">🗑️ Borrar la caja de hoy${yo?"":" de "+esc((personName(u)||"").split(" ")[0])} y empezar de nuevo</button>`:""}</details>`}
 var CJU=null;
 function openCaja(modo,u){edit=null;CJU=(isRealOwner&&u)||S.me;const otro=CJU!==S.me;const K=cajaCalc(CJU,today());const ab=modo==="abrir";const cur=ab?(K.c.abre||""):(K.c.cierra||"");
@@ -3762,7 +3762,7 @@ document.addEventListener("click",async e=>{
     if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Seguro? Tocá de nuevo para borrar";setTimeout(()=>{if(t.isConnected){t.classList.remove("armed");const cb=document.getElementById("caja-box");if(cb)cb.dataset.h="";render(true)}},3000);return}
     const dia=today();cajas.delete(u+"|"+dia);render(true);try{await sendW(db.collection("turnos/"+u+"/caja").doc(dia).delete());toast("Caja de hoy borrada · ya podés abrirla de nuevo")}catch(err){toast("No se pudo borrar")}}
   else if(t.hasAttribute("data-cajaabrir")&&!t.closest("#layer"))openCaja("abrir",t.dataset.cajaabrir||"");
-  else if(t.hasAttribute("data-cajacerrar")&&!t.closest("#layer"))openCaja("cerrar");
+  else if(t.hasAttribute("data-cajacerrar")&&!t.closest("#layer"))openCaja("cerrar",t.dataset.cajacerrar||"");
   else if(t.hasAttribute("data-auxquien")&&!t.closest("#layer"))openAuxQuien();
   else if(t.hasAttribute("data-export")&&!t.closest("#layer"))openExport();
   else if(t.dataset.dlm!==undefined&&!t.closest("#layer")){DL.m=t.dataset.dlm;document.querySelectorAll("[data-dlm]").forEach(b=>b.classList.toggle("on",b===t));dlApply()}
@@ -3776,7 +3776,7 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.confok||t.dataset.confno){const k=t.dataset.confok||t.dataset.confno;const ok=!!t.dataset.confok;const d=S.items.get(k);if(!d)return;
     if(!ok&&!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Seguro?";return}
     patchItem(k,{conf:ok?"ok":"no",confEm:Date.now()}).then(()=>toast(ok?"Recibido · se descuenta "+gs(d.valor)+" a "+(personName(d._u)||"").split(" ")[0]:"Marcado: no llegó · no se descuenta")).catch(()=>noPerm())}
-  else if(t.hasAttribute("data-cajareabrir")&&!t.closest("#layer")){saveCaja("reabrir").then(w=>{toast("Caja abierta de nuevo · al terminar, cerrala otra vez")})}
+  else if(t.hasAttribute("data-cajareabrir")&&!t.closest("#layer")){const ou=t.dataset.cajareabrir;CJU=(isRealOwner&&ou)||null;saveCaja("reabrir").then(w=>{toast(ou?"Caja de "+(personName(ou)||"").split(" ")[0]+" abierta de nuevo · al terminar se cierra otra vez":"Caja abierta de nuevo · al terminar, cerrala otra vez")})}
   else if(t.hasAttribute("data-pasar")){S.asig="";PGP="";openEntry(true,true)}
   else if(t.dataset.asig){S.asig=t.dataset.asig;const b=document.getElementById("asig-box");if(b)b.innerHTML=asigPicker();if(S.err&&S.err.startsWith("Elegí arriba")){S.err=""}refreshForm();const c=document.getElementById("cli");if(c&&!c.value)c.focus()}
   else if(t.hasAttribute("data-anotar")){if(S.mode==="db"&&!S.owner&&S.canWrite===false){noPerm();return}openEntry(true);setTimeout(()=>{const c=document.getElementById("cli");if(c)c.focus()},60)}
