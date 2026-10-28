@@ -1186,6 +1186,9 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .cc-sig{margin-top:14px;font-size:14px;color:#E3B7D3;font-style:italic}
 .cc-seg{flex-wrap:wrap;justify-content:center}.cc-seg button{padding:8px 12px!important;font-size:13px}
 .ch-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+
+.cc-row{display:grid;grid-template-columns:1fr auto;gap:8px;width:100%}.cc-foto{display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}.cc-foto svg{width:18px;height:18px}
+.cc-av img.av{object-fit:cover;image-rendering:auto}
 </style>
 
 </head>
@@ -1307,7 +1310,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="188";
+const APPV="189";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2170,11 +2173,15 @@ function openCumpleCard(id,mi){const c=cumples().find(x=>x.id===id);if(!c)return
     <div class="cc-sig">Con cariño, todo el equipo de Tú Delivery</div>
     <div class="disp-f">Santa Rita · ${d} de ${MESES[m-1]}</div></div>
     <div class="disp-ctl"><div class="seg cc-seg">${CUMSG.map((_,i)=>`<button type="button" data-cummsg="${i}" class="${i===mi?"on":""}">Mensaje ${i+1}</button>`).join("")}</div>
-    <button type="button" class="disp-x" data-cancel>Cerrar</button><small>Tocá la pantalla para ocultar los botones y sacar la captura</small></div></div>`;
-  layer.firstElementChild.dataset.cid=id}
+    <div class="qr-row cc-row"><label class="disp-x cc-foto">${icSvg("image")} Foto en alta calidad<input type="file" accept="image/*" data-ccfoto="${esc(cumpleU(c)||"")}" hidden></label><button type="button" class="disp-x" data-cancel>Cerrar</button></div><small>Tocá la pantalla para ocultar los botones y sacar la captura</small></div></div>`;
+  layer.firstElementChild.dataset.cid=id;const cu=cumpleU(c);
+  if(cu)getFotoHD(cu).then(h=>{const im=layer.querySelector(".cc-av img");if(h&&im)im.src=h;else if(h){const a=layer.querySelector(".cc-av .av");if(a)a.outerHTML='<img class="av av-img" src="'+h+'" alt="">'}})}
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
   if(t.dataset.cumcard){openCumpleCard(t.dataset.cumcard);return}
   if(t.dataset.cummsg!=null){const w=t.closest(".cumcard");if(w)openCumpleCard(w.dataset.cid,+t.dataset.cummsg)}});
+document.addEventListener("change",async e=>{const t=e.target;if(!t||!t.dataset||t.dataset.ccfoto==null||!t.files||!t.files[0])return;const f=t.files[0];const u=t.dataset.ccfoto;
+  try{toast("Preparando foto…");const h=await fotoHD(f);let im=layer.querySelector(".cc-av img");if(!im){const a=layer.querySelector(".cc-av .av");if(a){a.outerHTML='<img class="av av-img" src="" alt="">';im=layer.querySelector(".cc-av img")}}if(im)im.src=h;
+    if(u&&(S.owner||u===S.me)){saveFotoHD(u,h);if(!(rank.get(u)||{}).foto){const d=await fotoComprimir(f);saveFoto(u,d)}}toast("Foto lista")}catch(err){toast("No se pudo leer la foto")}t.value=""});
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
@@ -3217,6 +3224,13 @@ function openFoto(u){edit=null;u=u||S.me;const yo=u===S.me;const ft=(rank.get(u)
 async function fotoComprimir(file){const url=URL.createObjectURL(file);try{const img=await new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ko;i.src=url});
   const S2=128,c=document.createElement("canvas");c.width=S2;c.height=S2;const x=c.getContext("2d");const m=Math.min(img.naturalWidth,img.naturalHeight);
   x.drawImage(img,(img.naturalWidth-m)/2,(img.naturalHeight-m)/2,m,m,0,0,S2,S2);let q=.8,d=c.toDataURL("image/jpeg",q);while(d.length>30000&&q>.4){q-=.1;d=c.toDataURL("image/jpeg",q)}return d}finally{URL.revokeObjectURL(url)}}
+/* versión grande (para la tarjeta de cumpleaños): turnos/<uid>/foto/hd, se carga solo cuando hace falta */
+var FOTOHD={};
+async function fotoHD(file){const url=URL.createObjectURL(file);try{const img=await new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ko;i.src=url});
+  const S2=720,c=document.createElement("canvas");c.width=S2;c.height=S2;const x=c.getContext("2d");const m=Math.min(img.naturalWidth,img.naturalHeight);x.imageSmoothingQuality="high";
+  x.drawImage(img,(img.naturalWidth-m)/2,(img.naturalHeight-m)/2,m,m,0,0,S2,S2);let q=.86,d=c.toDataURL("image/jpeg",q);while(d.length>300000&&q>.5){q-=.08;d=c.toDataURL("image/jpeg",q)}return d}finally{URL.revokeObjectURL(url)}}
+async function saveFotoHD(u,d){FOTOHD[u]=d;if(S.mode!=="db"||!db)return;try{await sendW(db.doc("turnos/"+u+"/foto/hd").set({img:d,em:Date.now()}))}catch(e){}}
+async function getFotoHD(u){if(FOTOHD[u]!==undefined)return FOTOHD[u];if(S.mode!=="db"||!db)return null;try{const d=await getT(db.doc("turnos/"+u+"/foto/hd"));FOTOHD[u]=d&&d.exists?d.data().img:null}catch(e){return null}return FOTOHD[u]}
 async function saveFoto(u,d){const cur=rank.get(u)||{};rank.set(u,{...cur,foto:d});render(true);
   try{const w=await sendW(db.doc("ranking/"+u).set({foto:d||null,...(cur.nome?{}:{nome:personName(u)||""})},{merge:true}));toast(d?(w==="wait"?"Foto guardada · se envía al volver la señal":"Foto guardada"):"Foto quitada")}catch(e){toast("No se guardó la foto.")}}
 /* informe personalizado: elegir desde/hasta */
@@ -3807,7 +3821,7 @@ async function doPay(u,dia){const list=[...S.items.entries()].filter(([,d])=>!is
 document.addEventListener("input",e=>{if(e.target&&e.target.id==="dl-q"){DL.q=e.target.value;dlApply()}});
 document.addEventListener("change",async e=>{const t=e.target;if(!t)return;
   if(t.id==="rg-from"||t.id==="rg-to"){if(!RG)RG={from:today(),to:today()};const v=t.value;if(!v||v>today())return;if(t.id==="rg-from")RG.from=v;else RG.to=v;render(true);return}
-  if(t.dataset&&t.dataset.fotou&&t.files&&t.files[0]){const u=t.dataset.fotou;try{toast("Preparando foto…");const d=await fotoComprimir(t.files[0]);closeSheet();await saveFoto(u,d)}catch(err){toast("No se pudo leer la foto")}}});
+  if(t.dataset&&t.dataset.fotou&&t.files&&t.files[0]){const u=t.dataset.fotou;try{toast("Preparando foto…");const f0=t.files[0];const d=await fotoComprimir(f0);closeSheet();await saveFoto(u,d);fotoHD(f0).then(h=>saveFotoHD(u,h)).catch(()=>{})}catch(err){toast("No se pudo leer la foto")}}});
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button");if(!t)return;
   if(t.dataset.day){const n=addDays(S.dia,Number(t.dataset.day));if(n<=today()){S.dia=n;render(true)}}
