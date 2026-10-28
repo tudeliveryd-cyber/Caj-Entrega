@@ -1171,6 +1171,21 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .fc-res b{font-size:20px}.fc-res.due b{color:var(--due)}.fc-res.cash b{color:var(--cash)}.fc-box .linkbtn{justify-self:start}
 
 .fc-l{display:flex;justify-content:space-between;font-size:14px}.fc-l.sm{font-size:13px;color:var(--muted)}
+
+/* tarjeta de cumpleaños */
+.cumcard{background:radial-gradient(110% 60% at 50% 0%,#7A2E6E 0%,#3A1650 45%,#160A26 100%)}
+.cc-conf{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}.cc-conf i{position:absolute;border-radius:2px}
+.cumcard .disp-in,.cumcard .disp-ctl{position:relative;z-index:2}
+.cc-kick{margin-top:30px;font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:#F6C9DF;font-weight:700}
+.cc-av{position:relative;margin-top:22px}.cc-av .av{width:210px;height:210px;font-size:64px;border:5px solid #fff;box-shadow:0 0 0 8px rgba(240,138,184,.45),0 20px 50px rgba(0,0,0,.45)}
+.cc-cake{position:absolute;right:6px;bottom:6px;width:58px;height:58px;border-radius:50%;background:#F08AB8;color:#fff;display:grid;place-items:center;border:4px solid #2A1240}.cc-cake svg{width:30px;height:30px}
+.cc-t{margin-top:22px;font-family:var(--display);font-size:clamp(40px,13vw,56px);line-height:.98;font-weight:800;background:linear-gradient(180deg,#fff,#F6C9DF);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.01em}
+.cc-n{margin-top:14px;font-size:30px;font-weight:800}
+.cc-f{margin-top:8px;padding:5px 16px;border-radius:999px;background:rgba(232,196,106,.18);color:#E8C46A;font-weight:700;font-size:15px}
+.cc-msg{margin:18px 6px 0;font-size:18px;line-height:1.45;color:#F3E8FA;max-width:360px}
+.cc-sig{margin-top:14px;font-size:14px;color:#E3B7D3;font-style:italic}
+.cc-seg{flex-wrap:wrap;justify-content:center}.cc-seg button{padding:8px 12px!important;font-size:13px}
+.ch-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 </style>
 
 </head>
@@ -1292,7 +1307,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="187";
+const APPV="188";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2138,6 +2153,28 @@ document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.c
   try{for(const k of ks)await patchItem(k,{pasado:true,pasadoEm:Date.now()});render(true);if(layer.querySelector('[aria-label="Cuenta"]')){const u=(S.items.get(ks[0])||{})._u;if(u)openCuenta(u)}toast("Listo · marcado como pasado")}catch(err){toast("No se guardó.")}});
 var FJMIG=new Set();function fijoMigrar(){if(!S.owner||S.mode!=="db")return;for(const[k,d]of S.items){if(d.metodo==="fijo"&&d.via==="empresa"&&d.desc&&d.abono==null&&(d.valor||0)>0&&!FJMIG.has(k)){FJMIG.add(k);fijoAplicar(k).catch(()=>{})}}}
 setInterval(()=>{try{fijoMigrar()}catch(e){}},5000);
+/* tarjeta grande de cumpleaños para sacar captura y publicar */
+const CUMSG=["Hoy celebramos tu vida. Que Dios te llene de salud, alegría y muchas bendiciones en este nuevo año.","Gracias por tu esfuerzo y tu compromiso de cada día. ¡Que este nuevo año venga lleno de logros y felicidad!","Gracias por liderar con el ejemplo y por todo lo que hacés por este equipo. Hoy celebramos con vos.","«Jehová te bendiga, y te guarde; Jehová haga resplandecer su rostro sobre ti.» Números 6:24-25"];
+var CUMI=null;
+function openCumpleCard(id,mi){const c=cumples().find(x=>x.id===id);if(!c)return;edit=null;if(mi==null)mi=c.f?2:0;CUMI=mi;
+  const nom=(c.nome||"").trim();const pn=nom.split(/\s+/)[0];const d=Number(c.md.slice(3)),m=Number(c.md.slice(0,2));
+  let r=11;const rnd=()=>{r=(r*16807)%2147483647;return r/2147483647};const cols=["#E8C46A","#F08AB8","#9B7BE0","#5AA9F0","#7CE0A0","#fff"];
+  const conf=Array.from({length:46},(_,i)=>`<i style="left:${(()=>{const a=rnd();return (a<.5?a*26:74+(a-.5)*52).toFixed(1)})()}%;top:${(rnd()*100).toFixed(1)}%;background:${cols[i%cols.length]};transform:rotate(${Math.round(rnd()*180)}deg);width:${6+Math.round(rnd()*8)}px;height:${10+Math.round(rnd()*10)}px;opacity:${(.45+rnd()*.5).toFixed(2)}"></i>`).join("");
+  layer.innerHTML=`<div class="disp cumcard" data-dsptog><div class="cc-conf" aria-hidden="true">${conf}</div><div class="disp-in">
+    <div class="disp-brand"><img src="icon-192.png" alt=""><b>Tú Delivery</b></div>
+    <div class="cc-kick">Hoy es un día especial</div>
+    <div class="cc-av">${avatarHtml(nom,cumpleU(c))}<span class="cc-cake">${icSvg("cake")}</span></div>
+    <div class="cc-t">¡Feliz<br>cumpleaños!</div>
+    <div class="cc-n">${esc(nom)}</div>${c.f?`<div class="cc-f">${esc(c.f)}</div>`:""}
+    <p class="cc-msg">${esc(CUMSG[mi])}</p>
+    <div class="cc-sig">Con cariño, todo el equipo de Tú Delivery</div>
+    <div class="disp-f">Santa Rita · ${d} de ${MESES[m-1]}</div></div>
+    <div class="disp-ctl"><div class="seg cc-seg">${CUMSG.map((_,i)=>`<button type="button" data-cummsg="${i}" class="${i===mi?"on":""}">Mensaje ${i+1}</button>`).join("")}</div>
+    <button type="button" class="disp-x" data-cancel>Cerrar</button><small>Tocá la pantalla para ocultar los botones y sacar la captura</small></div></div>`;
+  layer.firstElementChild.dataset.cid=id}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.dataset.cumcard){openCumpleCard(t.dataset.cumcard);return}
+  if(t.dataset.cummsg!=null){const w=t.closest(".cumcard");if(w)openCumpleCard(w.dataset.cid,+t.dataset.cummsg)}});
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
@@ -3459,7 +3496,7 @@ const cumpleFoto=c=>{const u=cumpleU(c),r=u&&rank.get(u);return r&&r.foto&&/^dat
 function cumpleBox(){if(S.mode!=="db"||S.dia!==today())return"";const t=today();const mm=t.slice(5,7);
   const mes=cumples().filter(c=>c.md.slice(0,2)===mm).sort((a,b)=>a.md<b.md?-1:1);if(!mes.length)return"";
   const fn=n=>esc((n||"").trim());const hoy=mes.filter(c=>c.md===t.slice(5));let h="";
-  for(const c of hoy){const yo=c.u&&c.u===S.me;h+=`<div class="cumple-hoy ${yo?"yo":""}">${cumpleFoto(c)?`<div class="ch-av">${avatarHtml(c.nome,cumpleU(c))}<i>${icSvg("cake")}</i></div>`:`<div class="ch-ic">${icSvg("cake")}</div>`}<div><b>${yo?"¡Feliz cumpleaños, "+fn(c.nome).split(" ")[0]+"!":"Hoy cumple años "+fn(c.nome)}</b>${c.f&&!yo?`<span class="cm-f">${esc(c.f)}</span>`:""}<small>${yo?"Todo el equipo de Tú Delivery te desea un día lleno de bendiciones.":"¡Mandale tus felicitaciones!"}</small>${yo?"":`<button type="button" class="ghost small" data-radio>${icSvg("mic")} Saludar por la Radio</button>`}</div></div>`}
+  for(const c of hoy){const yo=c.u&&c.u===S.me;h+=`<div class="cumple-hoy ${yo?"yo":""}">${cumpleFoto(c)?`<div class="ch-av">${avatarHtml(c.nome,cumpleU(c))}<i>${icSvg("cake")}</i></div>`:`<div class="ch-ic">${icSvg("cake")}</div>`}<div><b>${yo?"¡Feliz cumpleaños, "+fn(c.nome).split(" ")[0]+"!":"Hoy cumple años "+fn(c.nome)}</b>${c.f&&!yo?`<span class="cm-f">${esc(c.f)}</span>`:""}<small>${yo?"Todo el equipo de Tú Delivery te desea un día lleno de bendiciones.":"¡Mandale tus felicitaciones!"}</small><div class="ch-btns"><button type="button" class="ghost small" data-cumcard="${esc(c.id)}">${icSvg("image")} Tarjeta para publicar</button>${yo?"":`<button type="button" class="ghost small" data-radio>${icSvg("mic")} Saludar por la Radio</button>`}</div></div></div>`}
   h+=`<section class="cumple-mes"><div class="cm-h">${icSvg("cake")}<b>Cumpleaños de ${MESES[Number(mm)-1]}</b></div><div class="cp-list">${mes.map(c=>{const d=Number(c.md.slice(3));const td=Number(t.slice(8));return `<div class="${c.md===t.slice(5)?"hoy":d<td?"pas":""}"><span class="cm-d num">${d}</span><span class="cm-n">${avatarHtml(c.nome,cumpleU(c))}<span class="cm-nn">${fn(c.nome)}</span>${c.f?` <span class="cm-f">${esc(c.f)}</span>`:""}</span><small>${c.md===t.slice(5)?"hoy":d===td+1?"mañana":d<td?"ya pasó":"en "+(d-td)+" días"}</small></div>`}).join("")}</div></section>`;
   return h}
 function cumpleAviso(){if(S.mode!=="db")return;const k="caixa_cumple_aviso";let seen="";try{seen=localStorage.getItem(k)||""}catch(e){}if(seen===today())return;
