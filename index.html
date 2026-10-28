@@ -1189,6 +1189,8 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 
 .cc-row{display:grid;grid-template-columns:1fr auto;gap:8px;width:100%}.cc-foto{display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}.cc-foto svg{width:18px;height:18px}
 .cc-av img.av{object-fit:cover;image-rendering:auto}
+
+.ac-pg{display:grid;gap:6px;margin-top:10px}.ac-pg label{font-size:13px;font-weight:700;color:var(--muted)}.ac-pg-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.ac-pg-row .primary{padding:12px 14px;min-height:0}
 </style>
 
 </head>
@@ -1310,7 +1312,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="189";
+const APPV="190";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1865,6 +1867,7 @@ function drawNotaEd(){const c=NCOL[NE.color];
       <div class="field"><label for="ac-cob">Cobrado / lo que tengo para pasarles</label><div class="money small-money"><span>₲</span><input id="ac-cob" inputmode="numeric" autocomplete="off" placeholder="Total de la nota" value="${NE.cobrado?fmtInput(NE.cobrado):""}"></div><small class="hint" id="ac-cob-h" style="margin:0"></small></div>
       <div class="field"><label for="ac-desc">Descontar (uno por línea)</label><textarea id="ac-desc" class="nt-text ac-desc" placeholder="Diaria 250.000&#10;Plástico 130.000&#10;Bebida 120.000">${esc(NE.desc)}</textarea></div>
       <div id="ac-res" class="acn-res"></div>
+      <div class="ac-pg"><label for="ac-pg" id="ac-pg-l">¿Cuánto pagó?</label><div class="ac-pg-row"><div class="money small-money"><span>₲</span><input id="ac-pg" inputmode="numeric" autocomplete="off" placeholder="Monto pagado"></div><button type="button" class="primary" data-acpago>Registrar pago</button></div><small class="hint" id="ac-pg-h" style="margin:0">Si paga una parte, lo que falta queda como “Saldo anterior” en la próxima cuenta.</small></div>
       <a class="wa-btn ac-wa" id="ac-wa" href="#" target="_blank" rel="noopener">📲 Enviar acerto por WhatsApp</a></div>`:""}
     ${NE.acerto||NE.suma||NE.dos?`<div class="nt-clr"><button type="button" class="ghost" data-ntclr>${icSvg("checkc")} Acertado · limpiar y empezar de nuevo</button>${(NE.hist||[]).length?`<div class="nt-hist"><b>Acertos anteriores</b>${NE.hist.slice(-5).reverse().map(h=>`<div><span>${ddmm(keyOf(new Date(h.em)))} ${hhmm(h.em)}</span><span>${esc(h.t)}</span></div>`).join("")}</div>`:""}</div>`:""}
     <div class="nt-tools">
@@ -1887,6 +1890,7 @@ function drawNotaEd(){const c=NCOL[NE.color];
     x.addEventListener("click",()=>{const p=x.selectionStart;const v=x.value;const ls=v.lastIndexOf("\n",p-1)+1;const m=v.slice(ls).match(/^(\s*)([☐☑])/);
       if(m&&p<=ls+m[1].length+2){const j=ls+m[1].length;x.value=v.slice(0,j)+(m[2]==="☐"?"☑":"☐")+v.slice(j+1);x.selectionStart=x.selectionEnd=p;NE[k]=x.value;ntDirty()}})});
   {const cb=document.getElementById("ac-cob");if(cb)cb.addEventListener("input",()=>{NE.cobrado=parseVal(cb.value);cb.value=fmtInput(NE.cobrado);ntDirty()});
+  {const pg=document.getElementById("ac-pg");if(pg)pg.addEventListener("input",()=>{const v=parseVal(pg.value);pg.value=v?fmtInput(v):"";drawAc()})}
    const ds=document.getElementById("ac-desc");if(ds){const g=()=>{ds.style.height="auto";ds.style.height=Math.max(110,ds.scrollHeight+4)+"px"};g();ds.addEventListener("input",()=>{NE.desc=ds.value;g();ntDirty()})}}
   {const v=document.getElementById("dd-v");if(v)v.addEventListener("input",()=>{v.value=fmtInput(parseVal(v.value))});const dl=document.getElementById("dd-list");if(dl)dl.addEventListener("input",e=>{if(e.target.id&&e.target.id.startsWith("dd-pv-"))e.target.value=fmtInput(parseVal(e.target.value))})}
   updNtWa();drawNtSum();drawAc();drawDeu()}
@@ -1915,6 +1919,8 @@ function drawAc(){if(!NE||!NE.acerto)return;const k=acCalc(NE);const r=document.
   if(r)r.innerHTML=`<div><span>Cobrado</span><b class="num">${gs(k.cob)}</b></div><div><span>− Descuentos (${k.lines.length})</span><b class="num c-due">${gs(k.des)}</b></div>
     <div class="ac-fin ${k.res<0?"neg":""}"><span>${k.res>=0?"Tengo que pasar a "+esc(nm):esc(nm)+" nos debe"}</span><b class="num">${gs(Math.abs(k.res))}</b></div>`;
   const h=document.getElementById("ac-cob-h");if(h)h.textContent=NE.cobrado>0?"":"Vacío = usa el total de la nota: "+gs(k.base);
+  {const l=document.getElementById("ac-pg-l");if(l)l.textContent=k.res<0?"¿Cuánto pagó "+(NE.titulo.trim()||"el cliente")+"?":"¿Cuánto le pasaste a "+(NE.titulo.trim()||"el cliente")+"?";const hh=document.getElementById("ac-pg-h");const v=parseVal((document.getElementById("ac-pg")||{}).value||"");
+    if(hh)hh.textContent=v&&k.res?(()=>{const o=k.res<0?-k.res-v:k.res-v;return o>0?"Queda "+(k.res<0?"debiendo ":"por pasar ")+gs(o)+" para la próxima cuenta":o<0?"Pagó de más: quedan "+gs(-o)+" a su favor":"Queda todo saldado"})():"Si paga una parte, lo que falta queda como “Saldo anterior” en la próxima cuenta."}
   const a=document.getElementById("ac-wa");if(a){const c=clisF.find(x=>norm(x.n)===norm(NE.titulo));const tel=c&&c.tel?telPy(c.tel):"";a.href="https://wa.me/"+tel+"?text="+encodeURIComponent(acTxt(NE))}}
 function ntTxtAll(e){return e.dos?ntCols(e).map(c=>`${e[c.n]||c.ph}:\n${e[c.t]||""}`).join("\n\n"):e.texto}
 function updNtWa(){const a=document.getElementById("nt-wa");if(a&&NE)a.href="https://wa.me/?text="+encodeURIComponent((NE.titulo?"*"+NE.titulo+"*\n":"")+ntTxtAll(NE))}
@@ -3985,6 +3991,12 @@ layer.addEventListener("click",async e=>{
   if(NE&&t.hasAttribute("data-ntclr")){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo: se borran los valores";return}
     let txt;if(NE.acerto){const k=acCalc(NE);txt=(k.res>=0?"Pasé ":"Nos debía ")+gs(Math.abs(k.res))+" (cobrado "+gs(k.cob)+")"}else if(NE.dos){txt=ntCols(NE).map(c=>(NE[c.n]||c.ph)+" "+gs(notaSuma(NE[c.t]).tot)).join(" · ")}else txt="Total "+gs(notaSuma(NE.texto).tot);
     NE.hist=[...(NE.hist||[]),{em:Date.now(),t:txt}];for(const c of NTC)NE[c.t]="";NE.desc="";NE.cobrado=0;drawNotaEd();ntDirty();toast("Acertado ✓ · nota limpia para empezar de nuevo");return}
+  if(NE&&t.hasAttribute("data-acpago")){const v=parseVal((document.getElementById("ac-pg")||{}).value||"");if(!v){toast("Escribí cuánto pagó");return}
+    const k=acCalc(NE);const owe=-k.res;const nw=owe>0?owe-v:owe+v;const nm=NE.titulo.trim()||"cliente";
+    const txt=(owe>0?"Nos debía "+gs(owe)+" · pagó "+gs(v):"Le debía "+gs(-owe)+" · le pasé "+gs(v))+(nw>0?" · nos debe "+gs(nw):nw<0?" · le debemos "+gs(-nw):" · saldado");
+    NE.hist=[...(NE.hist||[]),{em:Date.now(),t:txt}];for(const c of NTC)NE[c.t]="";NE.cobrado=0;NE.desc="";
+    if(nw>0)NE.desc="Saldo anterior "+fmtInput(nw);else if(nw<0)NE[NTC[0].t]="Saldo anterior "+fmtInput(-nw);
+    drawNotaEd();ntDirty();toast(nw>0?nm+" queda debiendo "+gs(nw):nw<0?"Quedan "+gs(-nw)+" a favor de "+nm:"Saldado ✓");return}
   if(NE&&t.hasAttribute("data-ntdeu")){NE.deu=!NE.deu;drawNotaEd();ntDirty();return}
   if(NE&&t.hasAttribute("data-ddadd")){const q=document.getElementById("dd-q").value.trim(),de=document.getElementById("dd-de").value.trim(),pa=document.getElementById("dd-para").value.trim(),v=parseVal(document.getElementById("dd-v").value);
     if(!de){toast("Escribí quién debe");document.getElementById("dd-de").focus();return}if(!v){toast("Escribí el monto");document.getElementById("dd-v").focus();return}
