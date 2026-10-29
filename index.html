@@ -1199,6 +1199,17 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .dc-d{font-size:13.5px;font-weight:600}.dc-d small{color:var(--muted);font-weight:500}
 .dc-b{height:10px;border-radius:999px;background:color-mix(in srgb,var(--ink) 6%,transparent);overflow:hidden}.dc-b i{display:block;height:100%;border-radius:999px;background:color-mix(in srgb,var(--accent) 70%,transparent)}
 .dc-row.top .dc-b i{background:#E8C46A}.dc-row b{text-align:right;font-size:16px}
+
+/* barra del delivery: 4 accesos en una fila */
+.wb-act{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.wb-act .nt-open{font-size:12px}
+.wb-act .linkbtn[data-rename]{grid-column:1/3}.wb-act .linkbtn[data-logout]{grid-column:3/5}
+/* ahorro */
+.ah-big{display:grid;justify-items:center;gap:4px;padding:18px 14px;border-radius:20px;background:linear-gradient(160deg,color-mix(in srgb,var(--cash) 22%,var(--surface)),var(--surface));border:1px solid color-mix(in srgb,var(--cash) 40%,var(--line))}
+.ah-big small{color:var(--muted);font-size:13px}.ah-big>b{font-size:40px;font-weight:800;color:var(--cash)}
+.ah-meta{width:100%;display:grid;gap:6px;margin-top:6px}.ah-bar{height:10px;border-radius:999px;background:color-mix(in srgb,var(--ink) 8%,transparent);overflow:hidden}.ah-bar i{display:block;height:100%;background:var(--cash);border-radius:999px}.ah-meta span{font-size:12.5px;color:var(--muted);text-align:center}
+.ah-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ah-stats span{display:grid;text-align:center;font-size:11.5px;color:var(--muted);padding:8px;border-radius:12px;background:color-mix(in srgb,var(--ink) 4%,transparent)}.ah-stats b{font-size:17px;color:var(--ink)}
+.ah-seg{display:grid;grid-template-columns:1fr 1fr}.ah-nota{border:1px solid var(--line);border-radius:14px;padding:11px 12px;background:var(--bg);color:var(--ink);font:inherit}
+.ah-metabox summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:14px}.ah-mrow{display:grid;gap:8px;margin-top:8px}.ah-mrow input#ah-mn{border:1px solid var(--line);border-radius:14px;padding:11px 12px;background:var(--bg);color:var(--ink);font:inherit}
 </style>
 
 </head>
@@ -1320,7 +1331,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="191";
+const APPV="192";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2196,15 +2207,47 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
 document.addEventListener("change",async e=>{const t=e.target;if(!t||!t.dataset||t.dataset.ccfoto==null||!t.files||!t.files[0])return;const f=t.files[0];const u=t.dataset.ccfoto;
   try{toast("Preparando foto…");const h=await fotoHD(f);let im=layer.querySelector(".cc-av img");if(!im){const a=layer.querySelector(".cc-av .av");if(a){a.outerHTML='<img class="av av-img" src="" alt="">';im=layer.querySelector(".cc-av img")}}if(im)im.src=h;
     if(u&&(S.owner||u===S.me)){saveFotoHD(u,h);if(!(rank.get(u)||{}).foto){const d=await fotoComprimir(f);saveFoto(u,d)}}toast("Foto lista")}catch(err){toast("No se pudo leer la foto")}t.value=""});
+/* ---------- Ahorro personal: cada uno anota lo que guarda; la plata la tiene él (turnos/<uid>/privado/ahorro, solo él lo ve) ---------- */
+var AH=null,AHT="in";
+const ahRef=()=>db.doc("turnos/"+S.me+"/privado/ahorro");
+async function ahLoad(){if(AH)return AH;AH={movs:[],meta:0,metaN:""};try{const l=JSON.parse(localStorage.getItem("caixa_ahorro_"+S.me)||"null");if(l)AH=l}catch(e){}
+  if(S.mode==="db"&&db){try{const d=await getT(ahRef());if(d&&d.exists){AH={movs:[],meta:0,metaN:"",...d.data()}}}catch(e){}}return AH}
+async function ahSave(){try{localStorage.setItem("caixa_ahorro_"+S.me,JSON.stringify(AH))}catch(e){}if(S.mode==="db"&&db){try{return await sendW(ahRef().set({movs:AH.movs.slice(-400),meta:AH.meta||0,metaN:AH.metaN||"",upd:Date.now()}))}catch(e){toast("No se guardó en la nube · quedó en el celular")}}}
+const ahSaldo=()=>(AH?AH.movs:[]).reduce((a,m)=>a+(m.t==="out"?-m.v:m.v),0);
+async function openAhorro(){edit=null;await ahLoad();const sal=ahSaldo();const mes=today().slice(0,7);
+  const inMes=AH.movs.filter(m=>m.t!=="out"&&keyOf(new Date(m.em)).slice(0,7)===mes);const gMes=inMes.reduce((a,m)=>a+m.v,0);const dMes=new Set(inMes.map(m=>keyOf(new Date(m.em)))).size;
+  const pct=AH.meta?Math.min(100,Math.round(sal/AH.meta*100)):0;
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet ah-sheet" role="dialog" aria-label="Ahorro">${sheetHead(icSvg("wallet")+" Mi ahorro")}
+    <div class="ah-big"><small>Tenés ahorrado</small><b class="num">${gs(sal)}</b>${AH.meta?`<div class="ah-meta"><div class="ah-bar"><i style="width:${pct}%"></i></div><span>${pct}% de ${AH.metaN?esc(AH.metaN)+" · ":""}${gs(AH.meta)}${sal<AH.meta?" · faltan "+gs(AH.meta-sal):" · ¡meta cumplida!"}</span></div>`:""}</div>
+    <div class="ah-stats"><span><b class="num">${gs(gMes)}</b>guardaste este mes</span><span><b class="num">${dMes}</b>${dMes===1?"día":"días"} que guardaste</span></div>
+    <div class="seg ah-seg"><button type="button" data-aht="in" class="${AHT==="in"?"on":""}" aria-pressed="${AHT==="in"}">Guardar</button><button type="button" data-aht="out" class="${AHT==="out"?"on":""}" aria-pressed="${AHT==="out"}">Saqué</button></div>
+    <div class="money"><span>₲</span><input id="ah-v" inputmode="numeric" autocomplete="off" placeholder="${AHT==="in"?"¿Cuánto guardás hoy?":"¿Cuánto sacaste?"}"></div>
+    <div class="chips">${[10000,20000,30000,50000,100000].map(v=>`<button type="button" class="chip" data-ahpre="${v}">${v/1000} mil</button>`).join("")}</div>
+    <input id="ah-n" class="ah-nota" maxlength="60" autocomplete="off" placeholder="Nota (opcional)">
+    <button type="button" class="primary" data-ahsave>${AHT==="in"?"Guardar en mi ahorro":"Registrar lo que saqué"}</button>
+    <details class="ah-metabox"><summary>${AH.meta?"Cambiar meta":"Ponerme una meta (opcional)"}</summary><div class="ah-mrow"><input id="ah-mn" maxlength="30" placeholder="Para qué · ej.: moto" value="${esc(AH.metaN||"")}"><div class="money small-money"><span>₲</span><input id="ah-mv" inputmode="numeric" placeholder="Monto" value="${AH.meta?fmtInput(AH.meta):""}"></div><button type="button" class="ghost" data-ahmeta>Guardar meta</button></div></details>
+    <div class="lbl">Movimientos</div><div class="list">${AH.movs.length?AH.movs.slice().reverse().slice(0,40).map(m=>`<div class="cta-it"><span>${ddmm(keyOf(new Date(m.em)))} · ${m.t==="out"?"Saqué":"Guardé"}${m.nota?" · "+esc(m.nota):""} <button type="button" class="linkbtn small-link" data-ahdel="${esc(m.id)}">quitar</button></span><b class="num ${m.t==="out"?"c-due":"c-cash"}">${m.t==="out"?"− ":"+ "}${gs(m.v)}</b></div>`).join(""):`<div class="empty">Todavía no guardaste nada. Empezá con lo que puedas: cada día suma.</div>`}</div>
+    <p class="hint" style="margin:0">Es solo para que lleves la cuenta: la plata la guardás vos. Solo vos ves este ahorro.</p></div></div>`;
+  setTimeout(()=>{const i=document.getElementById("ah-v");if(i)i.addEventListener("input",()=>{const v=parseVal(i.value);i.value=v?fmtInput(v):""});const j=document.getElementById("ah-mv");if(j)j.addEventListener("input",()=>{const v=parseVal(j.value);j.value=v?fmtInput(v):""})},30)}
+document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.hasAttribute("data-ahorro")){openAhorro();return}
+  if(t.dataset.aht){AHT=t.dataset.aht;openAhorro();return}
+  if(t.dataset.ahpre){const i=document.getElementById("ah-v");if(i)i.value=fmtInput(+t.dataset.ahpre);return}
+  if(t.hasAttribute("data-ahsave")){const v=parseVal((document.getElementById("ah-v")||{}).value||"");if(!v){toast("Escribí el monto");return}
+    if(AHT==="out"&&v>ahSaldo()){toast("No tenés tanto ahorrado");return}
+    AH.movs.push({id:uid(),v,t:AHT,nota:(document.getElementById("ah-n").value||"").trim(),em:Date.now()});const w=await ahSave();const sal=ahSaldo();AHT="in";openAhorro();toast((w==="wait"?"Guardado en el celular · ":"")+"Ahorro: "+gs(sal));return}
+  if(t.dataset.ahdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿quitar?";return}AH.movs=AH.movs.filter(m=>m.id!==t.dataset.ahdel);await ahSave();openAhorro();return}
+  if(t.hasAttribute("data-ahmeta")){AH.meta=parseVal(document.getElementById("ah-mv").value);AH.metaN=(document.getElementById("ah-mn").value||"").trim();await ahSave();openAhorro();toast(AH.meta?"Meta guardada":"Meta quitada");return}});
+
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
-  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b>${isAux(S.me)?` · hoy: <b>${esc(auxHoy(S.me)||"¿quién?")}</b> <button type="button" class="linkbtn small-link" data-auxquien>${auxHoy(S.me)?"cambiar":"elegir"}</button>`:""}</span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
+  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b>${isAux(S.me)?` · hoy: <b>${esc(auxHoy(S.me)||"¿quién?")}</b> <button type="button" class="linkbtn small-link" data-auxquien>${auxHoy(S.me)?"cambiar":"elegir"}</button>`:""}</span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-ahorro>${icSvg("wallet")} Ahorro</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
   const ids=activos();
   const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
   return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
     <button type="button" class="vp-team" data-equipo>👥 Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button></div>
-    <div class="tools-row"><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button><button type="button" class="nt-open" data-prog>${icSvg("clock")} Programados</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
+    <div class="tools-row"><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button><button type="button" class="nt-open" data-prog>${icSvg("clock")} Programados</button><button type="button" class="nt-open" data-ahorro>${icSvg("wallet")} Mi ahorro</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
 }
 function openViewPick(){edit=null;const ids=activos();const t=today();
   const nOf=u=>stats(allItems().filter(([,d])=>d._u===u&&d.dia===t&&!isCamino(d))).n;const tot=stats(allItems().filter(([,d])=>d.dia===t&&!isCamino(d))).n;
