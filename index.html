@@ -1331,7 +1331,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="192";
+const APPV="193";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1884,7 +1884,7 @@ function drawNotaEd(){const c=NCOL[NE.color];
     <div id="nt-sum" class="nt-sum" ${NE.suma?"":"hidden"}></div>
     ${NE.acerto?`<div class="ac-note"><div class="acn-h">Acerto${NE.titulo.trim()?" con "+esc(NE.titulo.trim()):""}</div>
       <div class="field"><label for="ac-cob">Cobrado / lo que tengo para pasarles</label><div class="money small-money"><span>₲</span><input id="ac-cob" inputmode="numeric" autocomplete="off" placeholder="Total de la nota" value="${NE.cobrado?fmtInput(NE.cobrado):""}"></div><small class="hint" id="ac-cob-h" style="margin:0"></small></div>
-      <div class="field"><label for="ac-desc">Descontar (uno por línea)</label><textarea id="ac-desc" class="nt-text ac-desc" placeholder="Diaria 250.000&#10;Plástico 130.000&#10;Bebida 120.000">${esc(NE.desc)}</textarea></div>
+      <div class="field"><label for="ac-desc" id="ac-desc-l">Lo que ${esc(NE.titulo.trim()||"el cliente")} nos debe: diaria, compras… (uno por línea)</label><textarea id="ac-desc" class="nt-text ac-desc" placeholder="Diaria 250.000&#10;Plastienvase 197.000&#10;Bolsas 50.000">${esc(NE.desc)}</textarea></div>
       <div id="ac-res" class="acn-res"></div>
       <div class="ac-pg"><label for="ac-pg" id="ac-pg-l">¿Cuánto pagó?</label><div class="ac-pg-row"><div class="money small-money"><span>₲</span><input id="ac-pg" inputmode="numeric" autocomplete="off" placeholder="Monto pagado"></div><button type="button" class="primary" data-acpago>Registrar pago</button></div><small class="hint" id="ac-pg-h" style="margin:0">Si paga una parte, lo que falta queda como “Saldo anterior” en la próxima cuenta.</small></div>
       <a class="wa-btn ac-wa" id="ac-wa" href="#" target="_blank" rel="noopener">📲 Enviar acerto por WhatsApp</a></div>`:""}
@@ -1935,9 +1935,10 @@ function acTxt(e){const k=acCalc(e);const nm=e.titulo.trim()||"cliente";const f=
   const nDet=cols.reduce((a,c)=>a+notaSuma(e[c.t]).n,0);
   return `*Tú Delivery · Acerto ${nm}*\n${ddmm(today())} ${hhmm(Date.now())}\n\n${det?"Cobrado de cada uno ("+nDet+"):\n"+det+"\n\n":""}Cobrado: *${gs(k.cob)}*${det&&k.cob!==k.base?" (suma de la lista: "+gs(k.base)+")":""}\n\nDescuentos:\n${k.lines.map(x=>"• "+x.l.replace(/\s*(\d{1,3}(?:[.\s]\d{3})+|\d+)(?:[.,]\d{1,2})?\s*(mil|k)?\s*$/i,"")+": "+gs(x.v)).join("\n")||"—"}\nTotal descuentos: ${gs(k.des)}\n\n*${k.res>=0?"Te paso: "+gs(k.res):"Nos debés: "+gs(-k.res)}*\n\n¡Gracias! — Tú Delivery`}
 function drawAc(){if(!NE||!NE.acerto)return;const k=acCalc(NE);const r=document.getElementById("ac-res");const nm=NE.titulo.trim()||"ellos";
-  if(r)r.innerHTML=`<div><span>Cobrado</span><b class="num">${gs(k.cob)}</b></div><div><span>− Descuentos (${k.lines.length})</span><b class="num c-due">${gs(k.des)}</b></div>
+  if(r)r.innerHTML=`<div><span>Cobrado</span><b class="num">${gs(k.cob)}</b></div><div><span>− Lo que ${esc(nm==="ellos"?"el cliente":nm)} nos debe (${k.lines.length})</span><b class="num c-due">${gs(k.des)}</b></div>
     <div class="ac-fin ${k.res<0?"neg":""}"><span>${k.res>=0?"Tengo que pasar a "+esc(nm):esc(nm)+" nos debe"}</span><b class="num">${gs(Math.abs(k.res))}</b></div>`;
   const h=document.getElementById("ac-cob-h");if(h)h.textContent=NE.cobrado>0?"":"Vacío = usa el total de la nota: "+gs(k.base);
+  {const dl=document.getElementById("ac-desc-l");if(dl)dl.textContent="Lo que "+(NE.titulo.trim()||"el cliente")+" nos debe: diaria, compras… (uno por línea)"}
   {const l=document.getElementById("ac-pg-l");if(l)l.textContent=k.res<0?"¿Cuánto pagó "+(NE.titulo.trim()||"el cliente")+"?":"¿Cuánto le pasaste a "+(NE.titulo.trim()||"el cliente")+"?";const hh=document.getElementById("ac-pg-h");const v=parseVal((document.getElementById("ac-pg")||{}).value||"");
     if(hh)hh.textContent=v&&k.res?(()=>{const o=k.res<0?-k.res-v:k.res-v;return o>0?"Queda "+(k.res<0?"debiendo ":"por pasar ")+gs(o)+" para la próxima cuenta":o<0?"Pagó de más: quedan "+gs(-o)+" a su favor":"Queda todo saldado"})():"Si paga una parte, lo que falta queda como “Saldo anterior” en la próxima cuenta."}
   const a=document.getElementById("ac-wa");if(a){const c=clisF.find(x=>norm(x.n)===norm(NE.titulo));const tel=c&&c.tel?telPy(c.tel):"";a.href="https://wa.me/"+tel+"?text="+encodeURIComponent(acTxt(NE))}}
