@@ -1191,6 +1191,14 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .cc-av img.av{object-fit:cover;image-rendering:auto}
 
 .ac-pg{display:grid;gap:6px;margin-top:10px}.ac-pg label{font-size:13px;font-weight:700;color:var(--muted)}.ac-pg-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.ac-pg-row .primary{padding:12px 14px;min-height:0}
+
+/* entregas por día */
+.dc-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 10px}.dc-sum span{display:grid;font-size:11.5px;color:var(--muted);text-align:center;background:color-mix(in srgb,var(--ink) 4%,transparent);border-radius:12px;padding:8px 4px}.dc-sum b{font-size:22px;color:var(--ink)}
+.dc-list{display:grid;gap:4px;max-height:360px;overflow-y:auto}
+.dc-row{display:grid;grid-template-columns:86px 1fr 40px;gap:10px;align-items:center;background:none;border:0;color:var(--ink);font:inherit;padding:6px 2px;text-align:left}
+.dc-d{font-size:13.5px;font-weight:600}.dc-d small{color:var(--muted);font-weight:500}
+.dc-b{height:10px;border-radius:999px;background:color-mix(in srgb,var(--ink) 6%,transparent);overflow:hidden}.dc-b i{display:block;height:100%;border-radius:999px;background:color-mix(in srgb,var(--accent) 70%,transparent)}
+.dc-row.top .dc-b i{background:#E8C46A}.dc-row b{text-align:right;font-size:16px}
 </style>
 
 </head>
@@ -1312,7 +1320,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="190";
+const APPV="191";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -3250,6 +3258,14 @@ function viewRango(){const t=today();if(!RG)RG={from:t.slice(0,8)+"01",to:t};let
   ${totTiles(T,myGt(from,to))}${chartsBlock(l)}
   <section class="summary">${acertoBlock(T,acertoLabel("Liquidación del período",gr),"",myGt(from,to))}${driverTable(gr)}${showEmp()?empresaBlock(T,egStats(egRange(from,to)).total,"Resultado de la empresa · "+plural(nd,"día")):""}</section>`}
 
+/* cantidad de entregas por día del período (todo el equipo o el delivery elegido) */
+function diasCard(l){const m=new Map();for(const[,d]of l){if(d.metodo==="fijo"&&d.diario)continue;m.set(d.dia,(m.get(d.dia)||0)+(d.cant||1))}if(!m.size)return"";
+  const ks=[...m.keys()].sort();const a=ks[0],b=ks[ks.length-1];const days=[];for(let k=a;k<=b;k=addDays(k,1))days.push(k);
+  const vals=days.map(k=>m.get(k)||0);const tot=vals.reduce((x,y)=>x+y,0),mx=Math.max(1,...vals),bi=vals.indexOf(mx),con=vals.filter(v=>v).length;
+  const dn=k=>["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][fromKey(k).getDay()];
+  return `<div class="chart-card dias-card"><div class="chart-h"><b>Entregas por día</b><small>mejor día: ${dn(days[bi])} ${ddmm(days[bi])} · ${mx}</small></div>
+    <div class="dc-sum"><span><b class="num">${tot}</b>entregas</span><span><b class="num">${con?Math.round(tot/con):0}</b>promedio por día</span><span><b class="num">${con}</b>${con===1?"día trabajado":"días trabajados"}</span></div>
+    <div class="dc-list">${days.slice().reverse().map((k,i)=>{const v=m.get(k)||0;return `<button type="button" class="dc-row ${k===days[bi]?"top":""}" data-goto="${k}"><span class="dc-d">${dn(k)} <small class="num">${ddmm(k)}</small></span><span class="dc-b"><i style="width:${(v/mx*100).toFixed(1)}%"></i></span><b class="num">${v}</b></button>`}).join("")}</div></div>`}
 function chartsBlock(list){const l=list.filter(([,d])=>!isCamino(d)&&d.criadoEm);if(!l.length)return"";
   const hrs=new Array(24).fill(0);for(const[,d]of l){const h=new Date(d.criadoEm).getHours();hrs[h]+=d.cant||1}
   let a=hrs.findIndex(v=>v>0),b=23-[...hrs].reverse().findIndex(v=>v>0);a=Math.min(a,8);b=Math.max(b,22);const sl=hrs.slice(a,b+1);const mx=Math.max(1,...sl);
@@ -3259,7 +3275,7 @@ function chartsBlock(list){const l=list.filter(([,d])=>!isCamino(d)&&d.criadoEm)
   const tipos=[["efectivo","Efectivo","var(--cash)"],["transferencia","Transferencia","var(--transfer)"],["anotado","Anotado","var(--due)"],["pagado","Pedido pago","var(--accent)"],["fijo","Cliente fijo","#E0679A"]];
   const cnt=tipos.map(([k,n,c])=>[n,c,l.filter(([,d])=>d.metodo===k).reduce((s,[,d])=>s+(d.cant||1),0)]).filter(x=>x[2]);const tot=cnt.reduce((s,x)=>s+x[2],0)||1;
   const R=42,C=2*Math.PI*R;let off=0;const segs=cnt.map(([n,c,v])=>{const len=v/tot*C;const sg=`<circle r="${R}" cx="60" cy="60" fill="none" stroke="${c}" stroke-width="16" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 60 60)"/>`;off+=len;return sg}).join("");
-  return `<section class="charts"><div class="chart-card"><div class="chart-h"><b>Entregas por hora</b><small>más movimiento: ${top}h</small></div><svg viewBox="0 0 ${W} ${H}" class="chart-bars" role="img" aria-label="Entregas por hora">${bars}</svg></div>
+  return `<section class="charts">${diasCard(l)}<div class="chart-card"><div class="chart-h"><b>Entregas por hora</b><small>más movimiento: ${top}h</small></div><svg viewBox="0 0 ${W} ${H}" class="chart-bars" role="img" aria-label="Entregas por hora">${bars}</svg></div>
     <div class="chart-card"><div class="chart-h"><b>Tipo de pago</b><small>${plural(tot,"entrega")}</small></div><div class="donut-wrap"><svg viewBox="0 0 120 120" class="donut" role="img" aria-label="Tipo de pago"><circle r="${R}" cx="60" cy="60" fill="none" stroke="var(--line)" stroke-width="16"/>${segs}<text x="60" y="58" class="dn-n">${tot}</text><text x="60" y="74" class="dn-l">entregas</text></svg>
       <div class="donut-leg">${cnt.map(([n,c,v])=>`<div><i style="background:${c}"></i><span>${n}</span><b class="num">${Math.round(v/tot*100)}%</b></div>`).join("")}</div></div></div></section>`}
 
