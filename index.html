@@ -1210,6 +1210,8 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .ah-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ah-stats span{display:grid;text-align:center;font-size:11.5px;color:var(--muted);padding:8px;border-radius:12px;background:color-mix(in srgb,var(--ink) 4%,transparent)}.ah-stats b{font-size:17px;color:var(--ink)}
 .ah-seg{display:grid;grid-template-columns:1fr 1fr}.ah-nota{border:1px solid var(--line);border-radius:14px;padding:11px 12px;background:var(--bg);color:var(--ink);font:inherit}
 .ah-metabox summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:14px}.ah-mrow{display:grid;gap:8px;margin-top:8px}.ah-mrow input#ah-mn{border:1px solid var(--line);border-radius:14px;padding:11px 12px;background:var(--bg);color:var(--ink);font:inherit}
+
+.acc-box{display:grid;gap:4px;padding:14px;border-radius:16px;border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 4%,transparent)}.acc-box small{color:var(--muted);font-size:12.5px}.acc-box b{font-size:17px;word-break:break-all}.acc-box .linkbtn{justify-self:start}
 </style>
 
 </head>
@@ -1331,7 +1333,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="193";
+const APPV="194";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2240,6 +2242,20 @@ document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.c
   if(t.dataset.ahdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿quitar?";return}AH.movs=AH.movs.filter(m=>m.id!==t.dataset.ahdel);await ahSave();openAhorro();return}
   if(t.hasAttribute("data-ahmeta")){AH.meta=parseVal(document.getElementById("ah-mv").value);AH.metaN=(document.getElementById("ah-mn").value||"").trim();await ahSave();openAhorro();toast(AH.meta?"Meta guardada":"Meta quitada");return}});
 
+/* acceso del delivery: el dueño ve su e-mail y le manda el link para crear una contraseña nueva (la contraseña nunca se guarda ni se ve) */
+function openAcceso(u){edit=null;const p=S.people.get(u)||{};const m=p.email||"";const nm=(personName(u)||"").split(" ")[0];
+  const wa=waOpen("Hola "+nm+", te mandé un e-mail de Tú Delivery a "+m+" para que crees una contraseña nueva. Abrilo (fijate también en Spam), tocá el link, escribí tu contraseña nueva y después entrá a la app con tu e-mail y esa contraseña.",u);
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Acceso">${sheetHead(icSvg("lock")+" Acceso de "+esc(nm))}
+    <div class="acc-box"><small>E-mail para entrar</small><b>${esc(m)}</b><button type="button" class="linkbtn small-link" data-copytxt="${esc(m)}">Copiar e-mail</button></div>
+    <p class="hint" style="margin:0">La contraseña no se guarda en la app: nadie la puede ver, ni vos. Si ${esc(nm)} se la olvidó, mandale el link para que cree una nueva. En 1 minuto le llega un e-mail.</p>
+    <button type="button" class="primary" data-accreset="${esc(u)}">Mandar link para contraseña nueva</button>
+    <a class="wa-big" href="${esc(wa)}" target="_blank" rel="noopener">Avisarle por WhatsApp</a>
+    <p class="hint" style="margin:0">Después entra con su e-mail y la contraseña nueva que él eligió.</p></div></div>`}
+document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.dataset.acceso){openAcceso(t.dataset.acceso);return}
+  if(t.dataset.copytxt){copy(t.dataset.copytxt);return}
+  if(t.dataset.accreset){const m=(S.people.get(t.dataset.accreset)||{}).email;if(!m||!auth)return;t.disabled=true;
+    try{await auth.sendPasswordResetEmail(m);t.textContent="Link enviado a "+m;toast("Listo · le llegó un e-mail para crear la contraseña nueva")}catch(err){t.disabled=false;toast("No se pudo enviar. Revisá la señal y probá de nuevo.")}}});
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
@@ -3637,7 +3653,7 @@ function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].fil
   const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b class="tm-n">${avatarHtml(personName(u),u)}<span>${esc(personName(u))}</span></b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}${kind==="act"&&!soc&&!sinComU(u)?((S.people.get(u)||{}).qrEm?` <button type="button" class="pill p-cash qr-pill" data-verqr="${esc(u)}">QR listo</button>`:' <span class="pill p-muted">Sin QR</span>'):""}</b><small>${kind==="pend"?"Esperando aprobación"+(sameAux(u).length>1?' · <span class="cz-warn">ya trabajó antes con este nombre: el historial se junta</span>':""):kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button>${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?'<span class="pill p-aux">Pide volver hoy</span> ':""}<button type="button" class="small ${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?"ok":""}" data-reactivar="${esc(u)}">${isAux(u)?"Aceptar de nuevo":"Reactivar"}</button>`
-      :`${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button><button type="button" class="small" data-fotoeq="${esc(u)}">${icSvg("users")} Foto</button><button type="button" class="small" data-cumple="${esc(u)}">${icSvg("cake")} ${(()=>{const c=cumples().find(x=>x.u===u);return c?mdTxt(c.md):"Cumpleaños"})()}</button><button type="button" class="small" data-aux="${esc(u)}" data-on="${isAux(u)?0:1}">${isAux(u)?"Pasar a fijo":"Es auxiliar"}</button><button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">${isAux(u)?"Terminó · desactivar":"Dar de baja"}</button>`}</div></div>`};
+      :`${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button><button type="button" class="small" data-fotoeq="${esc(u)}">${icSvg("users")} Foto</button>${(S.people.get(u)||{}).email?`<button type="button" class="small" data-acceso="${esc(u)}">${icSvg("lock")} Acceso</button>`:""}<button type="button" class="small" data-cumple="${esc(u)}">${icSvg("cake")} ${(()=>{const c=cumples().find(x=>x.u===u);return c?mdTxt(c.md):"Cumpleaños"})()}</button><button type="button" class="small" data-aux="${esc(u)}" data-on="${isAux(u)?0:1}">${isAux(u)?"Pasar a fijo":"Es auxiliar"}</button><button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">${isAux(u)?"Terminó · desactivar":"Dar de baja"}</button>`}</div></div>`};
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Equipo">
     ${sheetHead("Equipo")}
     ${pend.length?`<div class="lbl">Nuevos · esperando aprobación</div><div class="list">${pend.map(u=>row(u,"pend")).join("")}</div>`:""}
