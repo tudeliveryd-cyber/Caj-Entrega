@@ -1257,6 +1257,8 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .nav-back{border:0;background:none;color:var(--accent);font:inherit;font-weight:700;font-size:15px;padding:6px 8px 6px 0;margin-right:auto;cursor:pointer;white-space:nowrap}
 .sheet-h .nav-back{order:-1}.sheet-h:has(.nav-back){display:flex;align-items:center;gap:8px}.sheet-h:has(.nav-back) h3{flex:1;font-size:18px}
 .nav-row{display:flex}
+
+.tab-back{display:block;justify-self:start;align-self:start;text-align:left;margin:0 auto 4px 0;padding:8px 2px}
 </style>
 
 </head>
@@ -1378,7 +1380,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="201";
+const APPV="202";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1881,7 +1883,7 @@ function addCredit(){if(!main||document.getElementById("credit"))return;if(main.
     <em class="cr-lema">Cada entrega cuenta.</em>
     <small class="cr-v">Santa Rita, Paraguay • © ${new Date().getFullYear()} • versión ${APPV}</small>
     <button type="button" class="cr-tema" data-tema>Colores y configuración</button></footer>`)}
-function render(full){if(full)builtKey="";if(raf)return;raf=setTimeout(()=>{raf=0;try{paint();addCredit();dlApply();if(S.mode==="db"&&!S.owner&&isAux(S.me)&&!auxHoy(S.me)&&S.tab==="dia"&&window.__auxAsk!==today()&&!layer.innerHTML.trim()){window.__auxAsk=today();openAuxQuien()}if(S.mode==="db"&&!S.owner&&S.canWrite!==false&&S.people.get(S.me)&&S.tab==="dia"&&!layer.innerHTML.trim()&&!window.__bvAsk&&!bvVisto()){window.__bvAsk=1;openBienv(0)}}catch(e){console.error(e)}},0)}
+function render(full){if(full)builtKey="";if(raf)return;raf=setTimeout(()=>{raf=0;try{paint();addCredit();try{tabBack()}catch(e){}dlApply();if(S.mode==="db"&&!S.owner&&isAux(S.me)&&!auxHoy(S.me)&&S.tab==="dia"&&window.__auxAsk!==today()&&!layer.innerHTML.trim()){window.__auxAsk=today();openAuxQuien()}if(S.mode==="db"&&!S.owner&&S.canWrite!==false&&S.people.get(S.me)&&S.tab==="dia"&&!layer.innerHTML.trim()&&!window.__bvAsk&&!bvVisto()){window.__bvAsk=1;openBienv(0)}}catch(e){console.error(e)}},0)}
 /* ---------- notas privadas: turnos/<uid>/privado (tipo "nota", sin "dia") · solo las ve quien las escribe ---------- */
 var notas=new Map(),NQ="",NE=null,ntTimer=0,ntSubbed=false;
 const NCOL={amarillo:"#e8b93a",verde:"#3fae6a",azul:"#4a8fe0",rosa:"#e0679a",violeta:"#9b7be0",gris:"#8a8797"};
@@ -4490,7 +4492,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&layer.innerHTML&&!d
 
 /* ---------- Volver: al abrir una pantalla desde otra, aparece "‹ Volver" para regresar a la anterior ---------- */
 var NAVSTK=[],NAVCUR=null,NAVBACK=false;
-function navAddBack(){if(!NAVSTK.length||!layer.innerHTML.trim()||layer.querySelector("[data-navback]"))return;const prev=NAVSTK[NAVSTK.length-1];
+function navAddBack(){if(!layer.innerHTML.trim()||layer.querySelector("[data-navback],.nt-back,.bv,.pg-alert"))return;
   const b=`<button type="button" class="nav-back" data-navback aria-label="Volver">‹ Volver</button>`;
   const h=layer.querySelector(".sheet-h");if(h){h.insertAdjacentHTML("afterbegin",b);return}
   const c=layer.querySelector(".disp-ctl,.qr-act");if(c){c.insertAdjacentHTML("afterbegin",b.replace('class="nav-back"','class="disp-x nav-back2"'));return}
@@ -4536,6 +4538,10 @@ try{if(typeof openMsg==='function')openMsg=navWrap('openMsg',openMsg)}catch(e){}
 try{if(typeof openNewSol==='function')openNewSol=navWrap('openNewSol',openNewSol)}catch(e){}
 try{if(typeof openDiario==='function')openDiario=navWrap('openDiario',openDiario)}catch(e){}
 
+/* cualquier pantalla que se abre muestra "Volver" (si no hay otra antes, vuelve a la pantalla principal) */
+new MutationObserver(()=>{if(layer.innerHTML.trim())navAddBack()}).observe(layer,{childList:true});
+/* en las otras pestañas (Anotados, Informe, Ranking…) arriba aparece "Volver al inicio" */
+function tabBack(){const b=document.getElementById("tab-back");if(S.tab==="dia"){if(b)b.remove();return}if(!b&&main)main.insertAdjacentHTML("afterbegin",`<button type="button" id="tab-back" class="nav-back tab-back" data-gotab="dia">‹ Volver al inicio</button>`)}
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-navback]");if(!t)return;e.stopPropagation();const prev=NAVSTK.pop();if(!prev){closeSheet();return}
   NAVBACK=true;NAVCUR=prev;try{const r=prev.fn.apply(null,prev.args);if(r&&r.then)r.then(navAddBack);else navAddBack()}finally{NAVBACK=false}},true);
 })();
