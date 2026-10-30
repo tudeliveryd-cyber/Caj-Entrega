@@ -1333,7 +1333,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="194";
+const APPV="195";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1642,7 +1642,7 @@ function startDemo(modo){
   try{auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(e){}
   const fs=firebase.firestore();try{fs.settings({ignoreUndefinedProperties:true,experimentalForceLongPolling:true})}catch(e){}
   /* caché en el celular solo en la app instalada (una sola ventana); en pestañas de Safari varias copias se traban entre sí */
-  if(isStandalone())fs.enablePersistence({synchronizeTabs:false}).catch(()=>{});
+  fs.enablePersistence({synchronizeTabs:false}).catch(()=>{});
   auth.onAuthStateChanged(u=>{if(!u){started=false;showLogin();return}hideLogin();boot(fs,u)});
 })();
 /* get con límite de tiempo: con señal débil usa lo guardado en el celular */
