@@ -1214,6 +1214,30 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .acc-box{display:grid;gap:4px;padding:14px;border-radius:16px;border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 4%,transparent)}.acc-box small{color:var(--muted);font-size:12.5px}.acc-box b{font-size:17px;word-break:break-all}.acc-box .linkbtn{justify-self:start}
 
 .lg-forgot{font-size:15px;border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+
+.tm-more{display:flex;flex-wrap:wrap;gap:6px;width:100%;padding-top:6px;border-top:1px dashed var(--line)}.tm-mas{border-style:dashed}
+
+.ext-m{border:1px solid var(--line);border-radius:999px;padding:7px 12px;background:var(--bg);color:var(--ink);font:inherit;font-size:13px}
+.ext-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.ext-sum span{display:grid;text-align:center;font-size:11.5px;color:var(--muted);padding:8px 4px;border-radius:12px;background:color-mix(in srgb,var(--ink) 4%,transparent)}.ext-sum b{font-size:17px;color:var(--ink)}
+.ext-vias{display:grid;gap:6px}.ext-vias div{display:flex;justify-content:space-between;gap:10px;font-size:13.5px}.ext-vias span{color:var(--muted)}
+.ext-txt{white-space:pre-wrap;font:inherit;font-size:13.5px;line-height:1.45;margin:0;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--bg);max-height:40vh;overflow:auto}
+
+.bv{display:grid;justify-items:center;text-align:center;gap:12px;padding-top:26px}
+.bv-hi{font-size:24px;font-weight:800;display:grid;gap:4px}.bv-hi small{font-size:14px;font-weight:500;color:var(--muted)}
+.bv-ic{width:84px;height:84px;border-radius:24px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 20%,var(--surface));color:var(--accent)}.bv-ic svg{width:42px;height:42px}
+.bv-t{font-size:21px}.bv-d{margin:0;color:var(--muted);font-size:15.5px;line-height:1.5;max-width:340px}.bv-d b{color:var(--ink)}
+.bv-dots{display:flex;gap:6px}.bv-dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}.bv-dots i.on{background:var(--accent);width:22px;border-radius:999px}
+.bv .qr-row{width:100%}
+
+.rs-big{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.rs-big span{display:grid;text-align:center;font-size:11.5px;color:var(--muted);padding:10px 4px;border-radius:14px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));border:1px solid var(--line)}.rs-big b{font-size:19px;color:var(--ink)}
+.rs-por{display:flex;flex-wrap:wrap;gap:6px}.rs-por span{font-size:12.5px;padding:4px 10px;border-radius:999px;background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.rs-it{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}.rs-it:first-child{border-top:0}
+.rs-ic svg{width:20px;height:20px;color:var(--muted)}.rs-t{display:grid;font-size:14px}.rs-t small{color:var(--muted);font-size:12px}
+.rs-it.ok b{color:var(--muted)}.rs-it.warn b{color:#E8B93A}.rs-it.bad b{color:var(--due)}
+
+.bkp-box{display:grid;grid-template-columns:auto 1fr;gap:10px 12px;align-items:start;padding:14px 16px;border-radius:20px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+.bkp-box>svg{width:24px;height:24px;color:var(--accent);margin-top:2px}.bkp-box span{display:grid;gap:3px}.bkp-box small{color:var(--muted);font-size:13px;line-height:1.4}
+.bkp-act{grid-column:1/-1;display:flex;gap:14px;align-items:center}
 </style>
 
 </head>
@@ -1335,7 +1359,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="196";
+const APPV="197";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1822,6 +1846,7 @@ function openTema(){edit=null;const t=temaGet();const mode=t.mode||"auto",ac=t.a
     ${S.mode==="db"?`<div class="lbl">Configuraciones generales</div><div class="list cfg-list">
       ${S.owner?`<button type="button" class="cfg-it" data-cfgexp>${icSvg("chart")}<span>Respaldo de datos<small>Bajar el Excel del mes</small></span><span class="caja-go">›</span></button>`:""}
       ${S.owner?`<button type="button" class="cfg-it" data-cfglogs>${icSvg("clock")}<span>Registro de cambios<small>Quién editó o borró entregas</small></span><span class="caja-go">›</span></button>`:""}
+      <button type="button" class="cfg-it" data-cfgbienv>${icSvg("note")}<span>Cómo usar la app<small>Los pasos básicos, en 1 minuto</small></span><span class="caja-go">›</span></button>
       <button type="button" class="cfg-it" data-cfgqr>${icSvg("qr")}<span>Mi QR de cobro<small>Para que el cliente pague escaneando</small></span><span class="caja-go">›</span></button>
       <button type="button" class="cfg-it" data-cfgfoto>${icSvg("users")}<span>Mi foto de perfil<small>Aparece en el ranking</small></span><span class="caja-go">›</span></button>
       <button type="button" class="cfg-it" data-cfgchat>${icSvg("message")}<span>Ayuda y soporte<small>${S.owner?"Chat con el equipo":"Escribile a la empresa por el chat"}</small></span><span class="caja-go">›</span></button>
@@ -1835,7 +1860,7 @@ function addCredit(){if(!main||document.getElementById("credit"))return;if(main.
     <em class="cr-lema">Cada entrega cuenta.</em>
     <small class="cr-v">Santa Rita, Paraguay • © ${new Date().getFullYear()}</small>
     <button type="button" class="cr-tema" data-tema>Colores y configuración</button></footer>`)}
-function render(full){if(full)builtKey="";if(raf)return;raf=setTimeout(()=>{raf=0;try{paint();addCredit();dlApply();if(S.mode==="db"&&!S.owner&&isAux(S.me)&&!auxHoy(S.me)&&S.tab==="dia"&&window.__auxAsk!==today()&&!layer.innerHTML.trim()){window.__auxAsk=today();openAuxQuien()}}catch(e){console.error(e)}},0)}
+function render(full){if(full)builtKey="";if(raf)return;raf=setTimeout(()=>{raf=0;try{paint();addCredit();dlApply();if(S.mode==="db"&&!S.owner&&isAux(S.me)&&!auxHoy(S.me)&&S.tab==="dia"&&window.__auxAsk!==today()&&!layer.innerHTML.trim()){window.__auxAsk=today();openAuxQuien()}if(S.mode==="db"&&!S.owner&&S.canWrite!==false&&S.people.get(S.me)&&S.tab==="dia"&&!layer.innerHTML.trim()&&!window.__bvAsk&&!bvVisto()){window.__bvAsk=1;openBienv(0)}}catch(e){console.error(e)}},0)}
 /* ---------- notas privadas: turnos/<uid>/privado (tipo "nota", sin "dia") · solo las ve quien las escribe ---------- */
 var notas=new Map(),NQ="",NE=null,ntTimer=0,ntSubbed=false;
 const NCOL={amarillo:"#e8b93a",verde:"#3fae6a",azul:"#4a8fe0",rosa:"#e0679a",violeta:"#9b7be0",gris:"#8a8797"};
@@ -2258,6 +2283,115 @@ document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.c
   if(t.dataset.copytxt){copy(t.dataset.copytxt);return}
   if(t.dataset.accreset){const m=(S.people.get(t.dataset.accreset)||{}).email;if(!m||!auth)return;t.disabled=true;
     try{await auth.sendPasswordResetEmail(m);t.textContent="Link enviado a "+m;toast("Listo · le llegó un e-mail para crear la contraseña nueva")}catch(err){t.disabled=false;toast("No se pudo enviar. Revisá la señal y probá de nuevo.")}}});
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button[data-tmmore]");if(!t)return;const m=t.parentElement.querySelector(".tm-more");if(!m)return;m.hidden=!m.hidden;t.textContent=m.hidden?"Más ▾":"Menos ▴"});
+/* ---------- Extracto mensual de cliente fijo (para mandarle al cliente) ---------- */
+var EXT={ym:"",cli:""};
+const ymNombre=ym=>{const[y,m]=ym.split("-");return MESES[Number(m)-1].replace(/^./,c=>c.toUpperCase())+" "+y};
+function extDatos(ym){const{from,to}=mesRange(ym);const m=new Map();
+  for(const[,d]of allItems()){if(d.metodo!=="fijo"||isCamino(d)||d.dia<from||d.dia>to)continue;const k=norm(d.cliente)||"-";
+    if(!m.has(k))m.set(k,{nome:(d.cliente||"Cliente fijo").trim(),n:0,dias:new Map(),por:new Map(),dTot:0,emp:0,pag:0,del:0,sin:0});const r=m.get(k);
+    const dd=r.dias.get(d.dia)||{n:0,v:0};
+    if(!d.diario){const c=d.cant||1;r.n+=c;dd.n+=c;const nm=(personName(d._u)||"").split(" ")[0];r.por.set(nm,(r.por.get(nm)||0)+c)}
+    const v=d.valor||0;if(v){r.dTot+=v;dd.v+=v;if(d.via==="empresa"){if(d.desc)r.emp+=v;else r.pag+=v}else if(d.via)r.del+=v;else r.sin+=v}
+    r.dias.set(d.dia,dd)}
+  return[...m.values()].sort((a,b)=>b.n-a.n)}
+function extNota(nome){const n=[...notas.values()].find(x=>x.acerto&&norm(x.titulo||"")===norm(nome));return n||null}
+function extTexto(r,ym){const{from,to}=mesRange(ym);let s=`*Tú Delivery · Extracto ${r.nome}*\n${ymNombre(ym)}\n\n`;
+  s+=`*Entregas: ${r.n}*${r.por.size>1?" ("+[...r.por.entries()].map(([a,b])=>a+" "+b).join(", ")+")":""}\nDías con entregas: ${[...r.dias.values()].filter(x=>x.n).length}\n`;
+  if(r.dTot)s+=`Diarios del mes: *${gs(r.dTot)}*\n`;
+  s+=`\nDetalle por día:\n`+[...r.dias.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([d,x])=>`• ${ddmm(d)}: ${plural(x.n,"entrega")}${x.v?" · diario "+gs(x.v):""}`).join("\n");
+  const n=extNota(r.nome);if(n){const h=(n.hist||[]).filter(x=>{const k=keyOf(new Date(x.em));return k>=from&&k<=to});
+    if(h.length)s+=`\n\nAcertos del mes:\n`+h.map(x=>`• ${ddmm(keyOf(new Date(x.em)))}: ${x.t}`).join("\n");
+    const k=acCalc(n);if(k.res)s+=`\n\n*${k.res<0?"Saldo pendiente: nos debe "+gs(-k.res):"Saldo a su favor: "+gs(k.res)}*`}
+  return s+`\n\n¡Gracias por confiar en Tú Delivery!`}
+async function openExtracto(ym){edit=null;const cur=today().slice(0,7);EXT.ym=ym||EXT.ym||cur;const{from,to}=mesRange(EXT.ym);
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Extracto"><div class="empty">Juntando datos…</div></div></div>`;
+  if(EXT.ym!==cur)try{await loadMonth(from,to)}catch(e){}
+  const L=extDatos(EXT.ym);if(!L.some(r=>norm(r.nome)===norm(EXT.cli)))EXT.cli=L.length?L[0].nome:"";const r=L.find(x=>norm(x.nome)===norm(EXT.cli));
+  const prev=keyOf(new Date(Number(cur.slice(0,4)),Number(cur.slice(5,7))-2,1)).slice(0,7);
+  const txt=r?extTexto(r,EXT.ym):"";
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Extracto">${sheetHead(icSvg("clipboard")+" Extracto de cliente fijo")}
+    <div class="chips">${[[cur,"Este mes"],[prev,"Mes pasado"]].map(([k,l])=>`<button type="button" class="chip ${EXT.ym===k?"on":""}" data-extm="${k}">${l}</button>`).join("")}<input type="month" id="ext-m" class="ext-m" value="${EXT.ym}" max="${cur}"></div>
+    ${L.length?`<div class="lbl">Cliente</div><div class="chips">${L.map(x=>`<button type="button" class="chip ${x===r?"on":""}" data-extc="${esc(x.nome)}">${esc(x.nome)} · ${x.n}</button>`).join("")}</div>
+    <div class="ext-sum"><span><b class="num">${r.n}</b>entregas</span><span><b class="num">${gs(r.dTot)}</b>diarios</span><span><b class="num">${[...r.dias.values()].filter(x=>x.n).length}</b>días</span></div>
+    ${r.dTot?`<div class="ext-vias">${r.emp?`<div><span>Cobró la empresa (a la deuda del delivery)</span><b class="num">${gs(r.emp)}</b></div>`:""}${r.pag?`<div><span>La empresa ya le pagó al delivery</span><b class="num">${gs(r.pag)}</b></div>`:""}${r.del?`<div><span>Lo cobró el delivery</span><b class="num">${gs(r.del)}</b></div>`:""}${r.sin?`<div><span>Sin definir quién cobró</span><b class="num c-due">${gs(r.sin)}</b></div>`:""}</div>`:""}
+    <div class="lbl">Mensaje para ${esc(r.nome)}</div><pre class="ext-txt">${esc(txt.replace(/\*/g,""))}</pre>
+    <div class="qr-row"><button type="button" class="primary" data-extcopy>Copiar</button><a class="wa-big" href="https://wa.me/?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Enviar por WhatsApp</a></div>
+    <p class="hint" style="margin:0">Si tenés una nota de acerto con el mismo nombre (ej.: “${esc(r.nome)}”), se suman los acertos del mes y el saldo pendiente.</p>`
+    :`<div class="empty">No hay entregas de clientes fijos en ${ymNombre(EXT.ym)}.</div>`}</div></div>`;
+  layer.querySelector(".sheet").dataset.txt=txt}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.hasAttribute("data-extracto")){openExtracto();return}
+  if(t.dataset.extm){openExtracto(t.dataset.extm);return}
+  if(t.dataset.extc){EXT.cli=t.dataset.extc;openExtracto();return}
+  if(t.hasAttribute("data-extcopy")){const sh=t.closest(".sheet");if(sh)copy(sh.dataset.txt||"");return}});
+document.addEventListener("change",e=>{if(e.target&&e.target.id==="ext-m"&&e.target.value)openExtracto(e.target.value)});
+
+/* ---------- Bienvenida: pasos cortos la primera vez que entra un delivery (también en Configuración) ---------- */
+const BV=[["plus","Registrá cada entrega","Tocá <b>+ Entrega</b>, elegí cómo pagó el cliente (efectivo, transferencia, anotado…), poné el valor y el nombre del cliente. Así suma en tu día y en el ranking."],
+  ["bike","Pedidos en camino","Si la empresa te pasa un pedido, aparece en <b>En camino</b>. Al entregarlo tocá <b>Entregado</b> y elegí cómo te pagó. Con <b>QR</b> el cliente te paga escaneando."],
+  ["wallet","Tu caja del día","Al empezar, <b>abrí la caja</b> con el cambio que llevás. Al terminar, contá la plata y <b>cerrala</b>. El app te dice si cuadra."],
+  ["chart","Tu cuenta y premios","Abajo ves tu <b>liquidación</b>: lo que pagás o recibís. En <b>Ranking</b> ves quién va ganando el tanque lleno y el bono del mes."],
+  ["users","Tu perfil","En <b>Colores y configuración</b> (abajo de todo) poné tu <b>foto</b> y tu <b>QR de cobro</b>. Funciona sin internet: lo que cargues sube solo cuando vuelva la señal."]];
+var BVI=0;
+const bvKey=()=>"caixa_bienv_"+S.me;
+function bvVisto(){try{return !!localStorage.getItem(bvKey())}catch(e){return true}}
+function openBienv(i){edit=null;BVI=i==null?0:i;const[ic,t,d]=BV[BVI];const last=BVI===BV.length-1;
+  layer.innerHTML=`<div class="scrim"><div class="sheet bv" role="dialog" aria-label="Bienvenida">
+    ${BVI===0?`<div class="bv-hi">¡Bienvenido${S.people.get(S.me)&&personName(S.me)?", "+esc(personName(S.me).split(" ")[0]):""}!<small>Así funciona la app de Tú Delivery</small></div>`:""}
+    <div class="bv-ic">${icSvg(ic)}</div><b class="bv-t">${t}</b><p class="bv-d">${d}</p>
+    <div class="bv-dots">${BV.map((_,k)=>`<i class="${k===BVI?"on":""}"></i>`).join("")}</div>
+    <div class="qr-row">${BVI?`<button type="button" class="ghost" data-bv="${BVI-1}">Atrás</button>`:`<button type="button" class="ghost" data-bvfin>Saltar</button>`}<button type="button" class="primary" ${last?"data-bvfin":`data-bv="${BVI+1}"`}>${last?"¡Empezar!":"Siguiente"}</button></div></div></div>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.dataset.bv!=null){openBienv(+t.dataset.bv);return}
+  if(t.hasAttribute("data-bvfin")){try{localStorage.setItem(bvKey(),"1")}catch(err){}closeSheet();return}
+  if(t.hasAttribute("data-cfgbienv")){openBienv(0);return}});
+
+/* ---------- Resumen del día para el dueño ---------- */
+function resumenDia(){const t=today();const it=allItems().filter(([,d])=>d.dia===t);const fin=it.filter(([,d])=>!isCamino(d));const s=stats(fin);
+  const cam=it.filter(([,d])=>isCamino(d)).length;const dels=activos().filter(u=>u!==S.me&&!roles.socios.includes(u));
+  const porU=dels.map(u=>({u,n:stats(fin.filter(([,d])=>d._u===u)).n})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
+  let trab=0;for(const u of dels){try{if(estadoDe(u).cls==="cz-work")trab++}catch(e){}}
+  const abiertas=[],faltas=[];for(const u of dels){const c=cajaOf(u,t);if(!c)continue;if(c.cierraEm){const dif=(c.cierra||0)-(c.esp||0);if(dif<0)faltas.push({u,v:-dif})}else if(c.abreEm&&!c.auto||fin.some(([,d])=>d._u===u))abiertas.push(u)}
+  const sinCerrar=dels.filter(u=>fin.some(([,d])=>d._u===u)&&!(cajaOf(u,t)||{}).cierraEm);
+  const cf=confList();const cfV=cf.reduce((a,[,d])=>a+(d.valor||0),0);
+  const deben=dels.map(u=>({u,v:cuentaDe(u).saldo})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);const debT=deben.reduce((a,x)=>a+x.v,0);
+  let prog=[];try{prog=progAll().filter(x=>!x.hecho&&x.dia===t)}catch(e){}
+  return{s,cam,porU,trab,sinCerrar,faltas,cf,cfV,deben,debT,prog}}
+function resumenTxt(R){const nm=u=>(personName(u)||"").split(" ")[0];
+  let x=`*Tú Delivery · Resumen del día*\n${new Date().toLocaleDateString("es-PY",{weekday:"long",day:"numeric",month:"long"})}\n\n`;
+  x+=`Entregas: *${R.s.n}* · total ${gs(R.s.total)}\n`;if(R.porU.length)x+=R.porU.map(p=>`• ${nm(p.u)}: ${p.n}`).join("\n")+"\n";
+  if(R.cam)x+=`En camino ahora: ${R.cam}\n`;
+  x+=`\nCaja sin cerrar: ${R.sinCerrar.length?R.sinCerrar.map(nm).join(", "):"ninguna"}\n`;if(R.faltas.length)x+=`Faltó plata al cerrar: ${R.faltas.map(f=>nm(f.u)+" "+gs(f.v)).join(", ")}\n`;
+  if(R.cf.length)x+=`Anotados por confirmar: ${R.cf.length} · ${gs(R.cfV)}\n`;
+  if(R.deben.length)x+=`\nDeben a la empresa: *${gs(R.debT)}*\n`+R.deben.map(d=>`• ${nm(d.u)}: ${gs(d.v)}`).join("\n")+"\n";
+  if(R.prog.length)x+=`\nProgramados pendientes: ${R.prog.map(p=>p.hora+" "+(p.cli||"")).join(", ")}\n`;return x.trim()}
+function openResumen(){edit=null;const R=resumenDia();const nm=u=>esc((personName(u)||"").split(" ")[0]);
+  const blk=(ic,t,v,c,extra)=>`<div class="rs-it ${c||""}"><span class="rs-ic">${icSvg(ic)}</span><span class="rs-t">${t}${extra?`<small>${extra}</small>`:""}</span><b class="num">${v}</b></div>`;
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Resumen del día">${sheetHead(icSvg("chart")+" Resumen del día")}
+    <div class="rs-big"><span><b class="num">${R.s.n}</b>entregas</span><span><b class="num">${gs(R.s.total)}</b>total cobrado</span><span><b class="num">${R.trab}</b>trabajando ahora</span></div>
+    ${R.porU.length?`<div class="rs-por">${R.porU.map(p=>`<span>${nm(p.u)} <b class="num">${p.n}</b></span>`).join("")}</div>`:""}
+    <div class="list">
+      ${blk("bike","En camino ahora",R.cam,R.cam?"":"ok")}
+      ${blk("wallet","Caja sin cerrar",R.sinCerrar.length||"—",R.sinCerrar.length?"warn":"ok",R.sinCerrar.map(nm).join(", "))}
+      ${R.faltas.length?blk("alert","Faltó plata al cerrar",R.faltas.length,"bad",R.faltas.map(f=>nm(f.u)+" "+gs(f.v)).join(" · ")):""}
+      ${blk("note","Anotados por confirmar",R.cf.length?gs(R.cfV):"—",R.cf.length?"warn":"ok",R.cf.length?plural(R.cf.length,"anotado"):"")}
+      ${blk("users","Deben a la empresa",R.debT?gs(R.debT):"—",R.debT?"warn":"ok",R.deben.slice(0,5).map(d=>nm(d.u)+" "+gs(d.v)).join(" · "))}
+      ${R.prog.length?blk("clock","Programados pendientes",R.prog.length,"warn",R.prog.map(p=>p.hora+" "+esc(p.cli||"")).join(" · ")):""}
+    </div>
+    <div class="qr-row"><button type="button" class="primary" data-rscopy>Copiar resumen</button><a class="wa-big" href="https://wa.me/?text=${encodeURIComponent(resumenTxt(R))}" target="_blank" rel="noopener">WhatsApp</a></div></div></div>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.hasAttribute("data-resumen")){openResumen();return}
+  if(t.hasAttribute("data-rscopy")){copy(resumenTxt(resumenDia()));return}});
+
+/* ---------- Recordatorio de respaldo: los primeros 10 días del mes, bajar el Excel del mes anterior ---------- */
+const bkpPrev=()=>{const d=fromKey(today());return keyOf(new Date(d.getFullYear(),d.getMonth()-1,1)).slice(0,7)};
+function bkpBox(){if(S.mode!=="db"||!isRealOwner||S.dia!==today()||Number(today().slice(8))>10)return"";const ym=bkpPrev();try{if(localStorage.getItem("caixa_bkp_"+ym))return""}catch(e){return""}
+  return `<div class="bkp-box">${icSvg("chart")}<span><b>Respaldo de ${MESES[Number(ym.slice(5))-1]}</b><small>Bajá el Excel del mes pasado y guardalo (en Archivos o mandátelo por WhatsApp). Si algo pasa, tenés todo.</small></span>
+    <div class="bkp-act"><button type="button" class="primary small" data-bkpgo="${ym}">Bajar Excel</button><button type="button" class="linkbtn small-link" data-bkpok="${ym}">ya lo hice</button></div></div>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.dataset.bkpgo){openExport();const b=layer.querySelector(`[data-expm="${t.dataset.bkpgo}"]`);if(b)b.click();return}
+  if(t.dataset.bkpok){try{localStorage.setItem("caixa_bkp_"+t.dataset.bkpok,"1")}catch(err){}render(true);return}});
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
@@ -2266,7 +2400,7 @@ function whoBar(){
   const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
   return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
     <button type="button" class="vp-team" data-equipo>👥 Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button></div>
-    <div class="tools-row"><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button><button type="button" class="nt-open" data-prog>${icSvg("clock")} Programados</button><button type="button" class="nt-open" data-ahorro>${icSvg("wallet")} Mi ahorro</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
+    <div class="tools-row"><button type="button" class="nt-open" data-resumen>${icSvg("chart")} Resumen del día</button><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button><button type="button" class="nt-open" data-prog>${icSvg("clock")} Programados</button><button type="button" class="nt-open" data-ahorro>${icSvg("wallet")} Mi ahorro</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
 }
 function openViewPick(){edit=null;const ids=activos();const t=today();
   const nOf=u=>stats(allItems().filter(([,d])=>d._u===u&&d.dia===t&&!isCamino(d))).n;const tot=stats(allItems().filter(([,d])=>d.dia===t&&!isCamino(d))).n;
@@ -2448,7 +2582,7 @@ function openMsg(){edit=null;const cur=msgDia&&msgDia.texto||"";
 function viewDiaShell(){
   const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · para ${esc(personName(writeTarget()))}`:"";
-  return `${saludoHtml()}<div id="clima-box"></div>${avisoHtml()}${progBox()}<div id="pts-box"></div>${destacadosBox()}${cumpleBox()}
+  return `${saludoHtml()}<div id="clima-box"></div>${avisoHtml()}${bkpBox()}${progBox()}<div id="pts-box"></div>${destacadosBox()}${cumpleBox()}
   <div class="daynav"><button data-day="-1" aria-label="Día anterior">‹</button>
     <label class="daylabel pick" for="dpick"><b>${dayName(S.dia)} <svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></b><span>${dayLong(S.dia)}</span>
       <input type="date" id="dpick" value="${S.dia}" max="${today()}" aria-label="Elegir día"></label>
@@ -3196,7 +3330,7 @@ function fijosBlock(list){
   const m=new Map();for(const[key,d]of list){if(d.metodo!=="fijo")continue;const k=norm(d.cliente)||"-";if(!m.has(k))m.set(k,{nome:d.cliente||"Cliente fijo",n:0,diario:0,ks:[],desc:0,sv:[]});const r=m.get(k);if(!d.diario)r.n+=(d.cant||1);
     if(d.diario||d.valor){r.diario+=d.valor||0;if(d.via==="empresa"){r.emp=1;r.ks.push(key);if(d.desc)r.desc=1}else if(!d.via&&!d.diario)r.sv.push(key)}}
   if(!m.size)return"";const can=!lockReason(S.dia)&&(S.mode!=="db"||S.owner);
-  return `<div class="fijos"><div class="ac-h">Clientes fijos · pagan diario, sin %</div>
+  return `<div class="fijos"><div class="ac-h">Clientes fijos · pagan diario, sin %${S.mode==="db"&&S.owner?` <button type="button" class="linkbtn small-link" data-extracto>extracto del mes</button>`:""}</div>
     ${[...m.values()].map(r=>`<div class="fijo-row"><div class="who"><b>${esc(r.nome)}</b><small>${plural(r.n,"entrega")}${r.diario?" · diario "+gs(r.diario):" · diario sin registrar"}</small></div>
       ${r.diario&&r.sv.length&&S.owner&&S.mode==="db"?`<span class="paid-w"><small>¿Quién cobró ${gs(r.diario)}?</small><span class="fd-ch">${[["empresa","La empresa · a su deuda"],["empresa_pag","Ya se lo pagué"],["efectivo","Lo cobró él"]].map(([v,l])=>`<button type="button" class="chip" data-fijoset="${esc(r.sv.join(","))}" data-v="${v}">${l}</button>`).join("")}</span></span>`:r.diario?`<span class="paid-w"><span class="paid">${r.emp?(r.desc?"Cobró la empresa":"Pagado al delivery"):"Cobrado"} ${gs(r.diario)}</span>${r.emp&&r.ks.length?(S.owner?`<button type="button" class="linkbtn small-link" data-fijodesc="${esc(r.ks.join(","))}" data-on="${r.desc?0:1}">${r.desc?"Ya se lo pagué todo · no descontar":"Descontar de su deuda"}</button>${r.desc?"":`<small>No se descuenta</small>`}`:`<small>${r.desc?"va a tu deuda · lo que sobra te lo pasan":"la empresa ya te lo pagó aparte"}</small>`):""}</span>`:can?`<button type="button" class="small pay" data-diario="${esc(r.nome)}">Registrar diario</button>`:`<span class="unpaid">${S.mode==="db"&&!S.owner?"Diario: lo carga la empresa":"Pendiente"}</span>`}</div>`).join("")}</div>`}
 function openDiario(nome){edit=null;
@@ -3284,7 +3418,7 @@ function clientesBlock(list){
       <span class="rk-n num">${c.n}<small>${gs(c.total)}</small></span></div>`).join("")}</div></section>`}
 function viewInforme(){
   const seg=`<div class="seg" role="group" aria-label="Informe">${[["semana","Semana"],["mes","Mes"],["rango","Personalizado"]].map(([k,l])=>`<button type="button" data-info="${k}" aria-pressed="${infoMode===k}">${l}</button>`).join("")}</div>`;
-  return seg+(S.mode==="db"&&S.owner?`<div class="info-tools"><button type="button" class="nt-open" data-export>${icSvg("chart")} Exportar Excel</button><button type="button" class="nt-open" data-logs>${icSvg("clock")} Registro de cambios</button></div>`:"")+(infoMode==="semana"?viewSemana():infoMode==="rango"?viewRango():viewMes());
+  return seg+(S.mode==="db"&&S.owner?`<div class="info-tools"><button type="button" class="nt-open" data-export>${icSvg("chart")} Exportar Excel</button><button type="button" class="nt-open" data-extracto>${icSvg("clipboard")} Extracto cliente fijo</button><button type="button" class="nt-open" data-logs>${icSvg("clock")} Registro de cambios</button></div>`:"")+(infoMode==="semana"?viewSemana():infoMode==="rango"?viewRango():viewMes());
 }
 /* gráficos del informe: entregas por hora y tipo de pago (solo lectura de los datos ya cargados) */
 /* avatar con iniciales (sin fotos): color fijo por nombre */
@@ -3567,7 +3701,7 @@ async function doExport(ym){const st=document.getElementById("exp-st");const say
   const file="TuDelivery_"+ym+".xlsx";
   say("Armando la planilla…");
   try{const blob=makeXlsx([{name:"Deliverys",rows:hDel,w:[22,10,15,10,14,12,13,12,12,11,12,17,26,15,15],money:[4,5,6,7,8,10,11,12]},{name:"Entregas",rows:hEnt,w:[11,7,18,14,24,13,13,12,9,14,28],money:[6,7]},{name:"Por día",rows:hDia,w:[10,9,14,12,15,15],money:[2,3,4,5]},{name:"Gastos",rows:hGas,w:[10,18,16,12,28],money:[3]},{name:"Caja",rows:hCaj,w:[10,18,13,14,14,12,9],money:[2,3,4,5]}]);
-    await shareFile(blob,file);say("Listo ✓ "+plural(T.n,"entrega")+" en "+file)}
+    await shareFile(blob,file);try{localStorage.setItem("caixa_bkp_"+ym,String(Date.now()))}catch(e){}say("Listo ✓ "+plural(T.n,"entrega")+" en "+file)}
   catch(e){say("No se pudo armar la planilla. Probá de nuevo.")}}
 async function shareFile(blob,name){try{const f=new File([blob],name,{type:blob.type});if(navigator.canShare&&navigator.canShare({files:[f]})&&/iPhone|iPad|Android/i.test(navigator.userAgent)){await navigator.share({files:[f],title:name});return}}catch(e){if(e&&e.name==="AbortError")return}
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
@@ -3655,7 +3789,8 @@ function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].fil
   const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b class="tm-n">${avatarHtml(personName(u),u)}<span>${esc(personName(u))}</span></b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}${kind==="act"&&!soc&&!sinComU(u)?((S.people.get(u)||{}).qrEm?` <button type="button" class="pill p-cash qr-pill" data-verqr="${esc(u)}">QR listo</button>`:' <span class="pill p-muted">Sin QR</span>'):""}</b><small>${kind==="pend"?"Esperando aprobación"+(sameAux(u).length>1?' · <span class="cz-warn">ya trabajó antes con este nombre: el historial se junta</span>':""):kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button>${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?'<span class="pill p-aux">Pide volver hoy</span> ':""}<button type="button" class="small ${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?"ok":""}" data-reactivar="${esc(u)}">${isAux(u)?"Aceptar de nuevo":"Reactivar"}</button>`
-      :`${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button><button type="button" class="small" data-fotoeq="${esc(u)}">${icSvg("users")} Foto</button>${(S.people.get(u)||{}).email?`<button type="button" class="small" data-acceso="${esc(u)}">${icSvg("lock")} Acceso</button>`:""}<button type="button" class="small" data-cumple="${esc(u)}">${icSvg("cake")} ${(()=>{const c=cumples().find(x=>x.u===u);return c?mdTxt(c.md):"Cumpleaños"})()}</button><button type="button" class="small" data-aux="${esc(u)}" data-on="${isAux(u)?0:1}">${isAux(u)?"Pasar a fijo":"Es auxiliar"}</button><button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">${isAux(u)?"Terminó · desactivar":"Dar de baja"}</button>`}</div></div>`};
+      :`<button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small tm-mas" data-tmmore>Más ▾</button>
+      <div class="tm-more" hidden><button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button><button type="button" class="small" data-fotoeq="${esc(u)}">${icSvg("users")} Foto</button>${(S.people.get(u)||{}).email?`<button type="button" class="small" data-acceso="${esc(u)}">${icSvg("lock")} Acceso</button>`:""}<button type="button" class="small" data-cumple="${esc(u)}">${icSvg("cake")} ${(()=>{const c=cumples().find(x=>x.u===u);return c?mdTxt(c.md):"Cumpleaños"})()}</button><button type="button" class="small" data-aux="${esc(u)}" data-on="${isAux(u)?0:1}">${isAux(u)?"Pasar a fijo":"Es auxiliar"}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">${isAux(u)?"Terminó · desactivar":"Dar de baja"}</button></div>`}</div></div>`};
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Equipo">
     ${sheetHead("Equipo")}
     ${pend.length?`<div class="lbl">Nuevos · esperando aprobación</div><div class="list">${pend.map(u=>row(u,"pend")).join("")}</div>`:""}
