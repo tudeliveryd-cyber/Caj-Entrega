@@ -1212,6 +1212,8 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .ah-metabox summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:14px}.ah-mrow{display:grid;gap:8px;margin-top:8px}.ah-mrow input#ah-mn{border:1px solid var(--line);border-radius:14px;padding:11px 12px;background:var(--bg);color:var(--ink);font:inherit}
 
 .acc-box{display:grid;gap:4px;padding:14px;border-radius:16px;border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 4%,transparent)}.acc-box small{color:var(--muted);font-size:12.5px}.acc-box b{font-size:17px;word-break:break-all}.acc-box .linkbtn{justify-self:start}
+
+.lg-forgot{font-size:15px;border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
 </style>
 
 </head>
@@ -1333,7 +1335,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="195";
+const APPV="196";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1516,7 +1518,7 @@ function drawLogin(err){
       <div class="field"><label for="lg-pass">Contraseña</label><input id="lg-pass" type="password" autocomplete="${lgMode==="up"?"new-password":"current-password"}" placeholder="${lgMode==="up"?"Mínimo 6 caracteres":"Tu contraseña"}" required></div>
       ${err?`<p class="err">${err}</p>`:""}
       <button type="submit" class="primary">${lgMode==="up"?"Crear cuenta":"Entrar"}</button>
-      ${lgMode==="in"?`<button type="button" class="linkbtn" data-forgot>Olvidé mi contraseña</button>`:`<p class="hint" style="margin:0">Después de crear la cuenta, el dueño tiene que aprobarte.</p>`}
+      ${lgMode==="in"?`<button type="button" class="ghost lg-forgot" data-forgot>¿Olvidaste tu contraseña? Tocá acá</button><small class="hint" style="margin:0;text-align:center">Escribí tu e-mail arriba y tocá el botón: te llega un e-mail para crear una contraseña nueva.</small>`:`<p class="hint" style="margin:0">Después de crear la cuenta, el dueño tiene que aprobarte.</p>`}
     </form><button type="button" class="lg-aux-btn" data-lgmode="aux">${LGBIKE}<span><b>Soy auxiliar</b><small>Trabajo algunos días · entrar sin cuenta</small></span></button></div>`}`}
 function authMsg(e){const c=(e&&e.code)||"";
   if(/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c))return"E-mail o contraseña incorrectos.";
@@ -1530,8 +1532,8 @@ function authMsg(e){const c=(e&&e.code)||"";
   return"No se pudo entrar. Probá de nuevo."}
 LG.addEventListener("click",async e=>{const t=e.target.closest("button");if(!t)return;if(t.hasAttribute("data-install")){doInstall();return}
   if(t.dataset.lgmode){lgMode=t.dataset.lgmode;drawLogin();return}
-  if(t.hasAttribute("data-forgot")){const m=document.getElementById("lg-mail").value.trim();if(!m){drawLogin("Escribí tu e-mail y tocá de nuevo “Olvidé mi contraseña”.");return}
-    try{await auth.sendPasswordResetEmail(m);toast("Te mandamos un e-mail para cambiar la contraseña")}catch(err){drawLogin(authMsg(err))}}});
+  if(t.hasAttribute("data-forgot")){const m=document.getElementById("lg-mail").value.trim();if(!m){drawLogin("Primero escribí tu e-mail arriba y después tocá “¿Olvidaste tu contraseña?”.");setTimeout(()=>{const i=document.getElementById("lg-mail");if(i)i.focus()},50);return}
+    try{await auth.sendPasswordResetEmail(m);drawLogin();const i=document.getElementById("lg-mail");if(i)i.value=m;toast("Listo · revisá tu e-mail (y Spam) para crear la contraseña nueva")}catch(err){drawLogin(authMsg(err))}}});
 LG.addEventListener("submit",async e=>{e.preventDefault();
   if(lgMode==="aux"){const nm=document.getElementById("lg-name").value.trim();if(!nm){drawLogin("Escribí tu nombre.");return}
     const btn=LG.querySelector('button[type="submit"]');btn.disabled=true;btn.textContent="Un momento…";
@@ -1638,7 +1640,7 @@ function startDemo(modo){
   {const dm=location.search.match(/[?&]demo(?:=([^&]*))?/);if(dm){startDemo(dm[1]||"");return}}
   const cfg=window.FIREBASE_CONFIG;
   if(!window.firebase||!cfg||!cfg.apiKey){S.mode="local";setSync("Guardado en este celular");render(true);return}
-  firebase.initializeApp(cfg);auth=firebase.auth();
+  firebase.initializeApp(cfg);auth=firebase.auth();try{auth.languageCode="es"}catch(e){}
   try{auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(e){}
   const fs=firebase.firestore();try{fs.settings({ignoreUndefinedProperties:true,experimentalForceLongPolling:true})}catch(e){}
   /* caché en el celular solo en la app instalada (una sola ventana); en pestañas de Safari varias copias se traban entre sí */
