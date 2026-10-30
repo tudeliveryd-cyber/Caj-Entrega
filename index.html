@@ -1238,6 +1238,17 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .bkp-box{display:grid;grid-template-columns:auto 1fr;gap:10px 12px;align-items:start;padding:14px 16px;border-radius:20px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
 .bkp-box>svg{width:24px;height:24px;color:var(--accent);margin-top:2px}.bkp-box span{display:grid;gap:3px}.bkp-box small{color:var(--muted);font-size:13px;line-height:1.4}
 .bkp-act{grid-column:1/-1;display:flex;gap:14px;align-items:center}
+
+/* Más del día */
+.mas-dia{border:1px solid var(--line);border-radius:20px;background:var(--surface);overflow:hidden}
+.mas-dia>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 16px;cursor:pointer}.mas-dia>summary::-webkit-details-marker{display:none}
+.mas-dia>summary>span:first-child{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center}.mas-dia summary svg{width:20px;height:20px;color:var(--accent);grid-row:span 2}
+.mas-dia summary small{color:var(--muted);font-size:12.5px}.mas-dia[open] .caja-arr{transform:rotate(180deg)}
+.mas-in{display:grid;gap:12px;padding:0 12px 12px}.mas-in:empty{display:none}
+
+.qr-act .field label{font-weight:700}.qr-act .money{background:#fff;border-color:#D9D0EA}.qr-act .money input{color:#1A1033}.qr-act .money span{color:#6B5E85}
+
+.wa-sm{display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;background:#25D366;color:#06311A!important;font-weight:700;text-decoration:none;font-size:13px}
 </style>
 
 </head>
@@ -1282,7 +1293,7 @@ const GPRESETS=[5000,10000,15000,20000,30000];
 const LSG="caixa_gastos_v1",LSE="caixa_egastos_v1";
 const EGT={premio:"Premios",nafta:"Nafta",publicidad:"Publicidad",telefono:"Teléfono/Internet",alquiler:"Alquiler",sueldo:"Sueldos",otro:"Otro"};
 const G={tipo:"gasolina",val:0,obs:""};
-const ST={certificado:"Certificado de trabajo",uniforme:"Uniforme",mochila:"Mochila",casco:"Casco / equipo",otro:"Otro"};
+const ST={pagoqr:"Pago de cuenta por QR",sugerencia:"Sugerencia para la app",certificado:"Certificado de trabajo",uniforme:"Uniforme",mochila:"Mochila",casco:"Casco / equipo",otro:"Otro"};
 const SE={pendiente:{n:"Pendiente",c:"due"},proceso:{n:"En proceso",c:"transfer"},listo:{n:"Listo",c:"cash"},rechazado:{n:"Rechazado",c:"muted"}};
 const sols=new Map(),cambios=new Map();let solTipo="certificado",solPara=null;
 const MSGS=["Cada entrega que hacés le alegra el día a alguien. ¡Gracias por tu trabajo!", "Manejá con cuidado: tu familia te espera en casa.", "Hoy es un buen día para dar lo mejor de vos. ¡Vamos con todo!", "«Todo lo puedo en Cristo que me fortalece.» Filipenses 4:13", "Una sonrisa al entregar vale más que mil palabras.", "El esfuerzo de hoy es el logro de mañana.", "Casco puesto, celular guardado y a rodar seguro.", "«Esforzate y sé valiente.» Josué 1:9", "No hay entrega chica cuando se hace con ganas.", "Sos parte importante de Tú Delivery. ¡Gracias por estar!", "La puntualidad también es una forma de respeto. ¡Vos podés!", "Si llueve, andá más despacio. Llegar bien es lo más importante.", "«Encomienda a Jehová tu camino, y confía en él.» Salmo 37:5", "Hoy puede ser tu mejor día de la semana. ¡A buscar ese premio!", "El que madruga y trabaja con ganas, cosecha. ¡Vamos!", "Cada cliente contento recomienda a Tú Delivery. ¡Gracias a vos!", "Los grandes resultados se construyen con pequeños pasos.", "«Este es el día que hizo el Señor; alegrémonos en él.» Salmo 118:24", "Respetá los semáforos: un minuto de espera no cambia el día, un accidente sí.", "Tu trabajo honesto vale oro. ¡Seguí así!", "Empezá el día con fe y terminá con gratitud.", "Revisá frenos y luces antes de salir. Tu moto te cuida si vos la cuidás.", "La actitud con la que salís hoy hace la diferencia.", "«Mira que te mando que te esfuerces y seas valiente.» Josué 1:9", "Un buen día de trabajo empieza con una buena actitud. ¡Arriba!", "Gracias por tu responsabilidad: los clientes confían en vos.", "No te compares con nadie: superá al vos de ayer.", "Más entregas, más ganancia. ¡Hoy es día de romperla!", "«Jehová es mi pastor; nada me faltará.» Salmo 23:1", "Hoy es otra oportunidad para hacerlo mejor que ayer.", "Saludá a cada cliente con alegría: eso es Tú Delivery.", "Los mejores deliverys no esperan el pedido: están listos cuando llega.", "Trabajá con ganas hoy y mirá el ranking esta noche.", "«Fiel es el que os llama.» 1 Tesalonicenses 5:24", "Cada kilómetro cuenta. ¡Vamos que hoy se puede!", "Una entrega a tiempo es una promesa cumplida.", "Cada pedido entregado te acerca al premio de la semana. ¡A darle!", "Juntos somos más fuertes: gracias por ser parte del equipo.", "«Bienaventurado el hombre que confía en Jehová.» Jeremías 17:7", "Que hoy te vaya excelente en cada viaje. ¡Buen día!"];
@@ -1359,7 +1370,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="197";
+const APPV="198";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1733,7 +1744,7 @@ function startData(me){setTimeout(()=>{try{subNotas()}catch(e){}},400);
     cfgRef.onSnapshot(s=>{if(s.exists){const d=s.data();S.cfg={pct:d.pct||30,por:d.por||{}};lsSet(LSC,S.cfg)}cfgOk=true;pctSync();render(true)},()=>{})}
   subscribeUser(me);
   if(S.owner)egCol().where("dia",">=",addDays(today(),-WINDOW)).limit(1000).onSnapshot(snap=>{S.egastos=new Map(snap.docs.map(d=>[d.id,{...d.data(),_id:d.id}]));render()},()=>{});
-  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;metaDia=0;const hadG=chatG.length;chatG=[];for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}if(d.id==="_meta"){metaDia=Number(d.data().n)||0;continue}if(d.id==="_puntos"){ptsCfg=d.data();continue}if(d.id==="_clientes"){clisF=Array.isArray(d.data().list)?d.data().list:[];if(document.getElementById("cf-list"))drawClientesF();continue}if(d.id==="_chat"){chatG=(d.data().msgs||[]);continue}if(d.id==="_cumples"){cumpleL=Array.isArray(d.data().list)?d.data().list:[];continue}rank.set(d.id,d.data())}if(!snap.docs.some(d=>d.id==="_puntos"))ptsCfg=null;render();{const sig=JSON.stringify(msgDia)+"|"+metaDia+"|"+JSON.stringify(cumpleL)+"|"+JSON.stringify(destacados());if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(chatG.length!==hadG){chatNotify();render()}if(S.tab==="rank")render(true);radioCheck();cumpleAviso();destacadoAviso()},()=>{});
+  db.collection("ranking").limit(200).onSnapshot(snap=>{rank.clear();msgDia=null;metaDia=0;const hadG=chatG.length;chatG=[];for(const d of snap.docs){if(d.id==="_mensaje"){msgDia=d.data();continue}if(d.id==="_meta"){metaDia=Number(d.data().n)||0;continue}if(d.id==="_puntos"){ptsCfg=d.data();continue}if(d.id==="_clientes"){clisF=Array.isArray(d.data().list)?d.data().list:[];if(document.getElementById("cf-list"))drawClientesF();continue}if(d.id==="_chat"){chatG=(d.data().msgs||[]);continue}if(d.id==="_qrEmp"){QREMP=d.data();continue}if(d.id==="_cumples"){cumpleL=Array.isArray(d.data().list)?d.data().list:[];continue}rank.set(d.id,d.data())}if(!snap.docs.some(d=>d.id==="_puntos"))ptsCfg=null;render();{const sig=JSON.stringify(msgDia)+"|"+metaDia+"|"+JSON.stringify(cumpleL)+"|"+JSON.stringify(destacados());if(S.tab==="dia"&&sig!==window.__msgSig){window.__msgSig=sig;render(true)}}if(chatG.length!==hadG){chatNotify();render()}if(S.tab==="rank")render(true);radioCheck();cumpleAviso();destacadoAviso()},()=>{});
   if(S.owner){let first=true;db.collection("turnos").limit(200).onSnapshot(snap=>{for(const d of snap.docs){const prev=S.people.get(d.id),nd=d.data();
     if(!first&&d.id!==S.me&&nd.cierre&&nd.cierre.dia===today()&&!(prev&&prev.cierre&&prev.cierre.em===nd.cierre.em))toast("🏁 "+(nd.nome||"Un delivery")+" cerró su día");
     if(!first&&d.id!==S.me&&nd.inicio&&nd.inicio.dia===today()&&!(prev&&prev.inicio&&prev.inicio.em===nd.inicio.em))toast("▶️ "+(nd.nome||"Un delivery")+" empezó a trabajar");
@@ -1846,7 +1857,9 @@ function openTema(){edit=null;const t=temaGet();const mode=t.mode||"auto",ac=t.a
     ${S.mode==="db"?`<div class="lbl">Configuraciones generales</div><div class="list cfg-list">
       ${S.owner?`<button type="button" class="cfg-it" data-cfgexp>${icSvg("chart")}<span>Respaldo de datos<small>Bajar el Excel del mes</small></span><span class="caja-go">›</span></button>`:""}
       ${S.owner?`<button type="button" class="cfg-it" data-cfglogs>${icSvg("clock")}<span>Registro de cambios<small>Quién editó o borró entregas</small></span><span class="caja-go">›</span></button>`:""}
+      ${S.owner?"":`<button type="button" class="cfg-it" data-cfgsug>${icSvg("message")}<span>Sugerir una mejora<small>¿Algo te confunde o falta? Contale a la empresa</small></span><span class="caja-go">›</span></button>`}
       <button type="button" class="cfg-it" data-cfgbienv>${icSvg("note")}<span>Cómo usar la app<small>Los pasos básicos, en 1 minuto</small></span><span class="caja-go">›</span></button>
+      ${S.owner?`<button type="button" class="cfg-it" data-cfgqremp>${icSvg("qr")}<span>QR de la empresa<small>Para que los deliverys te paguen la cuenta</small></span><span class="caja-go">›</span></button>`:""}
       <button type="button" class="cfg-it" data-cfgqr>${icSvg("qr")}<span>Mi QR de cobro<small>Para que el cliente pague escaneando</small></span><span class="caja-go">›</span></button>
       <button type="button" class="cfg-it" data-cfgfoto>${icSvg("users")}<span>Mi foto de perfil<small>Aparece en el ranking</small></span><span class="caja-go">›</span></button>
       <button type="button" class="cfg-it" data-cfgchat>${icSvg("message")}<span>Ayuda y soporte<small>${S.owner?"Chat con el equipo":"Escribile a la empresa por el chat"}</small></span><span class="caja-go">›</span></button>
@@ -2392,6 +2405,50 @@ function bkpBox(){if(S.mode!=="db"||!isRealOwner||S.dia!==today()||Number(today(
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
   if(t.dataset.bkpgo){openExport();const b=layer.querySelector(`[data-expm="${t.dataset.bkpgo}"]`);if(b)b.click();return}
   if(t.dataset.bkpok){try{localStorage.setItem("caixa_bkp_"+t.dataset.bkpok,"1")}catch(err){}render(true);return}});
+/* lo secundario del día (clima, puntos, destacados, cumpleaños del mes) va junto en "Más del día" para que la pantalla no quede cargada */
+function masDia(){const op=(()=>{try{return localStorage.getItem("caixa_masdia")==="1"}catch(e){return false}})();const cm=cumpleBox("mes"),de=destacadosBox();
+  const tags=["Clima",S.mode==="db"&&S.owner?"Puntos":"",de?"Destacados":"",cm?"Cumpleaños":""].filter(Boolean);
+  return `<details class="mas-dia" ${op?"open":""}><summary><span>${icSvg("sparkle")}<b>Más del día</b><small>${tags.join(" · ")}</small></span><span class="caja-arr">▾</span></summary>
+    <div class="mas-in"><div id="clima-box"></div><div id="pts-box"></div>${de}${cm}</div></details>`}
+document.addEventListener("toggle",e=>{if(e.target&&e.target.classList&&e.target.classList.contains("mas-dia")){try{localStorage.setItem("caixa_masdia",e.target.open?"1":"0")}catch(x){}}},true);
+/* ---------- QR de la empresa: el delivery paga su cuenta escaneando y avisa; el dueño confirma y queda registrado el pago ---------- */
+var QREMP=null,QRE_IMG=null;
+async function qrAchicar(img){if(img.length<=150000)return img;const im=await new Promise(ok=>{const i=new Image();i.onload=()=>ok(i);i.src=img});const k=480/Math.max(im.width,im.height);
+  const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);let d=c.toDataURL("image/png");if(d.length>150000)d=c.toDataURL("image/jpeg",.8);return d}
+function openQrEmp(){edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="QR empresa">${sheetHead(icSvg("qr")+" QR de la empresa")}
+    <p class="hint" style="margin:0">Los deliverys lo usan para <b>pagarte su cuenta</b> (la comisión) escaneando, desde “Mi cuenta”. Generá en tu banco un QR <b>sin monto</b>, sacá un print y elegilo acá.</p>
+    ${QREMP&&QREMP.img?`<div class="qr-prev"><img src="${QREMP.img}" alt="QR"></div>${QREMP.tit?`<p class="hint" style="margin:0;text-align:center"><b>${esc(QREMP.tit)}</b></p>`:""}`:`<div class="empty">Todavía no cargaste el QR de la empresa.</div>`}
+    <label class="primary foto-btn">${icSvg("image")} ${QREMP&&QREMP.img?"Cambiar QR":"Elegir el print del QR"}<input type="file" accept="image/*" data-qrempf hidden></label></div></div>`}
+function openQrEmpPrev(){layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog">${sheetHead("QR de la empresa")}
+    <p class="hint" style="margin:0">${QRE_IMG.auto?"Recortamos solo el QR. Fijate que se vea completo.":"No encontramos el QR solo: se guarda la imagen entera."}</p>
+    <div class="qr-prev"><img src="${QRE_IMG.img}" alt="QR"></div>
+    <div class="field"><label for="qre-tit">Titular / banco (opcional)</label><input id="qre-tit" maxlength="50" placeholder="Ej.: Tú Delivery · Itaú" value="${esc((QREMP&&QREMP.tit)||"")}"></div>
+    <button type="button" class="primary" data-qreok>Guardar QR de la empresa</button></div></div>`}
+function openPagarQR(){const c=cuentaDe(S.me);const v=Math.max(0,c.saldo);if(!QREMP||!QREMP.img){toast("La empresa todavía no cargó su QR. Pedíselo.");return}
+  layer.innerHTML=`<div class="qr-full"><div class="qr-card">
+    <div class="qr-top"><img src="icon-192.png" alt=""><b>Pagar a Tú Delivery</b></div>
+    <div class="qr-m"><small>Tu cuenta</small><b class="num">${gs(v)}</b></div>
+    <div class="qr-img"><img src="${QREMP.img}" alt="QR de la empresa"></div>${QREMP.tit?`<div class="qr-tit">${esc(QREMP.tit)}</div>`:""}
+    <p class="qr-ins">Escaneá con la app de tu banco, escribí el monto y pagá. Después avisá acá abajo.</p></div>
+    <div class="qr-act"><div class="field"><label for="pq-v" style="color:#2A1550">¿Cuánto pagaste?</label><div class="money"><span>₲</span><input id="pq-v" inputmode="numeric" autocomplete="off" value="${v?fmtInput(v):""}"></div></div>
+      <button type="button" class="primary" data-pqok>Ya pagué · avisar a la empresa</button><button type="button" class="ghost" data-pqback>Volver</button></div></div>`;
+  setTimeout(()=>{const i=document.getElementById("pq-v");if(i)i.addEventListener("input",()=>{const n=parseVal(i.value);i.value=n?fmtInput(n):""})},30)}
+document.addEventListener("change",async e=>{const t=e.target;if(!t||!t.dataset||t.dataset.qrempf==null||!t.files||!t.files[0])return;
+  try{toast("Preparando el QR…");QRE_IMG=await qrRecortar(t.files[0]);QRE_IMG.img=await qrAchicar(QRE_IMG.img);openQrEmpPrev()}catch(err){toast("No se pudo leer la imagen")}t.value=""});
+document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.hasAttribute("data-cfgqremp")){openQrEmp();return}
+  if(t.hasAttribute("data-qreok")){const v={img:QRE_IMG.img,tit:(document.getElementById("qre-tit").value||"").trim(),em:Date.now()};QREMP=v;
+    try{const w=await sendW(db.doc("ranking/_qrEmp").set(v));toast(w==="wait"?"Guardado · se envía al volver la señal":"QR de la empresa guardado")}catch(err){toast("No se guardó.")}openQrEmp();return}
+  if(t.hasAttribute("data-pagarqr")){openPagarQR();return}
+  if(t.hasAttribute("data-pqback")){openCuenta(S.me);return}
+  if(t.hasAttribute("data-pqok")){const v=parseVal((document.getElementById("pq-v")||{}).value||"");if(!v){toast("Escribí cuánto pagaste");return}
+    const doc={tipo:"pagoqr",monto:v,detalle:"Pagué "+gs(v)+" por QR",estado:"pendiente",criadoEm:Date.now()};closeSheet();
+    try{await sendW(db.collection("turnos/"+S.me+"/solicitudes").doc(uid()).set(doc));toast("Listo · la empresa confirma y se descuenta de tu cuenta")}catch(err){toast("No se envió. Probá de nuevo.")}return}
+  if(t.dataset.solpago){const k=t.dataset.solpago;const x=sols.get(k);if(!x||!S.owner)return;const v=x.monto||0;
+    if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="¿Llegó "+gs(v)+"? Tocá de nuevo";return}
+    try{const m={tipo:"abono",monto:v,nota:"Pago por QR",em:Date.now(),abierto:true,por:S.me,ref:"sol"+x._id};const id="sq"+x._id;movs.set(x._u+"|"+id,{...m,_u:x._u,_id:id});
+      await sendW(db.collection("liq/"+x._u+"/movs").doc(id).set(m));await setSol(k,{estado:"listo",respuesta:"Pago recibido · "+gs(v)+" descontado de tu cuenta"});render(true);toast("Pago registrado · "+gs(v))}catch(err){toast("No se guardó.")}return}});
+
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
@@ -2582,7 +2639,7 @@ function openMsg(){edit=null;const cur=msgDia&&msgDia.texto||"";
 function viewDiaShell(){
   const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · para ${esc(personName(writeTarget()))}`:"";
-  return `${saludoHtml()}<div id="clima-box"></div>${avisoHtml()}${bkpBox()}${progBox()}<div id="pts-box"></div>${destacadosBox()}${cumpleBox()}
+  return `${saludoHtml()}${avisoHtml()}${bkpBox()}${progBox()}${cumpleBox("hoy")}${masDia()}
   <div class="daynav"><button data-day="-1" aria-label="Día anterior">‹</button>
     <label class="daylabel pick" for="dpick"><b>${dayName(S.dia)} <svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></b><span>${dayLong(S.dia)}</span>
       <input type="date" id="dpick" value="${S.dia}" max="${today()}" aria-label="Elegir día"></label>
@@ -2949,7 +3006,7 @@ function openCuenta(u){edit=null;const c=cuentaDe(u);const ro=!S.owner;
       ${!c.dias.length&&!c.ms.length?`<div class="empty">Sin movimientos pendientes.</div>`:""}
       ${(()=>{const fp=fijoPasarDe(u);if(!fp.length)return"";const t=fp.reduce((a,[,d])=>a+d.pasar,0);return `<div class="cta-it"><span>Clientes fijos · ${ro?"la empresa te pasa":"la empresa le pasa"}<small>${fp.map(([,d])=>ddmm(d.dia)+" "+esc(d.cliente||"")).join(" · ")}</small>${ro?"":` <button type="button" class="linkbtn small-link" data-fijopase="${esc(fp.map(([k])=>k).join(","))}">ya se lo pasé</button>`}</span><b class="num c-cash">${gs(t)}</b></div>`})()}
     </div>
-    ${ro?`<p class="hint" style="margin:0">Para pagar, hablá con la empresa. Cuando registren tu pago, se descuenta acá.</p>`:""}<div class="cta-acts" ${ro?"hidden":""}><button type="button" class="small pay" data-movnew="${esc(u)}|abono">+ Registrar pago</button><button type="button" class="small" data-movnew="${esc(u)}|deuda">+ Deuda anterior / préstamo</button></div>
+    ${ro?(c.saldo>0?`<button type="button" class="primary" data-pagarqr>${icSvg("qr")} Pagar con QR · ${gs(c.saldo)}</button>`:"")+`<p class="hint" style="margin:0">${c.saldo>0?"Pagá escaneando el QR de la empresa y avisá: cuando la empresa confirme, se descuenta acá.":"Cuando registren tu pago, se descuenta acá."}</p>`:""}<div class="cta-acts" ${ro?"hidden":""}><button type="button" class="small pay" data-movnew="${esc(u)}|abono">+ Registrar pago</button><button type="button" class="small" data-movnew="${esc(u)}|deuda">+ Deuda anterior / préstamo</button></div>
     ${ro?"":`<a class="wa-big" href="${esc(cuentaWa(u,c))}" target="_blank" rel="noopener">📲 Enviar estado de cuenta</a>`}
     ${!ro&&c.dias.some(x=>x.dia<today())?(()=>{const ant=c.dias.filter(x=>x.dia<today());const sm=ant.reduce((a,x)=>a+x.s.saldo,0);return `<button type="button" class="primary hasta-ayer" data-hastaayer="${esc(u)}">${icSvg("checkc")} Pagó hasta ayer · ${plural(ant.length,"día")} · ${gs(Math.abs(sm))}</button>`})():""}
     ${!ro&&(c.dias.length||c.ms.length)?`<button type="button" class="ghost" data-saldar="${esc(u)}">✓ Saldar todo (queda en cero)</button>`:""}
@@ -3411,9 +3468,30 @@ function pendBlock(from,to){
 }
 function topClientes(list,n){const m=new Map();for(const[,d]of list){const c=(d.cliente||"").trim();if(!c)continue;const k=norm(c);if(!m.has(k))m.set(k,{nome:c,n:0,total:0});const r=m.get(k);r.n+=(d.diario?0:(d.cant||1));r.total+=d.valor}
   return[...m.values()].sort((a,b)=>b.n-a.n||b.total-a.total).slice(0,n)}
+/* zonas/barrios que más piden: sale del detalle de la entrega ("Barrio San Blas", "B° Centro", "Zona…") */
+function zonaDe(d){const tx=[d.obs,d.ubic&&!/^https?:/i.test(d.ubic)?d.ubic:"",d.cliente].filter(Boolean).join(" · ");
+  const m=tx.match(/\b(?:barrio|b°|bº|bo\.|bª|zona|villa|asentamiento|colonia)\s*[:.]?\s*([A-Za-zÁÉÍÓÚÑáéíóúñ0-9][A-Za-zÁÉÍÓÚÑáéíóúñ0-9 ]{1,24})/i);
+  if(!m)return"";return m[1].trim().split(/\s+/).slice(0,3).join(" ").replace(/^./,c=>c.toUpperCase())}
+function zonasBlock(list){if(S.mode==="db"&&!S.owner)return"";const m=new Map();let tot=0;
+  for(const[,d]of list){if(isCamino(d)||d.diario)continue;const z=zonaDe(d);if(!z)continue;const k=norm(z);if(!m.has(k))m.set(k,{z,n:0});m.get(k).n+=(d.cant||1);tot+=(d.cant||1)}
+  const top=[...m.values()].sort((a,b)=>b.n-a.n).slice(0,8);
+  if(!top.length)return `<section class="sec"><div class="sec-h"><h2>Zonas que más piden</h2></div><p class="hint" style="margin:0">Cuando en la entrega se escribe el barrio (ej.: “Barrio San Blas”, “B° Centro”), acá aparecen las zonas con más pedidos.</p></section>`;
+  const max=top[0].n;return `<section class="sec"><div class="sec-h"><h2>Zonas que más piden</h2><span>${plural(tot,"entrega")} con barrio</span></div><div class="list">
+    ${top.map((x,i)=>`<div class="rk-row"><span class="rk-pos ${i<3?"top":""}">${i+1}º</span><div class="rk-main"><div class="rk-name"><b>${esc(x.z)}</b></div><span class="rk-bar"><i style="width:${(x.n/max*100).toFixed(1)}%"></i></span></div><span class="rk-n num">${x.n}<small>${Math.round(x.n/tot*100)}%</small></span></div>`).join("")}</div></section>`}
+/* agradecer a los mejores clientes por WhatsApp */
+var AGL=[];
+function openAgradecer(){edit=null;const tel=nm=>{const c=clisF.find(x=>norm(x.n||"")===norm(nm));return c&&c.tel?String(c.tel).replace(/\D/g,"").replace(/^0/,"595"):""};
+  const msg=c=>`¡Hola ${c.nome}! Gracias por elegir Tú Delivery: este período hiciste ${plural(c.n,"pedido")} con nosotros. Para nosotros es un gusto llevarte cada uno. ¡Te esperamos siempre!`;
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Agradecer">${sheetHead(icSvg("message")+" Agradecer a los mejores clientes")}
+    <p class="hint" style="margin:0">Un mensaje de gracias ayuda a que vuelvan a pedir. Tocá “Enviar” en cada uno (si el cliente está en Clientes fijos con teléfono, se abre directo su WhatsApp).</p>
+    <div class="list">${AGL.map((c,i)=>`<div class="cta-it"><span>${i+1}º ${esc(c.nome)}<small>${plural(c.n,"pedido")}</small></span><a class="small wa-sm" href="https://wa.me/${tel(c.nome)}?text=${encodeURIComponent(msg(c))}" target="_blank" rel="noopener">Enviar</a></div>`).join("")||`<div class="empty">Todavía no hay clientes en este período.</div>`}</div></div></div>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.hasAttribute("data-agradecer")){openAgradecer();return}
+  if(t.hasAttribute("data-cfgsug")){solTipo="sugerencia";openNewSol();return}});
 function clientesBlock(list){
   const top=topClientes(list,8);if(!top.length)return"";const max=Math.max(...top.map(c=>c.n));
-  return `<section class="sec"><div class="sec-h"><h2>Mejores clientes</h2><span>por entregas</span></div><div class="list">
+  AGL=topClientes(list,10);
+  return `<section class="sec"><div class="sec-h"><h2>Mejores clientes</h2><span>${S.mode==="db"&&S.owner?`<button type="button" class="linkbtn small-link" data-agradecer>agradecerles</button>`:"por entregas"}</span></div><div class="list">
     ${top.map((c,i)=>`<div class="rk-row"><span class="rk-pos ${i<3?"top":""}">${i+1}º</span><div class="rk-main"><div class="rk-name"><b>${esc(c.nome)}</b></div><span class="rk-bar"><i style="width:${(c.n/max*100).toFixed(1)}%"></i></span></div>
       <span class="rk-n num">${c.n}<small>${gs(c.total)}</small></span></div>`).join("")}</div></section>`}
 function viewInforme(){
@@ -3542,7 +3620,7 @@ function viewSemana(){
     <div class="week">${bars}</div></section>
   ${showEmp()?egastosBlock(days[6],t):""}
   ${gastosBlock(days[6],t)}
-  ${clientesBlock(wl)}`;
+  ${clientesBlock(wl)}${zonasBlock(wl)}`;
 }
 function panelMes(r,pr,prTo){if(!(S.mode==="db"&&S.owner&&showEmp()))return"";
   const days=[];for(let k=r.from;k<=r.to&&k<=today();k=addDays(k,1))days.push(k);if(!days.length)return"";
@@ -3589,7 +3667,7 @@ function viewMes(){
   ${S.mode==="db"&&mesOff===0?pendBlock(r.from,r.to):""}
   ${showEmp()?egastosBlock(r.from,r.to):""}
   ${gastosBlock(r.from,r.to)}
-  ${clientesBlock(ml)}`;
+  ${clientesBlock(ml)}${zonasBlock(ml)}`;
 }
 async function excel(){
   const r=monthRange(mesOff);const ml=listRange(r.from,r.to).sort((a,b)=>(a[1].criadoEm||0)-(b[1].criadoEm||0));
@@ -3725,10 +3803,11 @@ function diasHasta(md){const t=fromKey(today());const[m,d]=md.split("-").map(Num
 const mdTxt=md=>{const[m,d]=md.split("-").map(Number);return d+" de "+MESES[m-1]};
 function cumpleU(c){if(c.u)return c.u;const n=norm(c.nome);for(const u of new Set([S.me,...S.people.keys()]))if(norm(personName(u)||"")===n)return u;return""}
 const cumpleFoto=c=>{const u=cumpleU(c),r=u&&rank.get(u);return r&&r.foto&&/^data:image\//.test(r.foto)?u:""};
-function cumpleBox(){if(S.mode!=="db"||S.dia!==today())return"";const t=today();const mm=t.slice(5,7);
+function cumpleBox(part){if(S.mode!=="db"||S.dia!==today())return"";const t=today();const mm=t.slice(5,7);
   const mes=cumples().filter(c=>c.md.slice(0,2)===mm).sort((a,b)=>a.md<b.md?-1:1);if(!mes.length)return"";
   const fn=n=>esc((n||"").trim());const hoy=mes.filter(c=>c.md===t.slice(5));let h="";
   for(const c of hoy){const yo=c.u&&c.u===S.me;h+=`<div class="cumple-hoy ${yo?"yo":""}">${cumpleFoto(c)?`<div class="ch-av">${avatarHtml(c.nome,cumpleU(c))}<i>${icSvg("cake")}</i></div>`:`<div class="ch-ic">${icSvg("cake")}</div>`}<div><b>${yo?"¡Feliz cumpleaños, "+fn(c.nome).split(" ")[0]+"!":"Hoy cumple años "+fn(c.nome)}</b>${c.f&&!yo?`<span class="cm-f">${esc(c.f)}</span>`:""}<small>${yo?"Todo el equipo de Tú Delivery te desea un día lleno de bendiciones.":"¡Mandale tus felicitaciones!"}</small><div class="ch-btns"><button type="button" class="ghost small" data-cumcard="${esc(c.id)}">${icSvg("image")} Tarjeta para publicar</button>${yo?"":`<button type="button" class="ghost small" data-radio>${icSvg("mic")} Saludar por la Radio</button>`}</div></div></div>`}
+  if(part==="hoy")return h;if(part==="mes")h="";
   h+=`<section class="cumple-mes"><div class="cm-h">${icSvg("cake")}<b>Cumpleaños de ${MESES[Number(mm)-1]}</b></div><div class="cp-list">${mes.map(c=>{const d=Number(c.md.slice(3));const td=Number(t.slice(8));return `<div class="${c.md===t.slice(5)?"hoy":d<td?"pas":""}"><span class="cm-d num">${d}</span><span class="cm-n">${avatarHtml(c.nome,cumpleU(c))}<span class="cm-nn">${fn(c.nome)}</span>${c.f?` <span class="cm-f">${esc(c.f)}</span>`:""}</span><small>${c.md===t.slice(5)?"hoy":d===td+1?"mañana":d<td?"ya pasó":"en "+(d-td)+" días"}</small></div>`}).join("")}</div></section>`;
   return h}
 function cumpleAviso(){if(S.mode!=="db")return;const k="caixa_cumple_aviso";let seen="";try{seen=localStorage.getItem(k)||""}catch(e){}if(seen===today())return;
@@ -3820,7 +3899,7 @@ function viewSol(){
     <div class="sol-h"><div class="who"><b>${ST[x.tipo]||(x.tipo==="adelanto"?"Adelanto de dinero":"Otro")}</b><small>${S.owner?esc(personName(x._u))+" · ":""}${ddmm(keyOf(new Date(x.criadoEm)))} ${hhmm(x.criadoEm)}${x.porDueno?" · registrada por el dueño":""}</small></div><span class="pill p-${e.c}">${e.n}</span></div>
     ${x.detalle?`<p class="sol-d">${esc(x.detalle)}</p>`:""}
     ${x.respuesta?`<p class="sol-r"><b>Respuesta:</b> ${esc(x.respuesta)}</p>`:""}
-    ${S.owner?`<div class="sol-act">${x.estado!=="proceso"&&x.estado!=="listo"?`<button type="button" class="small" data-sest="proceso" data-sk="${esc(x._u+"|"+x._id)}">En proceso</button>`:""}${x.estado!=="listo"?`<button type="button" class="small ok" data-sest="listo" data-sk="${esc(x._u+"|"+x._id)}">Listo</button>`:""}${x.estado==="pendiente"?`<button type="button" class="small baja" data-sest="rechazado" data-sk="${esc(x._u+"|"+x._id)}">Rechazar</button>`:""}<button type="button" class="linkbtn small-link" data-sresp="${esc(x._u+"|"+x._id)}">Responder</button></div>`
+    ${S.owner&&x.tipo==="pagoqr"&&x.estado==="pendiente"?`<div class="sol-act"><button type="button" class="small ok" data-solpago="${esc(x._u+"|"+x._id)}">Llegó · descontar ${gs(x.monto||0)} de su cuenta</button><button type="button" class="small baja" data-sest="rechazado" data-sk="${esc(x._u+"|"+x._id)}">No llegó</button></div>`:S.owner?`<div class="sol-act">${x.estado!=="proceso"&&x.estado!=="listo"?`<button type="button" class="small" data-sest="proceso" data-sk="${esc(x._u+"|"+x._id)}">En proceso</button>`:""}${x.estado!=="listo"?`<button type="button" class="small ok" data-sest="listo" data-sk="${esc(x._u+"|"+x._id)}">Listo</button>`:""}${x.estado==="pendiente"?`<button type="button" class="small baja" data-sest="rechazado" data-sk="${esc(x._u+"|"+x._id)}">Rechazar</button>`:""}<button type="button" class="linkbtn small-link" data-sresp="${esc(x._u+"|"+x._id)}">Responder</button></div>`
       :x.estado==="pendiente"?`<div class="sol-act"><button type="button" class="linkbtn small-link" data-sdel="${esc(x._id)}">Cancelar solicitud</button></div>`:""}
   </div>`};
   const pend=list.filter(x=>x.estado==="pendiente"||x.estado==="proceso"),done=list.filter(x=>x.estado==="listo"||x.estado==="rechazado");
@@ -3835,7 +3914,7 @@ function openNewSol(){edit=null;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Nueva solicitud">
     ${sheetHead(S.owner?"Registrar solicitud de un delivery":"Nueva solicitud")}
     ${S.owner?`<div class="lbl">¿Quién lo pidió?</div><div class="chips">${ds.map(u=>`<button type="button" class="chip ${solPara===u?"on":""}" data-spara="${esc(u)}">${esc(personName(u))}</button>`).join("")}</div><div class="lbl">¿Qué pidió?</div>`:""}
-    <div class="chips" role="group" aria-label="Tipo">${Object.keys(ST).map(k=>`<button type="button" class="chip ${solTipo===k?"on":""}" data-stipo="${k}">${ST[k]}</button>`).join("")}</div>
+    <div class="chips" role="group" aria-label="Tipo">${Object.keys(ST).filter(k=>k!=="pagoqr").map(k=>`<button type="button" class="chip ${solTipo===k?"on":""}" data-stipo="${k}">${ST[k]}</button>`).join("")}</div>
     <div class="field"><label for="s-det">Detalle</label><textarea id="s-det" rows="3" placeholder="Ej.: talle M, para el banco, para el lunes…"></textarea></div>
     <button type="button" class="primary" data-ssave>Enviar a la empresa</button></div></div>`}
 function openResp(k){const x=sols.get(k);if(!x)return;edit=null;
