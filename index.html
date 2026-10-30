@@ -1253,6 +1253,10 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .disp-k{margin-top:26px;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:#CDB8F5;font-weight:700}.disp-k+.disp-n{margin-top:6px}
 .disp-seg{flex-wrap:wrap;justify-content:center;border-radius:22px}
 .gen-it{align-items:center}.gen-n{display:flex;align-items:center;gap:10px}.gen-n .av{width:34px;height:34px;font-size:12px}.gen-b{display:flex;gap:6px}
+
+.nav-back{border:0;background:none;color:var(--accent);font:inherit;font-weight:700;font-size:15px;padding:6px 8px 6px 0;margin-right:auto;cursor:pointer;white-space:nowrap}
+.sheet-h .nav-back{order:-1}.sheet-h:has(.nav-back){display:flex;align-items:center;gap:8px}.sheet-h:has(.nav-back) h3{flex:1;font-size:18px}
+.nav-row{display:flex}
 </style>
 
 </head>
@@ -1374,7 +1378,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="199";
+const APPV="200";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -3964,7 +3968,7 @@ function viewRanking(){
 }
 
 /* ---------- sheets ---------- */
-function closeSheet(){if(NE){const e=NE;if(e.titulo.trim()||ntAnyText(e))ntSave();NE=null}edit=null;LL=null;HS=null;layer.innerHTML=""}
+function closeSheet(){NAVSTK=[];NAVCUR=null;if(NE){const e=NE;if(e.titulo.trim()||ntAnyText(e))ntSave();NE=null}edit=null;LL=null;HS=null;layer.innerHTML=""}
 function openEdit(key){const d=S.items.get(key);if(!d)return;if(d.metodo==="fijo"&&S.mode==="db"&&!S.owner){toast("Las entregas de cliente fijo las carga la empresa");return}edit={key,valor:d.valor,cant:d.cant||1,producto:d.producto||0,metodo:d.metodo,cliente:d.cliente||"",obs:d.obs||"",armed:false};drawSheet()}
 const needsApproval=()=>S.mode==="db"&&!S.owner;
 const pendingCambio=key=>{const it=S.items.get(key);if(!it)return null;for(const c of cambios.values())if(c._u===it._u&&c.entregaId===it._id&&c.estado==="pendiente")return c;return null};
@@ -4483,6 +4487,57 @@ layer.addEventListener("click",async e=>{
     try{await delItem(k);toast("Entrega eliminada")}catch(err){toast("No se eliminó.")}}
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&layer.innerHTML&&!document.getElementById("n-val"))closeSheet()});
+
+/* ---------- Volver: al abrir una pantalla desde otra, aparece "‹ Volver" para regresar a la anterior ---------- */
+var NAVSTK=[],NAVCUR=null,NAVBACK=false;
+function navAddBack(){if(!NAVSTK.length||!layer.innerHTML.trim()||layer.querySelector("[data-navback]"))return;const prev=NAVSTK[NAVSTK.length-1];
+  const b=`<button type="button" class="nav-back" data-navback aria-label="Volver">‹ Volver</button>`;
+  const h=layer.querySelector(".sheet-h");if(h){h.insertAdjacentHTML("afterbegin",b);return}
+  const c=layer.querySelector(".disp-ctl,.qr-act");if(c){c.insertAdjacentHTML("afterbegin",b.replace('class="nav-back"','class="disp-x nav-back2"'));return}
+  const sh=layer.querySelector(".sheet");if(sh)sh.insertAdjacentHTML("afterbegin",`<div class="nav-row">${b}</div>`)}
+function navWrap(name,fn){return function(...a){
+  if(!NAVBACK){const open=!!layer.innerHTML.trim();if(!open)NAVSTK=[];else if(NAVCUR&&NAVCUR.name!==name){if(NAVSTK.length&&NAVSTK[NAVSTK.length-1].name===name)NAVSTK.pop();else NAVSTK.push(NAVCUR)}}
+  NAVCUR={name,fn,args:a};const r=fn.apply(this,a);if(r&&r.then)r.then(navAddBack);else navAddBack();return r}}
+try{if(typeof openViewPick==='function')openViewPick=navWrap('openViewPick',openViewPick)}catch(e){}
+try{if(typeof openEquipo==='function')openEquipo=navWrap('openEquipo',openEquipo)}catch(e){}
+try{if(typeof openDisp==='function')openDisp=navWrap('openDisp',openDisp)}catch(e){}
+try{if(typeof openGenero==='function')openGenero=navWrap('openGenero',openGenero)}catch(e){}
+try{if(typeof openCuenta==='function')openCuenta=navWrap('openCuenta',openCuenta)}catch(e){}
+try{if(typeof openMovNew==='function')openMovNew=navWrap('openMovNew',openMovNew)}catch(e){}
+try{if(typeof openHist==='function')openHist=navWrap('openHist',openHist)}catch(e){}
+try{if(typeof openAcceso==='function')openAcceso=navWrap('openAcceso',openAcceso)}catch(e){}
+try{if(typeof openVerQR==='function')openVerQR=navWrap('openVerQR',openVerQR)}catch(e){}
+try{if(typeof openFoto==='function')openFoto=navWrap('openFoto',openFoto)}catch(e){}
+try{if(typeof openCumple==='function')openCumple=navWrap('openCumple',openCumple)}catch(e){}
+try{if(typeof openCumpleCard==='function')openCumpleCard=navWrap('openCumpleCard',openCumpleCard)}catch(e){}
+try{if(typeof openNotas==='function')openNotas=navWrap('openNotas',openNotas)}catch(e){}
+try{if(typeof openClientesF==='function')openClientesF=navWrap('openClientesF',openClientesF)}catch(e){}
+try{if(typeof openCfEdit==='function')openCfEdit=navWrap('openCfEdit',openCfEdit)}catch(e){}
+try{if(typeof openExport==='function')openExport=navWrap('openExport',openExport)}catch(e){}
+try{if(typeof openExtracto==='function')openExtracto=navWrap('openExtracto',openExtracto)}catch(e){}
+try{if(typeof openResumen==='function')openResumen=navWrap('openResumen',openResumen)}catch(e){}
+try{if(typeof openAgradecer==='function')openAgradecer=navWrap('openAgradecer',openAgradecer)}catch(e){}
+try{if(typeof openRkShare==='function')openRkShare=navWrap('openRkShare',openRkShare)}catch(e){}
+try{if(typeof openTema==='function')openTema=navWrap('openTema',openTema)}catch(e){}
+try{if(typeof openQR==='function')openQR=navWrap('openQR',openQR)}catch(e){}
+try{if(typeof openQrEmp==='function')openQrEmp=navWrap('openQrEmp',openQrEmp)}catch(e){}
+try{if(typeof openPagarQR==='function')openPagarQR=navWrap('openPagarQR',openPagarQR)}catch(e){}
+try{if(typeof openProg==='function')openProg=navWrap('openProg',openProg)}catch(e){}
+try{if(typeof openAhorro==='function')openAhorro=navWrap('openAhorro',openAhorro)}catch(e){}
+try{if(typeof openLogs==='function')openLogs=navWrap('openLogs',openLogs)}catch(e){}
+try{if(typeof openPct==='function')openPct=navWrap('openPct',openPct)}catch(e){}
+try{if(typeof openRadio==='function')openRadio=navWrap('openRadio',openRadio)}catch(e){}
+try{if(typeof openTel==='function')openTel=navWrap('openTel',openTel)}catch(e){}
+try{if(typeof openCamino==='function')openCamino=navWrap('openCamino',openCamino)}catch(e){}
+try{if(typeof openMapaEquipo==='function')openMapaEquipo=navWrap('openMapaEquipo',openMapaEquipo)}catch(e){}
+try{if(typeof openPts==='function')openPts=navWrap('openPts',openPts)}catch(e){}
+try{if(typeof openMeta==='function')openMeta=navWrap('openMeta',openMeta)}catch(e){}
+try{if(typeof openMsg==='function')openMsg=navWrap('openMsg',openMsg)}catch(e){}
+try{if(typeof openNewSol==='function')openNewSol=navWrap('openNewSol',openNewSol)}catch(e){}
+try{if(typeof openDiario==='function')openDiario=navWrap('openDiario',openDiario)}catch(e){}
+
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-navback]");if(!t)return;e.stopPropagation();const prev=NAVSTK.pop();if(!prev){closeSheet();return}
+  NAVBACK=true;NAVCUR=prev;try{const r=prev.fn.apply(null,prev.args);if(r&&r.then)r.then(navAddBack);else navAddBack()}finally{NAVBACK=false}},true);
 })();
 </script>
 
