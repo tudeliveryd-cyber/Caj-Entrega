@@ -1378,7 +1378,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="200";
+const APPV="201";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1879,7 +1879,7 @@ function addCredit(){if(!main||document.getElementById("credit"))return;if(main.
   main.insertAdjacentHTML("beforeend",`<footer class="credit" id="credit"><span class="cr-line"></span>
     <div class="cr-brand"><img src="icon-192.png" alt="" width="26" height="26"><span><b>Tú Delivery</b> <i>Sistemas</i></span></div>
     <em class="cr-lema">Cada entrega cuenta.</em>
-    <small class="cr-v">Santa Rita, Paraguay • © ${new Date().getFullYear()}</small>
+    <small class="cr-v">Santa Rita, Paraguay • © ${new Date().getFullYear()} • versión ${APPV}</small>
     <button type="button" class="cr-tema" data-tema>Colores y configuración</button></footer>`)}
 function render(full){if(full)builtKey="";if(raf)return;raf=setTimeout(()=>{raf=0;try{paint();addCredit();dlApply();if(S.mode==="db"&&!S.owner&&isAux(S.me)&&!auxHoy(S.me)&&S.tab==="dia"&&window.__auxAsk!==today()&&!layer.innerHTML.trim()){window.__auxAsk=today();openAuxQuien()}if(S.mode==="db"&&!S.owner&&S.canWrite!==false&&S.people.get(S.me)&&S.tab==="dia"&&!layer.innerHTML.trim()&&!window.__bvAsk&&!bvVisto()){window.__bvAsk=1;openBienv(0)}}catch(e){console.error(e)}},0)}
 /* ---------- notas privadas: turnos/<uid>/privado (tipo "nota", sin "dia") · solo las ve quien las escribe ---------- */
