@@ -1201,8 +1201,8 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .dc-row.top .dc-b i{background:#E8C46A}.dc-row b{text-align:right;font-size:16px}
 
 /* barra del delivery: 4 accesos en una fila */
-.wb-act{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.wb-act .nt-open{font-size:12px}
-.wb-act .linkbtn[data-rename]{grid-column:1/3}.wb-act .linkbtn[data-logout]{grid-column:3/5}
+.wb-act{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.wb-act .nt-open{font-size:11.5px;padding-left:2px;padding-right:2px}
+.wb-act .linkbtn[data-rename]{grid-column:1/4}.wb-act .linkbtn[data-logout]{grid-column:4/6}
 /* ahorro */
 .ah-big{display:grid;justify-items:center;gap:4px;padding:18px 14px;border-radius:20px;background:linear-gradient(160deg,color-mix(in srgb,var(--cash) 22%,var(--surface)),var(--surface));border:1px solid color-mix(in srgb,var(--cash) 40%,var(--line))}
 .ah-big small{color:var(--muted);font-size:13px}.ah-big>b{font-size:40px;font-weight:800;color:var(--cash)}
@@ -1259,6 +1259,17 @@ nav.tabs button[aria-selected="true"]{background:linear-gradient(180deg,color-mi
 .nav-row{display:flex}
 
 .tab-back{display:block;justify-self:start;align-self:start;text-align:left;margin:0 auto 4px 0;padding:8px 2px}
+
+/* letra grande */
+html[data-letra="g"] body{zoom:1.12}html[data-letra="xg"] body{zoom:1.25}
+/* repetir */
+.rep-row{display:grid;gap:6px}.rep-l{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--muted)}.rep-l svg{width:16px;height:16px}.rep-chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}.rep-chips .chip{white-space:nowrap;flex:none}
+/* buscar */
+.hdr-search{flex:none;width:40px;height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;display:grid;place-items:center;margin-left:auto;margin-right:10px}.hdr-search svg{width:20px;height:20px}
+.bus-q{display:flex}.bus-it{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);color:var(--ink);font:inherit;padding:11px 14px}.list .bus-it:first-child{border-top:0}
+.bus-it span{display:grid;flex:1;min-width:0}.bus-it small{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bus-it .av{width:30px;height:30px;font-size:11px}
+/* tiempo */
+.tm-big{display:grid;justify-items:center;padding:6px 0 4px}.tm-big b{font-size:34px;font-weight:800}.tm-big small{color:var(--muted);font-size:12.5px;text-align:center}
 </style>
 
 </head>
@@ -1380,7 +1391,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="203";
+const APPV="204";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1854,7 +1865,7 @@ try{document.addEventListener("gesturestart",e=>e.preventDefault(),{passive:fals
 /* colores y tema (preferencia de cada celular) */
 const TEMA_AC=[["morado","Morado","#331A5B","#B9A2E6"],["azul","Azul","#1F4E8C","#8FB4F0"],["verde","Verde","#1E6B47","#6FCF97"],["naranja","Naranja","#B44E12","#F2A365"],["rosa","Rosa","#9C2560","#EE8FB9"],["grafito","Grafito","#2B2B33","#C9C9D1"]];
 function temaGet(){try{return JSON.parse(localStorage.getItem("caixa_tema")||"{}")}catch(e){return{}}}
-function temaApply(t){const r=document.documentElement;if(t.mode&&t.mode!=="auto")r.dataset.theme=t.mode;else delete r.dataset.theme;if(t.accent&&t.accent!=="morado")r.dataset.accent=t.accent;else delete r.dataset.accent;
+function temaApply(t){const r=document.documentElement;if(t.letra&&t.letra!=="n")r.dataset.letra=t.letra;else delete r.dataset.letra;if(t.mode&&t.mode!=="auto")r.dataset.theme=t.mode;else delete r.dataset.theme;if(t.accent&&t.accent!=="morado")r.dataset.accent=t.accent;else delete r.dataset.accent;
   setTimeout(()=>{const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=getComputedStyle(r).getPropertyValue("--road").trim()||"#331A5B"},30)}
 function openTema(){edit=null;const t=temaGet();const mode=t.mode||"auto",ac=t.accent||"morado";
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Colores y tema">${sheetHead("Colores y tema")}
@@ -1863,6 +1874,8 @@ function openTema(){edit=null;const t=temaGet();const mode=t.mode||"auto",ac=t.a
     <small class="hint" style="margin:0">Automático usa el estilo premium oscuro. Elegí Claro si preferís fondo blanco.</small>
     <div class="lbl">Color principal</div>
     <div class="tema-ac">${TEMA_AC.map(([k,n,l,d])=>`<button type="button" class="tema-sw ${ac===k?"on":""}" data-temaac="${k}"><span style="background:linear-gradient(135deg,${l} 50%,${d} 50%)"></span>${n}</button>`).join("")}</div>
+    <div class="lbl">Tamaño de letra</div>
+    <div class="seg tema-seg" role="group">${[["n","Normal"],["g","Grande"],["xg","Muy grande"]].map(([k,l])=>`<button type="button" data-letra="${k}" aria-pressed="${(t.letra||"n")===k}">${l}</button>`).join("")}</div>
     <small class="hint" style="margin:0">Se guarda solo en este celular. Cada uno elige el suyo.</small>
     ${S.mode==="db"?`<div class="lbl">Configuraciones generales</div><div class="list cfg-list">
       ${S.owner?`<button type="button" class="cfg-it" data-cfgexp>${icSvg("chart")}<span>Respaldo de datos<small>Bajar el Excel del mes</small></span><span class="caja-go">›</span></button>`:""}
@@ -2459,15 +2472,58 @@ document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.c
     try{const m={tipo:"abono",monto:v,nota:"Pago por QR",em:Date.now(),abierto:true,por:S.me,ref:"sol"+x._id};const id="sq"+x._id;movs.set(x._u+"|"+id,{...m,_u:x._u,_id:id});
       await sendW(db.collection("liq/"+x._u+"/movs").doc(id).set(m));await setSol(k,{estado:"listo",respuesta:"Pago recibido · "+gs(v)+" descontado de tu cuenta"});render(true);toast("Pago registrado · "+gs(v))}catch(err){toast("No se guardó.")}return}});
 
+/* ---------- Repetir una entrega: las últimas distintas del que registra, para cargar con un toque ---------- */
+function repetibles(){const u=writeTarget();const seen=new Set(),out=[];
+  for(const[,d]of allItems().filter(([,d])=>d._u===u&&!isCamino(d)&&!d.diario&&d.metodo!=="fijo"&&(d.cliente||"").trim()).sort((a,b)=>(b[1].criadoEm||0)-(a[1].criadoEm||0))){
+    const k=norm(d.cliente)+"|"+d.metodo+"|"+d.valor;if(seen.has(k))continue;seen.add(k);out.push(d);if(out.length>=4)break}return out}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button[data-rep]");if(!t)return;const d=repetibles()[+t.dataset.rep];if(!d)return;
+  S.cliente=d.cliente||"";S.val=d.valor||0;S.metodo=d.metodo;S.obs=d.obs||"";S.prod=d.producto||0;S.err="";
+  document.querySelectorAll("[data-metodo]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.metodo===S.metodo));refreshForm();
+  {const c=document.getElementById("cli");if(c)c.value=S.cliente;const o=document.getElementById("obs");if(o)o.value=S.obs;const v=document.getElementById("val");if(v)v.value=fmtInput(S.val)}
+  document.querySelectorAll("[data-rep]").forEach(b=>b.classList.toggle("on",b===t));toast("Listo · revisá y tocá Registrar")});
+/* ---------- Buscar en todo: entregas, clientes, deliverys y notas ---------- */
+function openBuscar(q){edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Buscar">${sheetHead(icSvg("search")+" Buscar")}
+    <div class="dl-q bus-q">${icSvg("search")}<input id="bus-q" type="search" autocomplete="off" placeholder="Cliente, delivery, nota, monto…" value="${esc(q||"")}"></div><div id="bus-r"></div></div></div>`;
+  const i=document.getElementById("bus-q");i.addEventListener("input",()=>busDraw(i.value));busDraw(q||"");setTimeout(()=>i.focus(),60)}
+function busDraw(q){const r=document.getElementById("bus-r");if(!r)return;const n=norm(q).trim();if(n.length<2){r.innerHTML=`<p class="hint" style="margin:0">Escribí al menos 2 letras. Busca en las entregas de los últimos meses cargados, en el equipo, en tus notas y en los clientes fijos.</p>`;return}
+  const num=parseVal(q);const it=allItems().filter(([,d])=>!isCamino(d)&&(norm(d.cliente).includes(n)||norm(d.obs).includes(n)||(num>=1000&&d.valor===num))).sort((a,b)=>(b[1].dia+(b[1].criadoEm||0)>a[1].dia+(a[1].criadoEm||0))?1:-1);
+  const pe=S.owner?[...S.people.keys()].filter(u=>norm(personName(u)).includes(n)):[];
+  const no=[...notas.values()].filter(x=>norm(x.titulo).includes(n)||norm(x.texto).includes(n)).slice(0,8);
+  const cf=clisF.filter(c=>norm(c.n).includes(n)).slice(0,8);
+  const cli=[...new Map(it.map(([,d])=>[norm(d.cliente),d.cliente])).values()].filter(Boolean).slice(0,8);
+  let h="";
+  if(pe.length)h+=`<div class="lbl">Equipo</div><div class="list">${pe.map(u=>`<button type="button" class="bus-it" data-bgu="${esc(u)}">${avatarHtml(personName(u),u)}<span>${esc(personName(u))}<small>${isBaja(u)?"dado de baja":"ver su día"}</small></span></button>`).join("")}</div>`;
+  if(cli.length&&it.length)h+=`<div class="lbl">Clientes</div><div class="chips">${cli.map(c=>`<span class="chip">${esc(c)} · ${it.filter(([,d])=>norm(d.cliente)===norm(c)).reduce((a,[,d])=>a+(d.cant||1),0)}</span>`).join("")}</div>`;
+  if(it.length)h+=`<div class="lbl">Entregas (${it.length})</div><div class="list">${it.slice(0,40).map(([,d])=>`<button type="button" class="bus-it" data-bgo="${esc(d.dia+"|"+d._u)}"><span>${ddmm(d.dia)} · ${esc(d.cliente||"Sin cliente")}<small>${[S.owner?esc((personName(d._u)||"").split(" ")[0]):"",(M[d.metodo]||{n:""}).n,d.obs?esc(d.obs):""].filter(Boolean).join(" · ")}</small></span><b class="num">${gs(d.valor)}</b></button>`).join("")}</div>`;
+  if(no.length)h+=`<div class="lbl">Notas</div><div class="list">${no.map(x=>`<button type="button" class="bus-it" data-bnota="${esc(x._id)}"><span>${esc(x.titulo||"Nota")}<small>${esc(String(x.texto||"").slice(0,60))}</small></span></button>`).join("")}</div>`;
+  if(cf.length)h+=`<div class="lbl">Clientes fijos / comercios</div><div class="list">${cf.map(c=>`<div class="cta-it"><span>${esc(c.n)}<small>${esc([c.dir,c.tel].filter(Boolean).join(" · "))}</small></span></div>`).join("")}</div>`;
+  r.innerHTML=h||`<div class="empty">No encontré nada con “${esc(q)}”.</div>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
+  if(t.hasAttribute("data-buscar")){openBuscar();return}
+  if(t.dataset.bgo){const[dia,u]=t.dataset.bgo.split("|");S.tab="dia";S.dia=dia;if(S.owner&&S.mode==="db")S.filter=u;closeSheet();render(true);window.scrollTo(0,0);return}
+  if(t.dataset.bgu){S.tab="dia";S.dia=today();S.filter=t.dataset.bgu;closeSheet();render(true);window.scrollTo(0,0);return}
+  if(t.dataset.bnota){openNota(t.dataset.bnota);return}});
+/* ---------- Tiempo de entrega: desde que se anota/pasa el pedido hasta "Entregado" ---------- */
+function tiempos(list){const r=[];for(const[,d]of list){if(!d.t0||!d.criadoEm||isCamino(d))continue;const m=Math.round((d.criadoEm-d.t0)/60000);if(m<1||m>360)continue;r.push({u:d._u,m})}return r}
+function tiemposBlock(list){if(S.mode==="db"&&!S.owner){const t=tiempos(list.filter(([,d])=>d._u===S.me));if(!t.length)return"";const av=Math.round(t.reduce((a,x)=>a+x.m,0)/t.length);
+    return `<section class="sec"><div class="sec-h"><h2>Tu tiempo de entrega</h2><span>${plural(t.length,"pedido")}</span></div><div class="tm-big"><b class="num">${av} min</b><small>en promedio desde que tomás el pedido hasta entregarlo</small></div></section>`}
+  const t=tiempos(list);if(!t.length)return `<section class="sec"><div class="sec-h"><h2>Tiempo de entrega</h2></div><p class="hint" style="margin:0">Se mide en los pedidos que pasan por “En camino” (Anotar pedido o Pasar pedido) hasta que tocan Entregado. Aparece acá cuando haya datos.</p></section>`;
+  const av=Math.round(t.reduce((a,x)=>a+x.m,0)/t.length),lent=t.filter(x=>x.m>40).length;const by=new Map();for(const x of t){if(!by.has(x.u))by.set(x.u,[]);by.get(x.u).push(x.m)}
+  const rows=[...by.entries()].map(([u,a])=>({u,n:a.length,av:Math.round(a.reduce((s,v)=>s+v,0)/a.length),l:a.filter(v=>v>40).length})).sort((a,b)=>a.av-b.av);const mx=Math.max(...rows.map(r=>r.av),1);
+  return `<section class="sec"><div class="sec-h"><h2>Tiempo de entrega</h2><span>${plural(t.length,"pedido")}</span></div>
+    <div class="tm-big"><b class="num">${av} min</b><small>promedio del equipo${lent?` · <span class="c-due">${plural(lent,"pedido")} de más de 40 min</span>`:""}</small></div>
+    <div class="list">${rows.map((r,i)=>`<div class="rk-row"><span class="rk-pos ${i===0?"top":""}">${i+1}º</span><div class="rk-main"><div class="rk-name">${avatarHtml(personName(r.u),r.u)}<b>${esc((personName(r.u)||"").split(" ")[0])}</b></div><span class="rk-bar"><i style="width:${(r.av/mx*100).toFixed(1)}%"></i></span></div><span class="rk-n num">${r.av} min<small>${plural(r.n,"pedido")}${r.l?" · "+r.l+" lentos":""}</small></span></div>`).join("")}</div>
+    <p class="hint" style="margin:0">Desde que se anota o se pasa el pedido hasta que el delivery toca Entregado. El 1º es el más rápido.</p></section>`}
+
 function whoBar(){
   if(S.mode!=="db")return"";
   if(!S.owner&&S.canWrite===false)return `<div class="perm-warn"><b>Esta cuenta no puede guardar entregas.</b><span>El dueño todavía no aprobó tu cuenta.</span></div>`;
-  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b>${isAux(S.me)?` · hoy: <b>${esc(auxHoy(S.me)||"¿quién?")}</b> <button type="button" class="linkbtn small-link" data-auxquien>${auxHoy(S.me)?"cambiar":"elegir"}</button>`:""}</span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-ahorro>${icSvg("wallet")} Ahorro</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
+  if(!S.owner)return `<div class="who-bar"><span>Estás como <b>${esc(personName(S.me))}</b>${isAux(S.me)?` · hoy: <b>${esc(auxHoy(S.me)||"¿quién?")}</b> <button type="button" class="linkbtn small-link" data-auxquien>${auxHoy(S.me)?"cambiar":"elegir"}</button>`:""}</span><span class="wb-act"><button type="button" class="nt-open" data-notas>📝 Notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-ahorro>${icSvg("wallet")} Ahorro</button><button type="button" class="nt-open" data-buscar>${icSvg("search")} Buscar</button><button type="button" class="linkbtn" data-rename>cambiar nombre</button><button type="button" class="linkbtn" data-logout>salir</button></span></div>`;
   const ids=activos();
   const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
   return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
     <button type="button" class="vp-team" data-equipo>👥 Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button></div>
-    <div class="tools-row"><button type="button" class="nt-open" data-resumen>${icSvg("chart")} Resumen del día</button><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button><button type="button" class="nt-open" data-prog>${icSvg("clock")} Programados</button><button type="button" class="nt-open" data-ahorro>${icSvg("wallet")} Mi ahorro</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
+    <div class="tools-row"><button type="button" class="nt-open" data-resumen>${icSvg("chart")} Resumen del día</button><button type="button" class="nt-open" data-buscar>${icSvg("search")} Buscar</button><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button><button type="button" class="nt-open" data-prog>${icSvg("clock")} Programados</button><button type="button" class="nt-open" data-ahorro>${icSvg("wallet")} Mi ahorro</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
 }
 function openViewPick(){edit=null;const ids=activos();const t=today();
   const nOf=u=>stats(allItems().filter(([,d])=>d._u===u&&d.dia===t&&!isCamino(d))).n;const tot=stats(allItems().filter(([,d])=>d.dia===t&&!isCamino(d))).n;
@@ -3403,7 +3459,7 @@ function viewCamino(cl){
   const minsAgo=ms=>{const m=Math.max(0,Math.round((Date.now()-(ms||Date.now()))/60000));return m<1?"recién":m<60?"hace "+m+" min":"hace "+Math.floor(m/60)+" h "+(m%60)+" min"};
   const grp=d=>{if(!showWho||d._u===lastU)return"";lastU=d._u;const n=cl.filter(([,x])=>x._u===d._u).length;return `<div class="cam-grp">🛵 <b>${esc(personName(d._u))}</b><span>${plural(n,"pedido")} en camino</span></div>`};
   return `<div class="sec-h"><h2>En camino</h2><span>${plural(cl.length,"pedido")}${showWho?" · "+plural(nDel,"delivery").replace("deliverys","deliverys"):""}</span></div><div class="list">
-  ${cl.map(([k,d])=>grp(d)+`<div class="cam-row ${d.criadoEm&&Date.now()-d.criadoEm>60*60000?"cam-old":""}"><div class="cam-info">
+  ${cl.map(([k,d])=>grp(d)+`<div class="cam-row ${(()=>{const s0=(d.central&&d.central.em)||d.criadoEm;return s0&&Date.now()-s0>40*60000?"cam-old":""})()}"><div class="cam-info">
       <div class="who"><b>${d.central?'<span class="pill p-central">📦 Central</span> ':""}${esc(d.cliente)||"Sin cliente"}</b>${d.ret?`<span class="ret-line">🏪 Retirar en <strong>${esc(d.ret.n||"ubicación")}</strong></span>`:""}<small>${[minsAgo(d.criadoEm),showWho&&d.central?(d.visto?"👀 vio "+hhmm(d.visto):"⏳ todavía no lo vio"):"",d.lote&&d.cant>1?"📦 "+d.cant+" entregas":"",d.metPlan&&d.metPlan!=="pagado"?"Paga: "+M[d.metPlan].n:"",d.pagoTipo==="todo"?"✅ Pedido pago · no cobrar":d.pagoTipo==="prod"?"Producto ya pagado · solo delivery":d.producto?"Prod. "+gs(d.producto)+" + deliv. "+gs(d.valor):"Delivery "+gs(d.valor),d.obs&&esc(d.obs)].filter(Boolean).join(" · ")}</small></div>
       <div class="amt"><small>Cobrar</small><b class="num">${gs(cobrarDe(d))}</b></div></div>
     <div class="cam-act"><button type="button" class="fin" data-camino="${esc(k)}">✓ Entregado</button>${d.pagoTipo!=="todo"&&(!S.owner||S.filter===S.me)?`<button type="button" class="map-btn" data-qr="${esc(k)}">${icSvg("qr")} QR</button>`:""}${d.lista&&d.lista.length?`<button type="button" class="list-btn" data-lista="${esc(k)}">🛒 Lista ${d.lista.filter(x=>!x.nota&&x.ok!==null&&x.ok!==undefined).length}/${d.lista.filter(x=>!x.nota).length}</button>`:""}${d.ret&&(d.ret.n||d.ret.ubic)?`<a class="map-btn" href="${esc(mapUrl(d.ret.n||"",d.ret.ubic))}" target="_blank" rel="noopener">🏪 Retirar</a>`:""}${d.ret&&d.ret.tel?`<button type="button" class="map-btn" data-tel="${esc(d.ret.tel)}" data-teln="${esc(d.ret.n||"Retiro")}">📞 Retiro</button>`:""}<a class="map-btn" href="${esc(mapUrl([d.cliente,linkIn(d.ubic)?"":d.obs].filter(Boolean).join(" "),d.ubic))}" target="_blank" rel="noopener">📍 ${d.ret?"Entregar":linkIn(d.ubic)?"Ubicación":"Mapa"}</a>${d.tel?`<button type="button" class="map-btn" data-tel="${esc(d.tel)}" data-teln="${esc(d.cliente||"Cliente")}">📞 Cliente</button>`:""}<button type="button" class="linkbtn small-link" data-copyc2="${esc(k)}">Copiar cuenta</button></div></div>`).join("")}</div>`}
@@ -3644,7 +3700,7 @@ function viewSemana(){
     <div class="week">${bars}</div></section>
   ${showEmp()?egastosBlock(days[6],t):""}
   ${gastosBlock(days[6],t)}
-  ${clientesBlock(wl)}${zonasBlock(wl)}`;
+  ${clientesBlock(wl)}${zonasBlock(wl)}${tiemposBlock(wl)}`;
 }
 function panelMes(r,pr,prTo){if(!(S.mode==="db"&&S.owner&&showEmp()))return"";
   const days=[];for(let k=r.from;k<=r.to&&k<=today();k=addDays(k,1))days.push(k);if(!days.length)return"";
@@ -3691,7 +3747,7 @@ function viewMes(){
   ${S.mode==="db"&&mesOff===0?pendBlock(r.from,r.to):""}
   ${showEmp()?egastosBlock(r.from,r.to):""}
   ${gastosBlock(r.from,r.to)}
-  ${clientesBlock(ml)}${zonasBlock(ml)}`;
+  ${clientesBlock(ml)}${zonasBlock(ml)}${tiemposBlock(ml)}`;
 }
 async function excel(){
   const r=monthRange(mesOff);const ml=listRange(r.from,r.to).sort((a,b)=>(a[1].criadoEm||0)-(b[1].criadoEm||0));
@@ -4048,7 +4104,7 @@ function openEntry(cm,pasar){if(S.mode==="db"&&!S.owner&&isAux(S.me)&&!auxHoy(S.
     ${sheetHead((S.pasar?"📦 Pasar pedido":cm?"Anotar pedido":"Nueva entrega")+(isToday?"":" · "+ddmm(S.dia))+forWho)}
     ${S.pasar?`<div id="asig-box">${asigPicker()}</div>`:""}
     ${cm?`<div class="lbl">¿Cómo va a pagar el cliente?</div><div class="methods cm-met" role="group">${methodBtns("data-cmet",S.cmMet)}</div>`+(S.pasar?retF:"")+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+cliente+telF+listaF+prod+presets+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div><div id="lote-vals" class="lote-vals" hidden></div>${S.mode==="db"&&S.owner&&writeTarget()!==S.me?`<div id="fijo-dia" class="fijo-dia" hidden><div class="field"><label for="fd-val">Diario del cliente (opcional)</label><div class="money small-money"><span>₲</span><input id="fd-val" inputmode="numeric" autocomplete="off" placeholder="Ej.: 100.000"></div></div><div class="chips">${[["empresa","La empresa cobró · a su deuda"],["empresa_pag","Ya se lo pagué"],["efectivo","Lo cobró el delivery"]].map(([k,l])=>`<button type="button" class="chip ${k==="empresa"?"on":""}" data-fdvia="${k}">${l}</button>`).join("")}</div></div>`:""}`+val+`<div class="cobrar" id="cobrar" hidden></div>`+obs
-       :`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+`<div id="pend-wrap" hidden><button type="button" class="chip pend-chip" data-pend>⏳ El cliente me transfiere después</button></div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+telF+listaF+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div><div id="lote-vals" class="lote-vals" hidden></div>${S.mode==="db"&&S.owner&&writeTarget()!==S.me?`<div id="fijo-dia" class="fijo-dia" hidden><div class="field"><label for="fd-val">Diario del cliente (opcional)</label><div class="money small-money"><span>₲</span><input id="fd-val" inputmode="numeric" autocomplete="off" placeholder="Ej.: 100.000"></div></div><div class="chips">${[["empresa","La empresa cobró · a su deuda"],["empresa_pag","Ya se lo pagué"],["efectivo","Lo cobró el delivery"]].map(([k,l])=>`<button type="button" class="chip ${k==="empresa"?"on":""}" data-fdvia="${k}">${l}</button>`).join("")}</div></div>`:""}`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
+       :(()=>{const R=S.pasar?[]:repetibles();return R.length?`<div class="rep-row"><span class="rep-l">${icSvg("shuffle")} Repetir</span><div class="chips rep-chips">${R.map((d,i)=>`<button type="button" class="chip" data-rep="${i}">${esc(d.cliente)} · ${gs(d.valor)}</button>`).join("")}</div></div>`:""})()+`<div class="methods" role="group" aria-label="Forma de pago">${methodBtns("data-metodo",S.metodo)}</div>`+`<div id="lote-wrap"><button type="button" class="chip lote-chip" data-lote>📦 Varias entregas juntas</button><div id="lote-info" class="lote-info" hidden></div></div>`+`<div id="pend-wrap" hidden><button type="button" class="chip pend-chip" data-pend>⏳ El cliente me transfiere después</button></div>`+`<div id="fijo-chips" class="chips" hidden></div>`+cliente+telF+listaF+`<div class="field" id="fijo-cant" hidden><label for="cant">Cantidad de entregas</label><div class="stepper"><button type="button" class="step" data-cant="-1" aria-label="Menos">−</button><input id="cant" inputmode="numeric" value="${S.cant}"><button type="button" class="step" data-cant="1" aria-label="Más">+</button></div></div><div id="lote-vals" class="lote-vals" hidden></div>${S.mode==="db"&&S.owner&&writeTarget()!==S.me?`<div id="fijo-dia" class="fijo-dia" hidden><div class="field"><label for="fd-val">Diario del cliente (opcional)</label><div class="money small-money"><span>₲</span><input id="fd-val" inputmode="numeric" autocomplete="off" placeholder="Ej.: 100.000"></div></div><div class="chips">${[["empresa","La empresa cobró · a su deuda"],["empresa_pag","Ya se lo pagué"],["efectivo","Lo cobró el delivery"]].map(([k,l])=>`<button type="button" class="chip ${k==="empresa"?"on":""}" data-fdvia="${k}">${l}</button>`).join("")}</div></div>`:""}`+`<div id="money-block">`+presets+val+prod+`<div class="cobrar" id="cobrar" hidden></div></div>`+obs}
     <p class="err" id="err" ${S.err?"":"hidden"}>${esc(S.err)}</p>
     ${cm?`<button type="button" class="primary" id="savecamino" ${S.val?"":"disabled"}>${S.pasar?"Enviar pedido":"Guardar pedido"}</button>`
        :`<button type="button" class="primary" id="save" ${S.val?"":"disabled"}>Registrar ${S.val?gs(S.val):"entrega"}</button>
@@ -4299,6 +4355,7 @@ layer.addEventListener("click",async e=>{
   if(t.dataset.cfdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo para eliminar";return}
     clisF=clisF.filter(x=>x.id!==t.dataset.cfdel);openClientesF();try{await saveClientesF();toast("Cliente eliminado")}catch(err){toast("No se guardó.")}return}
   if(t.dataset.temamode){const x=temaGet();x.mode=t.dataset.temamode;try{localStorage.setItem("caixa_tema",JSON.stringify(x))}catch(e){}temaApply(x);document.querySelectorAll("[data-temamode]").forEach(b=>b.setAttribute("aria-pressed",b===t));return}
+  if(t.dataset.letra){const x=temaGet();x.letra=t.dataset.letra;try{localStorage.setItem("caixa_tema",JSON.stringify(x))}catch(e){}temaApply(x);document.querySelectorAll("[data-letra]").forEach(b=>b.setAttribute("aria-pressed",b===t));return}
   if(t.dataset.temaac){const x=temaGet();x.accent=t.dataset.temaac;try{localStorage.setItem("caixa_tema",JSON.stringify(x))}catch(e){}temaApply(x);document.querySelectorAll("[data-temaac]").forEach(b=>b.classList.toggle("on",b===t));return}
   if(t.hasAttribute("data-ntnew")){openNota(null);return}
   if(t.hasAttribute("data-ntdeuopen")){const ex=[...notas.values()].filter(n=>n.deu).sort((a,b)=>(b.upd||0)-(a.upd||0))[0];openNota(ex?ex._id:null,true);return}
@@ -4467,7 +4524,7 @@ layer.addEventListener("click",async e=>{
     if(how==="anotado"&&!(d.cliente||"").trim()){toast("Para anotar, el pedido necesita nombre de cliente");return}
     const r=S.mode==="db"&&!S.owner&&pagoOf(S.me,today())?"Hoy ya fue liquidado. Pedile al dueño que lo registre.":"";if(r){lockedMsg(r);return}
     if(t.dataset.pendc&&!(d.cliente||"").trim()){toast("Para cobrar después, el pedido necesita nombre de cliente");return}
-    closeSheet();try{if(t.dataset.pendc)addPend(d._u,d._id,{...d,dia:today()}).catch(()=>{});await patchItem(k,how==="fijo"?{estado:"ok",metodo:how,valor:0,dia:today(),criadoEm:Date.now()}:{estado:"ok",metodo:how,dia:today(),criadoEm:Date.now()});toast(t.dataset.pendc?"Entregado · ⏳ transferencia por cobrar":"Entrega finalizada · "+M[how].n)}catch(err){toast("No se guardó.")}return}
+    closeSheet();try{if(t.dataset.pendc)addPend(d._u,d._id,{...d,dia:today()}).catch(()=>{});const t0=(d.central&&d.central.em)||d.criadoEm||0;await patchItem(k,how==="fijo"?{estado:"ok",metodo:how,valor:0,dia:today(),criadoEm:Date.now(),t0}:{estado:"ok",metodo:how,dia:today(),criadoEm:Date.now(),t0});toast(t.dataset.pendc?"Entregado · ⏳ transferencia por cobrar":"Entrega finalizada · "+M[how].n)}catch(err){toast("No se guardó.")}return}
   if(t.dataset.cdel){if(!t.classList.contains("armed")){t.classList.add("armed");t.textContent="Tocá de nuevo para quitarlo";return}
     const k=t.dataset.cdel;closeSheet();try{await delItem(k);toast("Quitado de la lista")}catch(err){toast("No se eliminó.")}return}
   if(t.hasAttribute("data-nsave")){const n=document.getElementById("n-val").value.trim();if(!n){toast("Escribí tu nombre");return}closeSheet();try{await saveName(n);toast("Nombre guardado")}catch(err){noPerm()}return}
