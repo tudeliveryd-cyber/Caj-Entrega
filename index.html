@@ -1416,7 +1416,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="211";
+const APPV="212";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2542,6 +2542,10 @@ function tiemposBlock(list){if(S.mode==="db"&&!S.owner){const t=tiempos(list.fil
 
 /* pantalla simple del delivery: 3 accesos grandes, lo demás en "Más" */
 let DVDET=false;
+/* botón flotante: aparece solo cuando el botón grande "Nueva entrega" ya no se ve */
+function dvFueraDeVista(){const b=document.querySelector(".dv-new");if(!b)return false;const r=b.getBoundingClientRect();return r.bottom<70||r.top>innerHeight-80}
+function dvFabSync(){const f=document.getElementById("fab");if(!f||S.tab!=="dia"||!dvSimple()||(S.mode==="db"&&showEmp()))return;const h=!dvFueraDeVista();if(f.hidden!==h)f.hidden=h}
+addEventListener("scroll",dvFabSync,{passive:true});addEventListener("resize",dvFabSync);
 function dvSimple(){return S.mode==="db"&&(S.owner?S.filter!=="all"&&!!S.filter:S.canWrite!==false)}
 function dvAcciones(){const hoy=S.dia===today();const u=S.owner?S.filter:S.me;const yo=u===S.me;const nm=(personName(u)||"").split(" ")[0];const c=cuentaDe(u);
   const cta=c.saldo>0?`<b class="num c-due">${gs(c.saldo)}</b><small>${yo?"Tenés que pagar":"Debe a la empresa"}</small>`:c.saldo<0?`<b class="num c-cash">${gs(-c.saldo)}</b><small>${yo?"La empresa te debe":"La empresa le debe"}</small>`:`<b class="num">Al día</b><small>Nada pendiente</small>`;
@@ -2633,7 +2637,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.c
 
 function paint(){
   try{checkAutoInicio()}catch(e){}
-  {const f=document.getElementById("fab");if(f)f.hidden=(S.mode==="db"&&showEmp())||S.tab==="chat"||(S.tab==="dia"&&dvSimple())}
+  {const f=document.getElementById("fab");if(f)f.hidden=(S.mode==="db"&&showEmp())||S.tab==="chat"||(S.tab==="dia"&&dvSimple()&&!dvFueraDeVista())}
   updChatBadge();
   document.getElementById("badge").hidden=true;
   {const b=document.getElementById("sol-badge");const n=S.owner?[...sols.values()].filter(x=>x.estado==="pendiente"&&!isBaja(x._u)).length+[...cambios.values()].filter(x=>x.estado==="pendiente"&&!isBaja(x._u)).length:0;b.hidden=!n;b.textContent=n}
