@@ -1415,7 +1415,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="208";
+const APPV="209";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2544,11 +2544,11 @@ let DVDET=false;
 function dvSimple(){return S.mode==="db"&&(S.owner?S.filter!=="all"&&!!S.filter:S.canWrite!==false)}
 function dvAcciones(){const hoy=S.dia===today();const u=S.owner?S.filter:S.me;const yo=u===S.me;const nm=(personName(u)||"").split(" ")[0];const c=cuentaDe(u);
   const cta=c.saldo>0?`<b class="num c-due">${gs(c.saldo)}</b><small>${yo?"Tenés que pagar":"Debe a la empresa"}</small>`:c.saldo<0?`<b class="num c-cash">${gs(-c.saldo)}</b><small>${yo?"La empresa te debe":"La empresa le debe"}</small>`:`<b class="num">Al día</b><small>Nada pendiente</small>`;
-  const nt=2;
+  const nt=3;
   return `<div class="dv-acc" style="--n:${nt}">${hoy?`<button type="button" class="dv-new" data-dvnueva>${icSvg("plus")}<span>${yo?"Nueva entrega":"Nueva entrega de "+esc(nm)}</span></button>`:""}
     ${S.owner&&yo?`<button type="button" data-resumen>${icSvg("chart")}<span>Resumen del día</span><small>De toda la empresa</small></button>`:`<button type="button" ${yo?"data-micuenta":`data-cuenta="${esc(u)}"`}>${icSvg("wallet")}<span>${yo?"Mi cuenta":"Cuenta"}</span>${cta}</button>`}
     <button type="button" ${yo?'data-qr=""':`data-verqr="${esc(u)}"`}>${icSvg("qr")}<span>${yo?"Cobrar con QR":"Su QR"}</span><small>${yo?"Mostrá tu QR":"Ver el QR de "+esc(nm)}</small></button>
-</div>`}
+    <button type="button" data-notas>${icSvg("note")}<span>Notas</span>${notas.size?`<b class="num">${notas.size}</b><small>${notas.size===1?"nota":"notas"}</small>`:`<small>Tus anotaciones</small>`}</button></div>`}
 function dvPay(s,list){if(hideMoney())return"";const gt=myGt(S.dia,S.dia);
   if(s.sinCom)return `<div class="dv-pay"><span>Sin comisión · el 100% es ${!S.owner||S.filter===S.me?"tuyo":"suyo"}<small>${!S.owner||S.filter===S.me?"Te":"Le"} queda limpio ${gs(s.total-gt)}</small></span><b class="num c-cash">${gs(s.total)}</b></div>`;
   const yo=!S.owner||S.filter===S.me;
@@ -2556,7 +2556,6 @@ function dvPay(s,list){if(hideMoney())return"";const gt=myGt(S.dia,S.dia);
 function openDvMas(){edit=null;const it=(a,ic,t,d,x)=>`<button type="button" class="dvm-it" ${a}>${icSvg(ic)}<span><b>${t}${x||""}</b><small>${d}</small></span><span class="caja-go">›</span></button>`;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Más">${sheetHead("Más")}<div class="dvm-list">
     ${S.owner?it('data-dvm="resumen"',"chart","Resumen del día","De toda la empresa")+it('data-dvm="prog"',"clock","Pedidos programados","Con día y hora"):""}
-    ${it('data-dvm="notas"',"note","Notas",notas.size?plural(notas.size,"nota"):"Tus anotaciones")}
     ${it('data-dvm="clientes"',"store","Clientes","Clientes fijos y frecuentes")}
     ${it('data-dvm="radio"',"radio","Radio","Mensajes de voz del equipo",radioBadge())}
     ${it('data-dvm="ahorro"',"wallet","Ahorro","Tu plata guardada")}
@@ -2778,7 +2777,7 @@ function viewDiaShell(){
   const forWho=S.mode==="db"&&S.owner?` · para ${esc(personName(writeTarget()))}`:"";
   const dv=dvSimple();
   let dvNov=false;if(dv&&!S.owner){try{dvNov=!localStorage.getItem("caixa_dvnuevo")}catch(e){}}
-  return `${dv?`${dvNov?`<div class="dv-nov">${icSvg("sparkle")}<span><b>La pantalla cambió</b><small>Arriba está lo principal. Notas, Radio, Ahorro, Buscar y lo demás están en <b>Más</b>.</small></span><button type="button" class="linkbtn" data-dvnovok>Entendido</button></div>`:""}<div id="dv-acc"></div>`:saludoHtml()}${avisoHtml()}${bkpBox()}${progBox()}${dv?"":cumpleBox("hoy")+masDia()}
+  return `${dv?`${dvNov?`<div class="dv-nov">${icSvg("sparkle")}<span><b>La pantalla cambió</b><small>Arriba está lo principal. Radio, Ahorro, Buscar y lo demás están en <b>Más</b>.</small></span><button type="button" class="linkbtn" data-dvnovok>Entendido</button></div>`:""}<div id="dv-acc"></div>`:saludoHtml()}${avisoHtml()}${bkpBox()}${progBox()}${dv?"":cumpleBox("hoy")+masDia()}
   <div class="daynav"><button data-day="-1" aria-label="Día anterior">‹</button>
     <label class="daylabel pick" for="dpick"><b>${dayName(S.dia)} <svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></b><span>${dayLong(S.dia)}</span>
       <input type="date" id="dpick" value="${S.dia}" max="${today()}" aria-label="Elegir día"></label>
