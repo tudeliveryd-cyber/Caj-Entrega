@@ -1415,7 +1415,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="206";
+const APPV="207";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2541,18 +2541,18 @@ function tiemposBlock(list){if(S.mode==="db"&&!S.owner){const t=tiempos(list.fil
 
 /* pantalla simple del delivery: 3 accesos grandes, lo demás en "Más" */
 let DVDET=false;
-function dvSimple(){return S.mode==="db"&&(S.owner?S.filter===S.me:S.canWrite!==false)}
-function dvAcciones(){const hoy=S.dia===today();const c=cuentaDe(S.me);
-  const cta=c.saldo>0?`<b class="num c-due">${gs(c.saldo)}</b><small>Tenés que pagar</small>`:c.saldo<0?`<b class="num c-cash">${gs(-c.saldo)}</b><small>La empresa te debe</small>`:`<b class="num">Al día</b><small>Nada pendiente</small>`;
+function dvSimple(){return S.mode==="db"&&(S.owner?S.filter!=="all"&&!!S.filter:S.canWrite!==false)}
+function dvAcciones(){const hoy=S.dia===today();const u=S.owner?S.filter:S.me;const yo=u===S.me;const nm=(personName(u)||"").split(" ")[0];const c=cuentaDe(u);
+  const cta=c.saldo>0?`<b class="num c-due">${gs(c.saldo)}</b><small>${yo?"Tenés que pagar":"Debe a la empresa"}</small>`:c.saldo<0?`<b class="num c-cash">${gs(-c.saldo)}</b><small>${yo?"La empresa te debe":"La empresa le debe"}</small>`:`<b class="num">Al día</b><small>Nada pendiente</small>`;
   const an=hoy&&!lockReason(S.dia);const nt=1+(an?1:0)+1;
-  return `<div class="dv-acc" style="--n:${nt}">${hoy?`<button type="button" class="dv-new" data-dvnueva>${icSvg("plus")}<span>Nueva entrega</span></button>`:""}
-    ${S.owner?"":`<button type="button" data-micuenta>${icSvg("wallet")}<span>Mi cuenta</span>${cta}</button>`}
-    <button type="button" data-qr="">${icSvg("qr")}<span>Cobrar con QR</span><small>Mostrá tu QR</small></button>
-    ${an?`<button type="button" data-anotar>${icSvg("note")}<span>Anotar pedido</span><small>Producto + delivery</small></button>`:""}
-    ${S.owner?`<button type="button" data-resumen>${icSvg("chart")}<span>Resumen del día</span><small>De toda la empresa</small></button>`:""}</div>`}
+  return `<div class="dv-acc" style="--n:${nt}">${hoy?`<button type="button" class="dv-new" data-dvnueva>${icSvg("plus")}<span>${yo?"Nueva entrega":"Nueva entrega de "+esc(nm)}</span></button>`:""}
+    ${S.owner&&yo?`<button type="button" data-resumen>${icSvg("chart")}<span>Resumen del día</span><small>De toda la empresa</small></button>`:`<button type="button" ${yo?"data-micuenta":`data-cuenta="${esc(u)}"`}>${icSvg("wallet")}<span>${yo?"Mi cuenta":"Cuenta"}</span>${cta}</button>`}
+    <button type="button" ${yo?'data-qr=""':`data-verqr="${esc(u)}"`}>${icSvg("qr")}<span>${yo?"Cobrar con QR":"Su QR"}</span><small>${yo?"Mostrá tu QR":"Ver el QR de "+esc(nm)}</small></button>
+    ${an?`<button type="button" data-anotar>${icSvg("note")}<span>Anotar pedido</span><small>Producto + delivery</small></button>`:""}</div>`}
 function dvPay(s,list){if(hideMoney())return"";const gt=myGt(S.dia,S.dia);
-  if(s.sinCom)return `<div class="dv-pay"><span>Sin comisión · el 100% es tuyo<small>Te queda limpio ${gs(s.total-gt)}</small></span><b class="num c-cash">${gs(s.total)}</b></div>`;
-  const r=saldoTxt(s);return `<div class="dv-pay"><span>${r.t}<small>Te queda limpio ${gs(s.fica-gt)}</small></span><b class="num ${r.c}">${gs(r.v)}</b></div>`}
+  if(s.sinCom)return `<div class="dv-pay"><span>Sin comisión · el 100% es ${!S.owner||S.filter===S.me?"tuyo":"suyo"}<small>${!S.owner||S.filter===S.me?"Te":"Le"} queda limpio ${gs(s.total-gt)}</small></span><b class="num c-cash">${gs(s.total)}</b></div>`;
+  const yo=!S.owner||S.filter===S.me;
+  const r=saldoTxt(s);return `<div class="dv-pay"><span>${r.t}<small>${yo?"Te queda limpio":"Le queda limpio"} ${gs(s.fica-gt)}</small></span><b class="num ${r.c}">${gs(r.v)}</b></div>`}
 function openDvMas(){edit=null;const it=(a,ic,t,d,x)=>`<button type="button" class="dvm-it" ${a}>${icSvg(ic)}<span><b>${t}${x||""}</b><small>${d}</small></span><span class="caja-go">›</span></button>`;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Más">${sheetHead("Más")}<div class="dvm-list">
     ${S.owner?it('data-dvm="resumen"',"chart","Resumen del día","De toda la empresa")+it('data-dvm="prog"',"clock","Pedidos programados","Con día y hora"):""}
