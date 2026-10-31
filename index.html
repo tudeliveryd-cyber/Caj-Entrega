@@ -1277,6 +1277,7 @@ html[data-letra="g"] body{zoom:1.12}html[data-letra="xg"] body{zoom:1.25}
 .dv-top em{font-style:normal;font-size:13px;color:var(--muted)}
 .dv-mas{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:14px;padding:10px 16px;font:inherit;font-size:15px;font-weight:700;position:relative}
 .dv-mas .badge-in{position:absolute;top:-7px;right:-7px}
+.dv-acc[style*="--n:2"]>button:not(.dv-new){min-height:92px}
 .dv-acc{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));gap:9px}
 .dv-acc>button{display:grid;justify-items:start;align-content:start;gap:3px;border-radius:18px;padding:13px 11px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:inherit;text-align:left;box-shadow:var(--shadow);min-height:108px;min-width:0}
 .dv-acc>button .ic{width:24px;height:24px;color:var(--accent);margin-bottom:4px}
@@ -1415,7 +1416,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="209";
+const APPV="210";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2544,11 +2545,12 @@ let DVDET=false;
 function dvSimple(){return S.mode==="db"&&(S.owner?S.filter!=="all"&&!!S.filter:S.canWrite!==false)}
 function dvAcciones(){const hoy=S.dia===today();const u=S.owner?S.filter:S.me;const yo=u===S.me;const nm=(personName(u)||"").split(" ")[0];const c=cuentaDe(u);
   const cta=c.saldo>0?`<b class="num c-due">${gs(c.saldo)}</b><small>${yo?"Tenés que pagar":"Debe a la empresa"}</small>`:c.saldo<0?`<b class="num c-cash">${gs(-c.saldo)}</b><small>${yo?"La empresa te debe":"La empresa le debe"}</small>`:`<b class="num">Al día</b><small>Nada pendiente</small>`;
-  const nt=3;
+  const ah=yo;const nt=ah?2:3;
   return `<div class="dv-acc" style="--n:${nt}">${hoy?`<button type="button" class="dv-new" data-dvnueva>${icSvg("plus")}<span>${yo?"Nueva entrega":"Nueva entrega de "+esc(nm)}</span></button>`:""}
     ${S.owner&&yo?`<button type="button" data-resumen>${icSvg("chart")}<span>Resumen del día</span><small>De toda la empresa</small></button>`:`<button type="button" ${yo?"data-micuenta":`data-cuenta="${esc(u)}"`}>${icSvg("wallet")}<span>${yo?"Mi cuenta":"Cuenta"}</span>${cta}</button>`}
     <button type="button" ${yo?'data-qr=""':`data-verqr="${esc(u)}"`}>${icSvg("qr")}<span>${yo?"Cobrar con QR":"Su QR"}</span><small>${yo?"Mostrá tu QR":"Ver el QR de "+esc(nm)}</small></button>
-    <button type="button" data-notas>${icSvg("note")}<span>Notas</span>${notas.size?`<b class="num">${notas.size}</b><small>${notas.size===1?"nota":"notas"}</small>`:`<small>Tus anotaciones</small>`}</button></div>`}
+    <button type="button" data-notas>${icSvg("note")}<span>Notas</span>${notas.size?`<b class="num">${notas.size}</b><small>${notas.size===1?"nota":"notas"}</small>`:`<small>Tus anotaciones</small>`}</button>
+    ${ah?`<button type="button" data-ahorro>${icSvg("cash")}<span>Mi ahorro</span><small>Tu plata guardada</small></button>`:""}</div>`}
 function dvPay(s,list){if(hideMoney())return"";const gt=myGt(S.dia,S.dia);
   if(s.sinCom)return `<div class="dv-pay"><span>Sin comisión · el 100% es ${!S.owner||S.filter===S.me?"tuyo":"suyo"}<small>${!S.owner||S.filter===S.me?"Te":"Le"} queda limpio ${gs(s.total-gt)}</small></span><b class="num c-cash">${gs(s.total)}</b></div>`;
   const yo=!S.owner||S.filter===S.me;
@@ -2558,7 +2560,7 @@ function openDvMas(){edit=null;const it=(a,ic,t,d,x)=>`<button type="button" cla
     ${S.owner?it('data-dvm="resumen"',"chart","Resumen del día","De toda la empresa")+it('data-dvm="prog"',"clock","Pedidos programados","Con día y hora"):""}
     ${it('data-dvm="clientes"',"store","Clientes","Clientes fijos y frecuentes")}
     ${it('data-dvm="radio"',"radio","Radio","Mensajes de voz del equipo",radioBadge())}
-    ${it('data-dvm="ahorro"',"wallet","Ahorro","Tu plata guardada")}
+    ${!S.owner||S.filter===S.me?"":it('data-dvm="ahorro"',"cash","Mi ahorro","Tu plata guardada")}
     ${it('data-dvm="buscar"',"search","Buscar","Entregas de otros días")}
     ${it('data-dvm="qr"',"qr","Mi QR de cobro","Cargar o cambiar")}
     ${S.owner?it('data-dvm="pct"',"tag","Comisiones","Porcentaje de cada delivery")+it('data-dvm="cumple"',"cake","Cumpleaños","Fechas del equipo"):it('data-dvm="nombre"',"user","Cambiar nombre",esc(personName(S.me)||""))+it('data-dvm="salir"',"logout","Salir","Cerrar sesión en este celular")}</div></div></div>`}
@@ -2777,7 +2779,7 @@ function viewDiaShell(){
   const forWho=S.mode==="db"&&S.owner?` · para ${esc(personName(writeTarget()))}`:"";
   const dv=dvSimple();
   let dvNov=false;if(dv&&!S.owner){try{dvNov=!localStorage.getItem("caixa_dvnuevo")}catch(e){}}
-  return `${dv?`${dvNov?`<div class="dv-nov">${icSvg("sparkle")}<span><b>La pantalla cambió</b><small>Arriba está lo principal. Radio, Ahorro, Buscar y lo demás están en <b>Más</b>.</small></span><button type="button" class="linkbtn" data-dvnovok>Entendido</button></div>`:""}<div id="dv-acc"></div>`:saludoHtml()}${avisoHtml()}${bkpBox()}${progBox()}${dv?"":cumpleBox("hoy")+masDia()}
+  return `${dv?`${dvNov?`<div class="dv-nov">${icSvg("sparkle")}<span><b>La pantalla cambió</b><small>Arriba está lo principal. Radio, Buscar y lo demás están en <b>Más</b>.</small></span><button type="button" class="linkbtn" data-dvnovok>Entendido</button></div>`:""}<div id="dv-acc"></div>`:saludoHtml()}${avisoHtml()}${bkpBox()}${progBox()}${dv?"":cumpleBox("hoy")+masDia()}
   <div class="daynav"><button data-day="-1" aria-label="Día anterior">‹</button>
     <label class="daylabel pick" for="dpick"><b>${dayName(S.dia)} <svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></b><span>${dayLong(S.dia)}</span>
       <input type="date" id="dpick" value="${S.dia}" max="${today()}" aria-label="Elegir día"></label>
