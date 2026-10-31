@@ -1290,6 +1290,8 @@ html[data-letra="g"] body{zoom:1.12}html[data-letra="xg"] body{zoom:1.25}
 .dv-det>*:not(summary){margin-top:12px}
 .dv-nov{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
 .dv-nov>.ic{width:22px;height:22px;color:var(--accent);flex:none}.dv-nov>span{display:grid;gap:2px;flex:1}.dv-nov small{color:var(--muted);font-size:13px}.dv-nov .linkbtn{flex:none}
+.vp-bar:has(.dv-mas2){grid-template-columns:minmax(0,1fr) auto auto}.vp-bar:has(.dv-mas2) .vp-team{padding:0 12px}
+.dv-mas2{position:relative;border-style:solid!important;color:var(--text)!important;font-weight:700!important}.dv-mas2 .badge-in{position:absolute;top:-7px;right:-7px}
 .dvm-list{display:grid}.dvm-it{display:flex;align-items:center;gap:14px;padding:14px 4px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--text);font:inherit;text-align:left}
 .dvm-it .ic{width:22px;height:22px;color:var(--accent);flex:none}.dvm-it>span:nth-child(2){display:grid;flex:1}.dvm-it b{font-size:16px}.dvm-it small{color:var(--muted);font-size:13px}
 </style>
@@ -1413,7 +1415,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="205";
+const APPV="206";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2539,33 +2541,34 @@ function tiemposBlock(list){if(S.mode==="db"&&!S.owner){const t=tiempos(list.fil
 
 /* pantalla simple del delivery: 3 accesos grandes, lo demás en "Más" */
 let DVDET=false;
-function dvSimple(){return S.mode==="db"&&!S.owner&&S.canWrite!==false}
+function dvSimple(){return S.mode==="db"&&(S.owner?S.filter===S.me:S.canWrite!==false)}
 function dvAcciones(){const hoy=S.dia===today();const c=cuentaDe(S.me);
   const cta=c.saldo>0?`<b class="num c-due">${gs(c.saldo)}</b><small>Tenés que pagar</small>`:c.saldo<0?`<b class="num c-cash">${gs(-c.saldo)}</b><small>La empresa te debe</small>`:`<b class="num">Al día</b><small>Nada pendiente</small>`;
-  const an=hoy&&!lockReason(S.dia);
-  return `<div class="dv-acc" style="--n:${an?3:2}">${hoy?`<button type="button" class="dv-new" data-dvnueva>${icSvg("plus")}<span>Nueva entrega</span></button>`:""}
-    <button type="button" data-micuenta>${icSvg("wallet")}<span>Mi cuenta</span>${cta}</button>
+  const an=hoy&&!lockReason(S.dia);const nt=1+(an?1:0)+1;
+  return `<div class="dv-acc" style="--n:${nt}">${hoy?`<button type="button" class="dv-new" data-dvnueva>${icSvg("plus")}<span>Nueva entrega</span></button>`:""}
+    ${S.owner?"":`<button type="button" data-micuenta>${icSvg("wallet")}<span>Mi cuenta</span>${cta}</button>`}
     <button type="button" data-qr="">${icSvg("qr")}<span>Cobrar con QR</span><small>Mostrá tu QR</small></button>
-    ${an?`<button type="button" data-anotar>${icSvg("note")}<span>Anotar pedido</span><small>Producto + delivery</small></button>`:""}</div>`}
+    ${an?`<button type="button" data-anotar>${icSvg("note")}<span>Anotar pedido</span><small>Producto + delivery</small></button>`:""}
+    ${S.owner?`<button type="button" data-resumen>${icSvg("chart")}<span>Resumen del día</span><small>De toda la empresa</small></button>`:""}</div>`}
 function dvPay(s,list){if(hideMoney())return"";const gt=myGt(S.dia,S.dia);
   if(s.sinCom)return `<div class="dv-pay"><span>Sin comisión · el 100% es tuyo<small>Te queda limpio ${gs(s.total-gt)}</small></span><b class="num c-cash">${gs(s.total)}</b></div>`;
   const r=saldoTxt(s);return `<div class="dv-pay"><span>${r.t}<small>Te queda limpio ${gs(s.fica-gt)}</small></span><b class="num ${r.c}">${gs(r.v)}</b></div>`}
 function openDvMas(){edit=null;const it=(a,ic,t,d,x)=>`<button type="button" class="dvm-it" ${a}>${icSvg(ic)}<span><b>${t}${x||""}</b><small>${d}</small></span><span class="caja-go">›</span></button>`;
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Más">${sheetHead("Más")}<div class="dvm-list">
+    ${S.owner?it('data-dvm="resumen"',"chart","Resumen del día","De toda la empresa")+it('data-dvm="prog"',"clock","Pedidos programados","Con día y hora"):""}
     ${it('data-dvm="notas"',"note","Notas",notas.size?plural(notas.size,"nota"):"Tus anotaciones")}
     ${it('data-dvm="clientes"',"store","Clientes","Clientes fijos y frecuentes")}
     ${it('data-dvm="radio"',"radio","Radio","Mensajes de voz del equipo",radioBadge())}
     ${it('data-dvm="ahorro"',"wallet","Ahorro","Tu plata guardada")}
     ${it('data-dvm="buscar"',"search","Buscar","Entregas de otros días")}
     ${it('data-dvm="qr"',"qr","Mi QR de cobro","Cargar o cambiar")}
-    ${it('data-dvm="nombre"',"user","Cambiar nombre",esc(personName(S.me)||""))}
-    ${it('data-dvm="salir"',"logout","Salir","Cerrar sesión en este celular")}</div></div></div>`}
+    ${S.owner?it('data-dvm="pct"',"tag","Comisiones","Porcentaje de cada delivery")+it('data-dvm="cumple"',"cake","Cumpleaños","Fechas del equipo"):it('data-dvm="nombre"',"user","Cambiar nombre",esc(personName(S.me)||""))+it('data-dvm="salir"',"logout","Salir","Cerrar sesión en este celular")}</div></div></div>`}
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
   if(t.hasAttribute("data-dvmas")){openDvMas();return}
   if(t.hasAttribute("data-dvnovok")){try{localStorage.setItem("caixa_dvnuevo","1")}catch(x){}const n=t.closest(".dv-nov");if(n)n.remove();return}
   if(t.hasAttribute("data-dvnueva")){const f=document.getElementById("fab");if(f)f.click();return}
   const v=t.dataset.dvm;if(!v)return;closeSheet();
-  ({notas:()=>openNotas(),clientes:()=>openClientesF(),radio:()=>{rdUnlock();openRadio()},ahorro:()=>openAhorro(),buscar:()=>openBuscar(),qr:()=>openQR(""),nombre:()=>openName(),salir:()=>logout()})[v]()});
+  ({notas:()=>openNotas(),clientes:()=>openClientesF(),radio:()=>{rdUnlock();openRadio()},ahorro:()=>openAhorro(),buscar:()=>openBuscar(),qr:()=>openQR(""),resumen:()=>openResumen(),prog:()=>openProg(),pct:()=>openPct(),cumple:()=>openCumple(S.me),nombre:()=>openName(),salir:()=>logout()})[v]()});
 document.addEventListener("toggle",e=>{if(e.target&&e.target.classList&&e.target.classList.contains("dv-det"))DVDET=e.target.open},true);
 function whoBar(){
   if(S.mode!=="db")return"";
@@ -2575,8 +2578,8 @@ function whoBar(){
   const ids=activos();
   const cur=S.filter==="all"?"🏢 Empresa":esc(personName(S.filter))+(S.filter===S.me?" (vos)":"");
   return `<div class="vp-bar"><button type="button" class="vp-btn" data-viewpick aria-label="Elegir a quién ver"><span class="vp-l">Viendo</span><b>${cur}</b><span class="vp-arr">▾</span></button>
-    <button type="button" class="vp-team" data-equipo>👥 Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button></div>
-    <div class="tools-row"><button type="button" class="nt-open" data-resumen>${icSvg("chart")} Resumen del día</button><button type="button" class="nt-open" data-buscar>${icSvg("search")} Buscar</button><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button><button type="button" class="nt-open" data-prog>${icSvg("clock")} Programados</button><button type="button" class="nt-open" data-ahorro>${icSvg("wallet")} Mi ahorro</button></div>${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
+    ${dvSimple()?`<button type="button" class="vp-team dv-mas2" data-dvmas>Más${radioBadge()}</button>`:""}<button type="button" class="vp-team" data-equipo>👥 Equipo${(()=>{const n=[...S.people.keys()].filter(u=>u!==S.me&&!isAprob(u)&&!isBaja(u)).length;return n?` <span class="badge-in">${n}</span>`:""})()}</button></div>
+    ${dvSimple()?"":`<div class="tools-row"><button type="button" class="nt-open" data-resumen>${icSvg("chart")} Resumen del día</button><button type="button" class="nt-open" data-buscar>${icSvg("search")} Buscar</button><button type="button" class="nt-open" data-notas>📝 Mis notas${notas.size?` <small>${notas.size}</small>`:""}</button><button type="button" class="nt-open" data-clientesf>🏪 Clientes fijos${clisF.length?` <small>${clisF.length}</small>`:""}</button><button type="button" class="nt-open rd-open" data-radio>${icSvg("radio")} Radio${radioBadge()}</button><button type="button" class="nt-open" data-pct>${icSvg("tag")} Comisiones</button><button type="button" class="nt-open" data-cumple>${icSvg("cake")} Cumpleaños</button><button type="button" class="nt-open" data-prog>${icSvg("clock")} Programados</button><button type="button" class="nt-open" data-ahorro>${icSvg("wallet")} Mi ahorro</button></div>`}${S.filter==="all"?`<p class="emp-hint">Vista de la empresa: solo números. Para registrar tus entregas, tocá <b>Viendo</b> y elegí tu nombre.</p>`:""}`;
 }
 function openViewPick(){edit=null;const ids=activos();const t=today();
   const nOf=u=>stats(allItems().filter(([,d])=>d._u===u&&d.dia===t&&!isCamino(d))).n;const tot=stats(allItems().filter(([,d])=>d.dia===t&&!isCamino(d))).n;
@@ -2774,7 +2777,7 @@ function viewDiaShell(){
   const isToday=S.dia===today();
   const forWho=S.mode==="db"&&S.owner?` · para ${esc(personName(writeTarget()))}`:"";
   const dv=dvSimple();
-  let dvNov=false;if(dv){try{dvNov=!localStorage.getItem("caixa_dvnuevo")}catch(e){}}
+  let dvNov=false;if(dv&&!S.owner){try{dvNov=!localStorage.getItem("caixa_dvnuevo")}catch(e){}}
   return `${dv?`${dvNov?`<div class="dv-nov">${icSvg("sparkle")}<span><b>La pantalla cambió</b><small>Arriba está lo principal. Notas, Radio, Ahorro, Buscar y lo demás están en <b>Más</b>.</small></span><button type="button" class="linkbtn" data-dvnovok>Entendido</button></div>`:""}<div id="dv-acc"></div>`:saludoHtml()}${avisoHtml()}${bkpBox()}${progBox()}${dv?"":cumpleBox("hoy")+masDia()}
   <div class="daynav"><button data-day="-1" aria-label="Día anterior">‹</button>
     <label class="daylabel pick" for="dpick"><b>${dayName(S.dia)} <svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></b><span>${dayLong(S.dia)}</span>
