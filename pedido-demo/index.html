@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pedí con Tú Delivery</title><meta name="theme-color" content="#2A1550">
+<style>
+:root{--bg:#140A24;--card:#1E1033;--ink:#F3EEFC;--muted:#B9A8DC;--line:rgba(255,255,255,.12);--acc:#9B7BE0;--acc2:#7C4DDB;--ok:#4ED69A}
+*{box-sizing:border-box;margin:0}body{font-family:Inter,-apple-system,"Segoe UI",system-ui,sans-serif;background:radial-gradient(120% 50% at 50% 0%,#4B2A86,#24123F 55%,#140A24);color:var(--ink);min-height:100vh;padding:0 16px 40px}
+.demo{position:sticky;top:0;z-index:5;margin:0 -16px;padding:8px 16px;background:#E8C46A;color:#2A1550;font-size:13px;font-weight:700;text-align:center}
+.wrap{max-width:440px;margin:0 auto}
+.hd{display:flex;align-items:center;gap:12px;padding:22px 0 6px}.hd img{width:52px;height:52px;border-radius:14px}.hd b{font-size:20px}.hd small{display:block;color:var(--muted);font-size:13px;font-weight:500}
+h1{font-size:30px;line-height:1.1;margin:18px 0 6px}.lead{color:var(--muted);font-size:15px;line-height:1.45}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:18px;display:grid;gap:14px}
+label{display:grid;gap:6px;font-size:13.5px;font-weight:700;color:var(--muted)}
+input,textarea{width:100%;border:1px solid var(--line);border-radius:14px;background:#0F0820;color:var(--ink);font:inherit;font-size:16px;padding:13px 14px}
+textarea{min-height:96px;resize:vertical}input:focus,textarea:focus{outline:2px solid var(--acc);border-color:transparent}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid var(--line);background:none;color:var(--ink);font:inherit;font-size:14px;font-weight:600;padding:9px 14px;border-radius:999px}.chip.on{background:var(--acc);border-color:var(--acc);color:#1A0F2E}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px}.loc{border:1px solid var(--line);background:none;color:var(--acc);font:inherit;font-weight:700;border-radius:14px;padding:0 12px}
+.go{border:0;border-radius:18px;padding:17px;font:inherit;font-size:17px;font-weight:800;color:#fff;background:linear-gradient(135deg,#B9A2E6,#7C4DDB);box-shadow:0 10px 30px rgba(124,77,219,.4)}
+.small{font-size:12.5px;color:var(--muted);text-align:center;line-height:1.4}
+.ok{display:none;text-align:center}.ok .ic{width:76px;height:76px;border-radius:50%;margin:10px auto;background:rgba(78,214,154,.15);display:grid;place-items:center}.ok .ic svg{width:40px;height:40px;color:var(--ok)}
+.ok h2{font-size:24px}.ok p{color:var(--muted);margin-top:6px;line-height:1.45}
+.app{margin-top:26px;text-align:left}.app .t{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#E8C46A;font-weight:800;margin-bottom:8px}
+.ph{border:1px solid var(--line);border-radius:22px;background:#120A20;padding:14px;display:grid;gap:10px}
+.pn{display:flex;align-items:center;gap:10px}.pn .dot{width:10px;height:10px;border-radius:50%;background:#E8C46A;box-shadow:0 0 0 4px rgba(232,196,106,.2)}.pn b{flex:1}.pn small{color:var(--muted)}
+.pd{font-size:14px;line-height:1.5;color:#E6DCFA;white-space:pre-wrap}.pd span{color:var(--muted)}
+.pb{display:grid;grid-template-columns:1fr auto;gap:8px}.pb button{border:0;border-radius:14px;padding:12px;font:inherit;font-weight:800}.pb .p1{background:var(--acc);color:#1A0F2E}.pb .p2{background:none;border:1px solid var(--line);color:var(--ink)}
+.steps{margin-top:22px;display:grid;gap:10px}.steps div{display:grid;grid-template-columns:28px 1fr;gap:10px;font-size:14px;color:#E6DCFA;line-height:1.4}.steps i{font-style:normal;width:28px;height:28px;border-radius:50%;background:rgba(155,123,224,.2);color:var(--acc);display:grid;place-items:center;font-weight:800}
+.again{margin-top:16px;background:none;border:1px solid var(--line);color:var(--ink);border-radius:14px;padding:12px;font:inherit;font-weight:700;width:100%}
+</style></head><body>
+<div class="demo">DEMOSTRACIÓN · así sería la página · no envía nada</div>
+<div class="wrap">
+  <div class="hd"><img src="icon-192.png" alt=""><div><b>Tú Delivery</b><small>Santa Rita · De confianza</small></div></div>
+  <form id="f">
+    <h1>Pedí tu delivery</h1><p class="lead">Escribí qué necesitás y a dónde lo llevamos. Te confirmamos por WhatsApp.</p>
+    <div class="card">
+      <label>Tu nombre<input id="n" required placeholder="Ej.: María González" autocomplete="name"></label>
+      <label>Tu WhatsApp<input id="t" required type="tel" inputmode="tel" placeholder="Ej.: 0981 123 456" autocomplete="tel"></label>
+      <label>¿Qué querés que te llevemos?<textarea id="q" required placeholder="Ej.: 2 hamburguesas completas y una Coca 2L"></textarea></label>
+      <label>¿De dónde lo retiramos?<input id="r" placeholder="Ej.: Lomitería Don José (vacío si no sabés)"></label>
+      <label>¿A dónde lo llevamos?<div class="row"><input id="d" required placeholder="Dirección o barrio"><button type="button" class="loc" id="loc">Mi ubicación</button></div></label>
+      <div><label style="margin-bottom:8px">¿Cómo vas a pagar?</label><div class="chips" id="pg"><button type="button" class="chip on">Efectivo</button><button type="button" class="chip">Transferencia</button><button type="button" class="chip">QR</button><button type="button" class="chip">Ya está pago</button></div></div>
+      <button class="go" type="submit">Pedir ahora</button>
+      <p class="small">Al pedir, Tú Delivery recibe tu pedido al instante. Si preferís, escribinos al WhatsApp 0982 086 171.</p>
+    </div>
+  </form>
+  <div class="ok" id="ok">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h2>¡Pedido recibido!</h2><p>En unos minutos te escribimos por WhatsApp para confirmar el valor y el tiempo de entrega.</p>
+    <div class="app"><div class="t">Así te llega a vos en el app</div>
+      <div class="ph"><div class="pn"><span class="dot"></span><b>Pedido nuevo de la página</b><small id="hr"></small></div>
+        <div class="pd" id="pd"></div>
+        <div class="pb"><button class="p1">Pasar a un delivery</button><button class="p2">WhatsApp</button></div></div>
+      <div class="steps"><div><i>1</i><span>Suena el aviso y aparece en tu pantalla “Pedido nuevo”.</span></div><div><i>2</i><span>Tocás <b>Pasar a un delivery</b> y elegís quién está libre (como hoy).</span></div><div><i>3</i><span>El cliente queda guardado con su teléfono y dirección para la próxima.</span></div></div>
+      <button class="again" id="again">Probar otro pedido</button></div>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);let pago="Efectivo";
+$("pg").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;pago=b.textContent;[...$("pg").children].forEach(x=>x.classList.toggle("on",x===b))});
+$("loc").onclick=()=>{$("d").value="📍 Ubicación enviada (ejemplo)"};
+$("f").addEventListener("submit",e=>{e.preventDefault();const v=id=>$(id).value.trim();const h=new Date();
+  $("hr").textContent=String(h.getHours()).padStart(2,"0")+":"+String(h.getMinutes()).padStart(2,"0");
+  $("pd").innerHTML=`<b>${esc(v("n"))}</b> · ${esc(v("t"))}\n${esc(v("q"))}\n<span>Retirar:</span> ${esc(v("r")||"a definir")}\n<span>Llevar a:</span> ${esc(v("d"))}\n<span>Paga:</span> ${esc(pago)}`;
+  $("f").style.display="none";$("ok").style.display="block";scrollTo(0,0)});
+$("again").onclick=()=>{$("f").reset();$("ok").style.display="none";$("f").style.display="block";scrollTo(0,0)};
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+</script></body></html>
