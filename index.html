@@ -1300,6 +1300,8 @@ html[data-letra="g"] body{zoom:1.12}html[data-letra="xg"] body{zoom:1.25}
 .rgd-row:nth-child(1) .rgd-p{color:#e8b93a}
 .rgd-tot{display:flex;justify-content:space-between;align-items:center;font-weight:700}.rgd-tot b{font-size:20px;color:var(--accent)}
 .rgd-copy{display:flex;align-items:center;justify-content:center;gap:8px}.rgd-copy .ic{width:18px;height:18px}
+.inv-link{font-size:13px;word-break:break-all;padding:10px 12px;border:1px dashed var(--line);border-radius:12px;color:var(--muted)}
+.inv-wa{display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;background:#25d366!important;color:#fff!important}.inv-wa .ic{width:18px;height:18px}
 .dvm-list{display:grid}.dvm-it{display:flex;align-items:center;gap:14px;padding:14px 4px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--text);font:inherit;text-align:left}
 .dvm-it .ic{width:22px;height:22px;color:var(--accent);flex:none}.dvm-it>span:nth-child(2){display:grid;flex:1}.dvm-it b{font-size:16px}.dvm-it small{color:var(--muted);font-size:13px}
 </style>
@@ -1408,7 +1410,7 @@ function pctSync(){if(!S.owner||!cfgOk||!db||S.mode!=="db"||document.body.classL
   for(const[u,p]of S.people){if(!p||p.baja)continue;const v=pctOf(u);if(p.pct!==v){p.pct=v;db.doc("turnos/"+u).set({pct:v},{merge:true}).catch(()=>{})}}}
 async function saveName(n){const ex=S.people.get(S.me);
   const doc=ex?{nome:n,atualizado:Date.now()}:{nome:n,email:(auth&&auth.currentUser&&auth.currentUser.email)||"",aprobado:!!S.owner,baja:false,criadoEm:Date.now(),atualizado:Date.now()};
-  if(!ex&&regAux){doc.aux=true;doc.auxNombres=[n];doc.auxHoy={dia:today(),nome:n,em:Date.now()}}
+  if(!ex&&regAux){doc.aux=true;doc.auxNombres=[n];doc.auxHoy={dia:today(),nome:n,em:Date.now()};if(INV){doc.conv=INV.id;doc.invCode=INV.code}}
   S.people.set(S.me,{...(ex||{}),...doc});
   if(db){if(ex)await db.doc("turnos/"+S.me).set(doc,{merge:true});else await db.doc("turnos/"+S.me).set(doc);scheduleRank(S.me)}render(true)}
 async function aprobar(u){await db.doc("turnos/"+u).set({aprobado:true,aprobadoEm:Date.now(),baja:false},{merge:true})}
@@ -1423,7 +1425,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="214";
+const APPV="215";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1589,15 +1591,18 @@ function blockScreen(title,txt){
 function unblock(){document.querySelector("nav.tabs").hidden=false;render(true)}
 /* ---------- login ---------- */
 const LG=document.getElementById("login");let lgMode="in";
+/* acceso por link: ?acceso=<perfil>.<código>&n=<nombre> (perfil creado por el dueño "sin app") */
+var INV=null;try{const q=new URLSearchParams(location.search);const a=q.get("acceso");if(a&&/^[\w-]+\.[\w-]+$/.test(a)){const[id,code]=a.split(".");INV={id,code,n:(q.get("n")||"").slice(0,30)};localStorage.setItem("caixa_inv",JSON.stringify(INV))}else INV=JSON.parse(localStorage.getItem("caixa_inv")||"null")}catch(e){}
+if(INV)lgMode="aux";
 function showLogin(){LG.hidden=false;drawLogin()}
 function hideLogin(){LG.hidden=true}
 const LGBIKE="<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"6\" cy=\"17\" r=\"3\"/><circle cx=\"18\" cy=\"17\" r=\"3\"/><path d=\"M6 17h6l3-6h-4M15 11l3 6M8 8h3l1 3\"/></svg>";
 function drawLogin(err){
   LG.innerHTML=`<div class="lg-box"><img src="icon-192.png" alt="Tú Delivery" width="88" height="88" class="lg-logo">
     <h1>Caja de Entregas</h1><p class="lg-sub">Tú Delivery · De confianza</p>${installHint()}
-    ${lgMode==="aux"?`<form id="lg-form" class="lg-form" novalidate><div class="lg-aux-h">${LGBIKE}<b>Trabajar como auxiliar</b><small>Sin e-mail ni contraseña. Poné tu nombre y la empresa te acepta.</small></div>
-      <div class="field"><label for="lg-name">Tu nombre</label><input id="lg-name" autocomplete="name" placeholder="Ej.: Juan Pérez" required></div>
-      ${err?`<p class="err">${err}</p>`:""}<button type="submit" class="primary">Pedir para trabajar</button>
+    ${lgMode==="aux"?`<form id="lg-form" class="lg-form" novalidate><div class="lg-aux-h">${LGBIKE}<b>${INV?"Tú Delivery te dio acceso":"Trabajar como auxiliar"}</b><small>${INV?"Confirmá tu nombre y tocá Entrar. Tus entregas ya están cargadas.":"Sin e-mail ni contraseña. Poné tu nombre y la empresa te acepta."}</small></div>
+      <div class="field"><label for="lg-name">Tu nombre</label><input id="lg-name" autocomplete="name" placeholder="Ej.: Juan Pérez" value="${INV?esc(INV.n):""}" required></div>
+      ${err?`<p class="err">${err}</p>`:""}<button type="submit" class="primary">${INV?"Entrar":"Pedir para trabajar"}</button>
       <button type="button" class="linkbtn" data-lgmode="in">‹ Volver</button></form></div>`:`
     <div class="seg two" role="group"><button type="button" data-lgmode="in" aria-pressed="${lgMode==="in"}">Entrar</button><button type="button" data-lgmode="up" aria-pressed="${lgMode==="up"}">Crear cuenta</button></div>
     <form id="lg-form" class="lg-form" novalidate>
@@ -1646,7 +1651,7 @@ function nestedArr(v,inArr){if(Array.isArray(v)){if(inArr)return true;return v.s
 function startDemo(modo){
   const store=new Map(),cols=[],docsL=[];
   const parent=p=>p.split("/").slice(0,-1).join("/");
-  const snapDoc=(path)=>{const d=store.get(path);return{id:path.split("/").pop(),exists:!!d,data:()=>d?JSON.parse(JSON.stringify(d)):undefined}};
+  const snapDoc=(path)=>{const d=store.get(path);return{id:path.split("/").pop(),exists:!!d,ref:docRef(path),data:()=>d?JSON.parse(JSON.stringify(d)):undefined}};
   const notify=()=>setTimeout(()=>{cols.forEach(l=>l.run());docsL.forEach(l=>l.run())},0);
   function query(path,filters){
     const run=()=>[...store.entries()].filter(([k])=>parent(k)===path).filter(([,d])=>filters.every(([f,op,v])=>{const x=d[f];
@@ -1663,7 +1668,8 @@ function startDemo(modo){
     delete(){store.delete(path);notify();return Promise.resolve()},
     onSnapshot(cb){const l={run:()=>cb(snapDoc(path))};docsL.push(l);setTimeout(l.run,0);return()=>{}},
     collection(c){return query(path+"/"+c,[])}}}
-  const fs={collection:p=>query(p,[]),doc:docRef,settings(){},enablePersistence(){return Promise.resolve()}};
+  const fs={collection:p=>query(p,[]),doc:docRef,settings(){},enablePersistence(){return Promise.resolve()},
+    batch(){const ops=[];return{set(r,d,o){ops.push(()=>r.set(d,o))},delete(r){ops.push(()=>r.delete())},update(r,d){ops.push(()=>r.update(d))},commit(){return Promise.all(ops.map(f=>f())).then(()=>{})}}}};
   const me="demo",t=today(),y=addDays(t,-1),at=(dia,h,m)=>{const d=fromKey(dia);d.setHours(h,m,0,0);return d.getTime()};
   const put=(p,d)=>store.set(p,d);
   const seedBase=()=>{
@@ -1764,6 +1770,8 @@ async function boot(fs,u){bootStage="cuenta";
       const d=s.data();S.people.set(me,d);
       if(d.baja){if(d.aux){blockScreen("¡Gracias por tu trabajo!",`Hola <b>${esc(d.nome||"")}</b>. La empresa cerró tu acceso de auxiliar.${d.pideVolver&&keyOf(new Date(d.pideVolver))===today()?"<br><br><b>Ya pediste volver hoy.</b> Esperá que la empresa te acepte: la app se abre sola.":`<br><br><button type="button" class="primary" id="aux-volver">Quiero trabajar de nuevo</button>`}`);const b=document.getElementById("aux-volver");if(b)b.onclick=async()=>{b.disabled=true;try{await db.doc("turnos/"+me).set({pideVolver:Date.now()},{merge:true})}catch(e){toast("No se envió.");b.disabled=false}};return}
         blockScreen("Acceso dado de baja","Tu cuenta ya no está activa en Tú Delivery.");return}
+      if(!d.aprobado&&d.conv){blockScreen("Un momento…",`Hola <b>${esc(d.nome||"")}</b>. La empresa está habilitando tu acceso y pasando tus entregas. La app se abre sola en unos segundos.`);return}
+      if(d.aprobado){try{localStorage.removeItem("caixa_inv")}catch(e){}}
       if(!d.aprobado){blockScreen("Esperando aprobación",d.aux?`Hola <b>${esc(d.nome||"")}</b>. Avisale a la empresa que ya pediste para trabajar como <b>auxiliar</b>. Cuando te acepten, la app se abre sola.`:`Hola <b>${esc(d.nome||"")}</b>. El dueño de Tú Delivery tiene que aprobar tu cuenta. Cuando lo haga, la app se abre sola.`);return}
       if(!started){started=true;unblock();startData(me)}else render(true)},()=>{});
     return}
@@ -1801,7 +1809,7 @@ function startData(me){setTimeout(()=>{try{subNotas()}catch(e){}},400);
   if(S.owner){let first=true;db.collection("turnos").limit(200).onSnapshot(snap=>{for(const d of snap.docs){const prev=S.people.get(d.id),nd=d.data();
     if(!first&&d.id!==S.me&&nd.cierre&&nd.cierre.dia===today()&&!(prev&&prev.cierre&&prev.cierre.em===nd.cierre.em))toast("🏁 "+(nd.nome||"Un delivery")+" cerró su día");
     if(!first&&d.id!==S.me&&nd.inicio&&nd.inicio.dia===today()&&!(prev&&prev.inicio&&prev.inicio.em===nd.inicio.em))toast("▶️ "+(nd.nome||"Un delivery")+" empezó a trabajar");
-    S.people.set(d.id,nd);subscribeUser(d.id);scheduleRank(d.id)}first=false;pctSync();render(true)},()=>{})}
+    S.people.set(d.id,nd);subscribeUser(d.id);scheduleRank(d.id)}first=false;pctSync();render(true);try{invCheck()}catch(e){}},()=>{})}
   setSync("Cargando…");bootStage="datos";render(true);heartbeat(true);
 }
 
@@ -4034,13 +4042,13 @@ async function openHist(u){edit=null;const nm=personName(u)||"Delivery";const us
     <div class="list">${dias.map(x=>`<div class="cta-it hist-it"><span>${ddmm(x.dia)} · ${plural(x.s.n,"entrega")}<small>total ${gs(x.s.total)}${x.s.sinCom?"":" · comisión "+gs(x.s.com)}${x.q.length?" · "+esc(x.q.join(", ")):""}</small></span><b class="num ${x.s.saldo?(pag[x.kk]?"c-cash":"c-due"):""}">${x.s.saldo?(pag[x.kk]?"pagado":"pendiente"):"—"}</b></div>`).join("")||`<div class="empty">Sin entregas registradas.</div>`}</div>
     ${dias.length?`<a class="wa-big" href="${esc(waOpen(txt,u))}" target="_blank" rel="noopener">${icSvg("send")} Enviar historial por WhatsApp</a>`:""}
     ${pend.length?`<button type="button" class="ghost" data-cuenta="${esc(u)}">Ver cuenta y liquidar</button>`:""}</div></div>`}
-function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].filter(u=>u!==S.me);
+function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].filter(u=>u!==S.me&&!(S.people.get(u)||{}).fusionado);
   const pend=all.filter(u=>!isAprob(u)&&!isBaja(u)),act=all.filter(u=>isAprob(u)&&!isBaja(u)),inact=all.filter(isBaja);
   const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")+(p&&p.aux?" · sin horario · acerto en el día":p&&p.horario&&(p.horario.t1||p.horario.sem)?" · 🕒 "+esc(horLabel(p.horario)):"")};
   const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b class="tm-n">${avatarHtml(personName(u),u)}<span>${esc(personName(u))}</span></b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}${(S.people.get(u)||{}).sinApp?' <span class="pill">Sin app</span>':""}${kind==="act"&&!soc&&!sinComU(u)?((S.people.get(u)||{}).qrEm?` <button type="button" class="pill p-cash qr-pill" data-verqr="${esc(u)}">QR listo</button>`:' <span class="pill p-muted">Sin QR</span>'):""}</b><small>${kind==="pend"?"Esperando aprobación"+(sameAux(u).length>1?' · <span class="cz-warn">ya trabajó antes con este nombre: el historial se junta</span>':""):kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button>${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?'<span class="pill p-aux">Pide volver hoy</span> ':""}<button type="button" class="small ${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?"ok":""}" data-reactivar="${esc(u)}">${isAux(u)?"Aceptar de nuevo":"Reactivar"}</button>`
-      :`<button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small tm-mas" data-tmmore>Más ▾</button>
+      :`${(S.people.get(u)||{}).sinApp?`<button type="button" class="small ok" data-invitar="${esc(u)}">${icSvg("send")} Enviar acceso</button>`:""}<button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small tm-mas" data-tmmore>Más ▾</button>
       <div class="tm-more" hidden><button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button><button type="button" class="small" data-fotoeq="${esc(u)}">${icSvg("users")} Foto</button>${(S.people.get(u)||{}).email?`<button type="button" class="small" data-acceso="${esc(u)}">${icSvg("lock")} Acceso</button>`:""}<button type="button" class="small" data-cumple="${esc(u)}">${icSvg("cake")} ${(()=>{const c=cumples().find(x=>x.u===u);return c?mdTxt(c.md):"Cumpleaños"})()}</button><button type="button" class="small" data-aux="${esc(u)}" data-on="${isAux(u)?0:1}">${isAux(u)?"Pasar a fijo":"Es auxiliar"}</button>${isRealOwner?`<button type="button" class="small" data-socio="${esc(u)}" data-on="${soc?0:1}">${soc?"Quitar socio":"Hacer socio"}</button>`:""}<button type="button" class="small baja" data-baja="${esc(u)}">${isAux(u)?"Terminó · desactivar":"Dar de baja"}</button></div>`}</div></div>`};
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Equipo">
     ${sheetHead("Equipo")}
@@ -4070,6 +4078,39 @@ document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.c
     const u="sa"+uid();const doc={nome:n,email:"",aprobado:true,aprobadoEm:Date.now(),baja:false,sinApp:true,criadoEm:Date.now(),atualizado:Date.now(),...(SATIPO==="aux"?{aux:true,auxNombres:[n]}:{})};
     S.people.set(u,doc);try{if(db&&S.mode==="db"){await sendW(db.doc("turnos/"+u).set(doc));db.doc("ranking/"+u).set({nome:n},{merge:true}).catch(()=>{})}}catch(err){toast("No se guardó.");return}
     closeSheet();S.tab="dia";S.filter=u;render(true);window.scrollTo(0,0);toast(n+" agregado · elegí el día con ‹ y cargá sus entregas")}});
+/* link de acceso para una persona "sin app" y traspaso de sus entregas cuando entra */
+const APPURL="https://tudeliveryd-cyber.github.io/Caj-Entrega/";
+async function openInvitar(u){const p=S.people.get(u)||{};let code=p.invCode;
+  if(!code){code=Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,8);S.people.set(u,{...p,invCode:code});try{if(db&&S.mode==="db")await sendW(db.doc("turnos/"+u).set({invCode:code},{merge:true}))}catch(e){toast("No se guardó.");return}}
+  const nm=p.nome||"";const link=APPURL+"?acceso="+u+"."+code+"&n="+encodeURIComponent(nm);
+  const msg=`Hola ${nm.split(" ")[0]}, este es tu acceso a la app de Tú Delivery. Tocá el link, confirmá tu nombre y tocá Entrar:\n${link}`;
+  edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Enviar acceso">${sheetHead("Acceso de "+esc(nm.split(" ")[0]))}
+    <p class="hint" style="margin:0">Mandale este link. Cuando lo abra, entra directo con su nombre y todas las entregas que le cargaste pasan a su cuenta. <b>Tu app tiene que estar abierta</b> en ese momento (o abrila después): se habilita sola.</p>
+    <div class="inv-link">${esc(link)}</div>
+    <a class="primary inv-wa" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${icSvg("send")} Mandar por WhatsApp</a>
+    <button type="button" class="ghost" data-invcopy="${esc(link)}">${icSvg("clipboard")} Copiar link</button>
+    <p class="hint" style="margin:0">Para sacarle el acceso: Equipo → su nombre → <b>Dar de baja</b>. Se cierra en su celular al instante.</p></div></div>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t||!S.owner)return;
+  if(t.dataset.invitar){openInvitar(t.dataset.invitar);return}
+  if(t.dataset.invcopy){copy(t.dataset.invcopy);return}});
+var INVRUN={};
+function invCheck(){if(!S.owner||S.mode!=="db"||!db||document.body.classList.contains("demo"))return;
+  for(const[u,p]of S.people){if(!p||!p.conv||p.aprobado||p.baja||INVRUN[u])continue;const sa=S.people.get(p.conv);
+    if(!sa||!sa.sinApp||sa.fusionado||!sa.invCode||sa.invCode!==p.invCode)continue;INVRUN[u]=1;invTraspaso(p.conv,u).catch(e=>{INVRUN[u]=0;toast("No se pudo habilitar a "+(p.nome||"")+" · probá de nuevo")})}}
+async function invCopyCol(from,to,del){const sn=await db.collection(from).get();let n=0;
+  for(let i=0;i<sn.docs.length;i+=400){const b=db.batch();for(const d of sn.docs.slice(i,i+400)){b.set(db.collection(to).doc(d.id),d.data());n++}await b.commit()}
+  return sn.docs}
+async function invBorrar(docs){for(let i=0;i<docs.length;i+=400){const b=db.batch();for(const d of docs.slice(i,i+400))b.delete(d.ref);await b.commit()}}
+async function invTraspaso(a,b){const sa=S.people.get(a)||{};const nm=sa.nome||"";
+  const cols=[["turnos/"+a+"/entregas","turnos/"+b+"/entregas"],["turnos/"+a+"/gastos","turnos/"+b+"/gastos"],["turnos/"+a+"/caja","turnos/"+b+"/caja"],["turnos/"+a+"/log","turnos/"+b+"/log"],["turnos/"+a+"/cambios","turnos/"+b+"/cambios"],["liq/"+a+"/dias","liq/"+b+"/dias"],["liq/"+a+"/movs","liq/"+b+"/movs"]];
+  const viejos=[];for(const[f,t]of cols){viejos.push(...await invCopyCol(f,t))}
+  const keep={};for(const k of["tel","pct","horario","genero","auxNombres"])if(sa[k]!==undefined)keep[k]=sa[k];
+  await db.doc("turnos/"+b).set({...keep,nome:nm,aux:!!sa.aux,...(sa.aux?{auxHoy:{dia:today(),nome:nm,em:Date.now()}}:{}),aprobado:true,aprobadoEm:Date.now(),baja:false,conv:null,invCode:null},{merge:true});
+  try{const r=await db.doc("ranking/"+a).get();if(r.exists){const x=r.data();await db.doc("ranking/"+b).set({nome:nm,...(x.foto?{foto:x.foto}:{})},{merge:true});await db.doc("ranking/"+a).delete()}}catch(e){}
+  S.people.set(a,{...sa,baja:true,fusionado:b});
+  await invBorrar(viejos);
+  await db.doc("turnos/"+a).set({baja:true,fusionado:b,invCode:null},{merge:true});
+  if(S.filter===a)S.filter=b;toast(nm+" ya entró a la app · sus entregas pasaron a su cuenta");render(true)}
 function viewSol(){
   if(S.mode!=="db")return `<div class="empty">Las solicitudes funcionan cuando la app está conectada a la cuenta.</div>`;
   const cl=[...cambios.values()].filter(x=>S.owner?!isBaja(x._u):x._u===S.me).sort((a,b)=>((a.estado==="pendiente")?0:1)-((b.estado==="pendiente")?0:1)||(b.criadoEm||0)-(a.criadoEm||0));
