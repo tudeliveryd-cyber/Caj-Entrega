@@ -1293,6 +1293,13 @@ html[data-letra="g"] body{zoom:1.12}html[data-letra="xg"] body{zoom:1.25}
 .dv-nov>.ic{width:22px;height:22px;color:var(--accent);flex:none}.dv-nov>span{display:grid;gap:2px;flex:1}.dv-nov small{color:var(--muted);font-size:13px}.dv-nov .linkbtn{flex:none}
 .vp-bar:has(.dv-mas2){grid-template-columns:minmax(0,1fr) auto auto}.vp-bar:has(.dv-mas2) .vp-team{padding:0 12px}
 .dv-mas2{position:relative;border-style:solid!important;color:var(--text)!important;font-weight:700!important}.dv-mas2 .badge-in{position:absolute;top:-7px;right:-7px}
+.rgd-card{border:1px solid var(--line);border-radius:18px;background:var(--surface);padding:14px 16px;display:grid;gap:10px;box-shadow:var(--shadow)}
+.rgd-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.rgd-h b{font-size:17px}.rgd-h small{color:var(--muted)}
+.rgd-list{display:grid}.rgd-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.rgd-p{width:22px;color:var(--muted);font-weight:700;text-align:center}.rgd-row .av{width:30px;height:30px;font-size:12px}.rgd-n{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rgd-row>b{font-size:18px}
+.rgd-row:nth-child(1) .rgd-p{color:#e8b93a}
+.rgd-tot{display:flex;justify-content:space-between;align-items:center;font-weight:700}.rgd-tot b{font-size:20px;color:var(--accent)}
+.rgd-copy{display:flex;align-items:center;justify-content:center;gap:8px}.rgd-copy .ic{width:18px;height:18px}
 .dvm-list{display:grid}.dvm-it{display:flex;align-items:center;gap:14px;padding:14px 4px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--text);font:inherit;text-align:left}
 .dvm-it .ic{width:22px;height:22px;color:var(--accent);flex:none}.dvm-it>span:nth-child(2){display:grid;flex:1}.dvm-it b{font-size:16px}.dvm-it small{color:var(--muted);font-size:13px}
 </style>
@@ -1416,7 +1423,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="212";
+const APPV="213";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -3671,13 +3678,29 @@ async function getFotoHD(u){if(FOTOHD[u]!==undefined)return FOTOHD[u];if(S.mode!
 async function saveFoto(u,d){const cur=rank.get(u)||{};rank.set(u,{...cur,foto:d});render(true);
   try{const w=await sendW(db.doc("ranking/"+u).set({foto:d||null,...(cur.nome?{}:{nome:personName(u)||""})},{merge:true}));toast(d?(w==="wait"?"Foto guardada · se envía al volver la señal":"Foto guardada"):"Foto quitada")}catch(e){toast("No se guardó la foto.")}}
 /* informe personalizado: elegir desde/hasta */
+function rgMesPasado(){const d=fromKey(today());return[keyOf(new Date(d.getFullYear(),d.getMonth()-1,1)),keyOf(new Date(d.getFullYear(),d.getMonth(),0))]}
+function rgQuincenas(){const d=fromKey(today()),t=today();const out=[];const mc=i=>MESES[i].slice(0,3);
+  for(const off of [-1,0]){const y=d.getFullYear(),m=d.getMonth()+off;const f=new Date(y,m,1),fin=new Date(y,m+1,0);const mi=f.getMonth();
+    const a1=keyOf(f),b1=keyOf(new Date(y,m,15)),a2=keyOf(new Date(y,m,16)),b2=keyOf(fin);
+    if(a1<=t)out.push([`1 al 15 ${mc(mi)}`,a1,b1>t?t:b1]);if(a2<=t)out.push([`16 al ${fin.getDate()} ${mc(mi)}`,a2,b2>t?t:b2])}
+  return out}
+var RGL=[];
+function rgPorDelivery(gr,from,to){const l=gr.filter(g=>g.s.n).sort((a,b)=>b.s.n-a.s.n||a.name.localeCompare(b.name));if(!l.length)return"";
+  const tot=l.reduce((a,g)=>a+g.s.n,0);RGL=[from,to,l.map(g=>[g.name,g.s.n]),tot];
+  return `<div class="rgd-card"><div class="rgd-h"><b>Entregas por delivery</b><small>${ddmm(from)} al ${ddmm(to)}</small></div>
+    <div class="rgd-list">${l.map((g,i)=>`<div class="rgd-row"><span class="rgd-p num">${i+1}</span>${avatarHtml(g.name,g.k)}<span class="rgd-n">${esc(g.name)}</span><b class="num">${g.s.n}</b></div>`).join("")}</div>
+    <div class="rgd-tot"><span>Total del equipo</span><b class="num">${tot}</b></div>
+    <button type="button" class="ghost rgd-copy" data-rgcopy>${icSvg("clipboard")} Copiar lista</button></div>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-rgcopy]");if(!t||!RGL.length)return;const[f,to,l,tot]=RGL;
+  copy(`*Tú Delivery · Entregas del ${ddmm(f)} al ${ddmm(to)}*\n\n`+l.map(([n,c],i)=>`${i+1}. ${n}: ${c}`).join("\n")+`\n\n*Total: ${tot} entregas*`)});
 var RG=null;
 function viewRango(){const t=today();if(!RG)RG={from:t.slice(0,8)+"01",to:t};let{from,to}=RG;if(from>to)[from,to]=[to,from];
   if(S.mode==="db"&&from<addDays(t,-WINDOW+1)){const d=fromKey(from);let y=d.getFullYear(),m=d.getMonth();while(keyOf(new Date(y,m,1))<=to&&keyOf(new Date(y,m,1))<addDays(t,-WINDOW+1)){const a=keyOf(new Date(y,m,1)),b=keyOf(new Date(y,m+1,0));loadMonth(a,b);m++}}
   const l=listRange(from,to);const T=stats(l);const gr=groups(l);const nd=Math.round((fromKey(to)-fromKey(from))/864e5)+1;
   return `<div class="rg-pick"><div class="field"><label for="rg-from">Desde</label><input id="rg-from" type="date" value="${from}" max="${t}"></div><div class="field"><label for="rg-to">Hasta</label><input id="rg-to" type="date" value="${to}" max="${t}"></div></div>
-  <div class="chips rg-quick">${[["Hoy",t,t],["Ayer",addDays(t,-1),addDays(t,-1)],["15 días",addDays(t,-14),t],["Este mes",t.slice(0,8)+"01",t]].map(([n,a,b])=>`<button type="button" class="chip ${from===a&&to===b?"on":""}" data-rg="${a}|${b}">${n}</button>`).join("")}</div>
+  <div class="chips rg-quick">${[["Hoy",t,t],["Ayer",addDays(t,-1),addDays(t,-1)],...rgQuincenas(),["Este mes",t.slice(0,8)+"01",t],["Mes pasado",...rgMesPasado()]].map(([n,a,b])=>`<button type="button" class="chip ${from===a&&to===b?"on":""}" data-rg="${a}|${b}">${n}</button>`).join("")}</div>
   <p class="hint" style="margin:0">${ddmm(from)} al ${ddmm(to)} · ${plural(nd,"día")}</p>
+  ${rgPorDelivery(gr,from,to)}
   ${totTiles(T,myGt(from,to))}${chartsBlock(l)}
   <section class="summary">${acertoBlock(T,acertoLabel("Liquidación del período",gr),"",myGt(from,to))}${driverTable(gr)}${showEmp()?empresaBlock(T,egStats(egRange(from,to)).total,"Resultado de la empresa · "+plural(nd,"día")):""}</section>`}
 
