@@ -1300,6 +1300,9 @@ html[data-letra="g"] body{zoom:1.12}html[data-letra="xg"] body{zoom:1.25}
 .rgd-row>b,.rgd-tot>b{font-size:18px;display:grid;justify-items:end;line-height:1.1}.rgd-row>b small,.rgd-tot>b small{font-size:11px;color:var(--muted);font-weight:500}.rgd-tot>span{display:grid}
 .rgd-row:nth-child(1) .rgd-p{color:#e8b93a}
 .rgd-tot{display:flex;justify-content:space-between;align-items:center;font-weight:700}.rgd-tot b{font-size:20px;color:var(--accent)}
+.rgd-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rgd-btns .rgd-copy{padding-inline:8px;font-size:14px}
+.rgt-list{display:grid}.rgt-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}.rgt-row .av{width:34px;height:34px;font-size:12px}
+.rgt-go{text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex:none}.rgt-go .ic{width:16px;height:16px}.rgt-row.sent .rgd-n{opacity:.6}
 .rgd-row[data-rgdel]{cursor:pointer}.rgd-row .caja-go{color:var(--muted);margin-left:2px}
 .rgi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rgi-t{border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;gap:2px}.rgi-t small{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}.rgi-t b{font-size:18px}.rgi-t span{color:var(--muted);font-size:12.5px}
 .rgi-txt{white-space:pre-wrap;font:13px/1.45 var(--body);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0;max-height:220px;overflow:auto;color:var(--muted)}
@@ -1429,7 +1432,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="217";
+const APPV="218";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -2238,7 +2241,8 @@ function rkFilas(P){const out=[];for(const[u,r]of rank){let n=0;for(const[k,c]of
 const rkGana=F=>{const d=F.filter(r=>!r.jefe);return d.length?d.filter(r=>r.n===d[0].n):[]};
 const rkNom=n=>{const p=String(n||"").replace(/\([^)]*\)/g," ").trim().split(/\s+/).filter(w=>/\p{L}/u.test(w));const f=x=>x?x.charAt(0).toUpperCase()+x.slice(1):"";return p.length>1?f(p[0])+" "+f(p[1]).slice(0,1)+".":f(p[0])};
 function rkTexto(P,F){const tot=F.reduce((a,r)=>a+r.n,0);let s="*Tú Delivery · "+P.tit+"*\n"+P.sub+"\n\n";
-  for(const r of F)s+=r.pos+"º "+r.nome+" · "+r.n+" "+(r.n===1?"entrega":"entregas")+"\n";
+  const parcial=P.to>=today();const lid=F.filter(r=>!r.jefe)[0];
+  for(const r of F)s+=r.pos+"º "+r.nome+" · "+r.n+" "+(r.n===1?"entrega":"entregas")+(parcial&&lid&&!r.jefe&&r.n<lid.n?" (a "+(lid.n-r.n)+" del 1º)":"")+"\n";
   s+="\nTotal del equipo: "+tot+" entregas"+(rkGana(F).length?"\n"+P.pz+": "+rkGana(F).map(r=>r.nome.split(" ")[0]).join(" y "):"")+"\n¡Gracias a todos por el trabajo!";return s}
 async function rkImagen(P,F){const W=1080,rest=F.slice(3),H=560+(F.length?560:200)+rest.length*92+170;const cv=document.createElement("canvas");cv.width=W;cv.height=H;const x=cv.getContext("2d");
   const ff='Inter,"Segoe UI",system-ui,-apple-system,sans-serif';const g=x.createRadialGradient(W/2,0,50,W/2,0,H*.9);g.addColorStop(0,"#4B2A86");g.addColorStop(.5,"#24123F");g.addColorStop(1,"#140A24");x.fillStyle=g;x.fillRect(0,0,W,H);
@@ -2267,15 +2271,30 @@ async function rkImagen(P,F){const W=1080,rest=F.slice(3),H=560+(F.length?560:20
       x.fillStyle="rgba(185,162,230,.35)";x.fillRect(560,y+34,Math.max(6,(W-760)*(r.n/mx)),8);x.textBaseline="alphabetic";y+=92}}
   x.fillStyle="#E8C46A";x.font="700 30px "+ff;x.textAlign="center";{const gw=rkGana(F);if(gw.length)x.fillText(P.pz+": "+gw.map(r=>rkNom(r.nome)).join(" y "),W/2,H-100)}x.fillStyle="#B9A8DC";x.font="500 26px "+ff;x.fillText("Santa Rita · Cada entrega cuenta",W/2,H-52);x.textAlign="left";
   return await new Promise(ok=>cv.toBlob(b=>ok({blob:b,url:cv.toDataURL("image/png")}),"image/png"))}
-async function openRkShare(){edit=null;const P=rkPeriodo(RKP),F=rkFilas(P);
+function ptsTexto(){const pr=premiosL();const ids=activos().filter(u=>!sinPuntos(u)&&u!==S.me&&!sinComU(u)&&!roles.socios.includes(u));
+  const rows=ids.map(u=>({u,n:(S.people.get(u)||{}).nome||personName(u)||"",P:ptsDe(u)})).filter(r=>r.P.ganados>0).sort((a,b)=>b.P.pts-a.P.pts);
+  let s="*Tú Delivery · Puntos y premios*\nAl "+ddmm(today())+"\n\n";
+  rows.forEach((r,i)=>{const nx=pr.find(x=>x.p>r.P.pts),rd=pr.filter(x=>x.p<=r.P.pts);
+    s+=(i+1)+"º "+r.n+" · "+r.P.pts.toLocaleString("es-PY")+" pts"+(rd.length?" · ya ganó "+rd[rd.length-1].n:nx?" · le faltan "+(nx.p-r.P.pts).toLocaleString("es-PY")+" para "+nx.n:"")+"\n"});
+  const cerca=rows.map(r=>{const nx=pr.find(x=>x.p>r.P.pts);return nx?{r,f:nx.p-r.P.pts,nx}:null}).filter(Boolean).sort((a,b)=>a.f-b.f).slice(0,3);
+  if(cerca.length)s+="\n*Más cerca de un premio:*\n"+cerca.map(c=>"• "+c.r.n.split(" ")[0]+": "+c.f.toLocaleString("es-PY")+" pts para "+c.nx.n).join("\n")+"\n";
+  s+="\n*Premios:* "+pr.map(x=>x.n+" ("+x.p.toLocaleString("es-PY")+" pts)").join(" · ")+"\n*Cómo se ganan:* 1 punto por entrega · 5 por cerrar el día · 20 cada 7 días seguidos cerrando\n¡Vamos equipo!";return s}
+async function openRkShare(){edit=null;if(RKP==="pts"){const tx=ptsTexto();
+  layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Compartir puntos">${sheetHead("Compartir puntos")}
+    <div class="chips rk-per">${[["semPas","Semana pasada"],["sem","Esta semana"],["mesPas","Mes pasado"],["mes","Este mes"],["pts","Puntos y premios"]].map(([k,l])=>`<button type="button" class="chip ${RKP===k?"on":""}" data-rkper="${k}">${l}</button>`).join("")}</div>
+    <pre class="rgi-txt" style="max-height:340px">${esc(tx)}</pre>
+    <a class="primary inv-wa" href="https://wa.me/?text=${encodeURIComponent(tx)}" target="_blank" rel="noopener">${icSvg("send")} Mandar al grupo</a>
+    <button type="button" class="ghost" data-ptscopy>${icSvg("clipboard")} Copiar texto</button></div></div>`;return}
+  const P=rkPeriodo(RKP),F=rkFilas(P);
   layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Compartir ranking">${sheetHead("Compartir ranking")}
-    <div class="chips rk-per">${[["semPas","Semana pasada"],["sem","Esta semana"],["mesPas","Mes pasado"],["mes","Este mes"]].map(([k,l])=>`<button type="button" class="chip ${RKP===k?"on":""}" data-rkper="${k}">${l}</button>`).join("")}</div>
+    <div class="chips rk-per">${[["semPas","Semana pasada"],["sem","Esta semana"],["mesPas","Mes pasado"],["mes","Este mes"],["pts","Puntos y premios"]].map(([k,l])=>`<button type="button" class="chip ${RKP===k?"on":""}" data-rkper="${k}">${l}</button>`).join("")}</div>
     <div class="rk-prev"><div class="empty">Preparando la imagen…</div></div>
     <button type="button" class="primary" data-rkimg>Compartir imagen</button><button type="button" class="ghost" data-rktxt>Copiar texto para WhatsApp</button>
     <p class="hint" style="margin:0">Cuenta a todo el equipo. El premio va al delivery con más entregas (sin dueño, socios ni gerente). Solo la cantidad, sin montos.</p></div></div>`;
   try{RKIMG=await rkImagen(P,F)}catch(e){RKIMG=null}const pv=layer.querySelector(".rk-prev");if(pv)pv.innerHTML=RKIMG?`<img src="${RKIMG.url}" alt="Ranking">`:`<div class="empty">No se pudo armar la imagen. Usá “Copiar texto”.</div>`}
 document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
   if(t.hasAttribute("data-rkshare")){openRkShare();return}
+  if(t.hasAttribute("data-ptscopy")){copy(ptsTexto());return}
   if(t.dataset.rkper){RKP=t.dataset.rkper;openRkShare();return}
   if(t.hasAttribute("data-rkimg")){if(!RKIMG)return;const P=rkPeriodo(RKP);shareFile(RKIMG.blob,(P.tit+" "+P.sub).replace(/[^\w\sáéíóúñ-]/gi,"").replace(/\s+/g,"-")+".png");return}
   if(t.hasAttribute("data-rktxt")){const P=rkPeriodo(RKP);copy(rkTexto(P,rkFilas(P)));return}});
@@ -3703,7 +3722,7 @@ function rgPorDelivery(gr,from,to){const l=gr.filter(g=>g.s.n).sort((a,b)=>b.s.n
     <div class="rgd-list">${l.map((g,i)=>`<div class="rgd-row" role="button" tabindex="0" data-rgdel="${i}"><span class="rgd-p num">${i+1}</span>${avatarHtml(g.name,g.k)}<span class="rgd-n">${esc(g.name)}<small class="num">${gs(g.s.total)}</small></span><b class="num">${g.s.n}<small>entregas</small></b><span class="caja-go">›</span></div>`).join("")}</div>
     <p class="hint" style="margin:0">Tocá un nombre para ver su informe y mandárselo.</p>
     <div class="rgd-tot"><span>Total del equipo<small class="num">${gs(totV)}</small></span><b class="num">${tot}<small>entregas</small></b></div>
-    <button type="button" class="ghost rgd-copy" data-rgcopy>${icSvg("clipboard")} Copiar lista</button></div>`}
+    <div class="rgd-btns"><button type="button" class="ghost rgd-copy" data-rgcopy>${icSvg("clipboard")} Copiar lista</button><button type="button" class="ghost rgd-copy" data-rgtodos>${icSvg("send")} Mandar a cada uno</button></div></div>`}
 /* informe de un delivery en el período, para mandarle */
 function rgdTexto(g,from,to){const s=g.s;const nm=(g.name||"").split(" ")[0];const L=[];
   const dias=new Map();for(const[,d]of g.list){if(d.metodo==="fijo"&&d.diario)continue;const x=dias.get(d.dia)||{n:0,v:0};x.n+=d.cant||1;x.v+=Number(d.valor)||0;dias.set(d.dia,x)}
@@ -3725,6 +3744,16 @@ function openRgDel(i){if(!RGG)return;const g=RGG.l[i];if(!g)return;const{from,to
     <pre class="rgi-txt">${esc(txt)}</pre>
     <a class="primary inv-wa" href="${esc(waOpen(txt,g.k&&!String(g.k).startsWith("n:")?g.k:""))}" target="_blank" rel="noopener">${icSvg("send")} Mandar por WhatsApp</a>
     <button type="button" class="ghost" data-rgdcopy="${i}">${icSvg("clipboard")} Copiar</button></div></div>`}
+var RGSENT=new Set();
+function openRgTodos(){if(!RGG)return;const{from,to}=RGG;const key=from+to;const l=RGG.l.filter(g=>g.k!==S.me);
+  edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Mandar a cada uno">${sheetHead("Mandar informe a cada uno")}
+    <p class="hint" style="margin:0">Del ${ddmm(from)} al ${ddmm(to)}. Tocá <b>Enviar</b> en cada uno: se abre su WhatsApp con su informe. Volvé a la app y seguí con el próximo.</p>
+    <div class="rgt-list">${l.map((g,i)=>{const sent=RGSENT.has(key+"|"+g.k);const tel=telWa(g.k);
+      return `<div class="rgt-row ${sent?"sent":""}">${avatarHtml(g.name,g.k)}<span class="rgd-n">${esc(g.name)}<small>${plural(g.s.n,"entrega")} · ${gs(g.s.total)}${tel?"":" · sin teléfono"}</small></span>
+      <a class="small ${sent?"":"ok"} rgt-go" data-rgtsent="${RGG.l.indexOf(g)}" href="${esc(waOpen(rgdTexto(g,from,to),g.k&&!String(g.k).startsWith("n:")?g.k:""))}" target="_blank" rel="noopener">${sent?icSvg("check")+" Enviado":"Enviar"}</a></div>`}).join("")}</div>
+    <p class="hint" style="margin:0">Si alguien no tiene teléfono cargado, WhatsApp te deja elegir el chat. El teléfono se carga en Equipo.</p></div></div>`}
+document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("[data-rgtsent]");if(a&&RGG){const g=RGG.l[Number(a.dataset.rgtsent)];if(g){RGSENT.add(RGG.from+RGG.to+"|"+g.k);const row=a.closest(".rgt-row");setTimeout(()=>{if(row){row.classList.add("sent");a.classList.remove("ok");a.innerHTML=icSvg("check")+" Enviado"}},300)}return}
+  const b=e.target.closest&&e.target.closest("[data-rgtodos]");if(b){openRgTodos();return}});
 document.addEventListener("click",e=>{const r=e.target.closest&&e.target.closest("[data-rgdel]");if(r&&!r.closest("#layer")){openRgDel(Number(r.dataset.rgdel));return}
   const c=e.target.closest&&e.target.closest("[data-rgdcopy]");if(c&&RGG){const g=RGG.l[Number(c.dataset.rgdcopy)];if(g)copy(rgdTexto(g,RGG.from,RGG.to))}});
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-rgcopy]");if(!t||!RGL.length)return;const[f,to,l,tot,totV]=RGL;
@@ -3809,25 +3838,28 @@ function cierreSemBlock(){if(!(S.mode==="db"&&S.owner&&showEmp()))return"";
 function cierreBanner(){if(!(S.mode==="db"&&S.owner&&showEmp()&&S.dia===today()))return"";const n=new Date(),wd=n.getDay();
   if(!((wd===0&&n.getHours()>=17)||wd===1))return"";
   return `<button type="button" class="pend-banner cs-banner" data-gocierre><span>📲 <b>Cierre de la semana listo</b> · mandalo a cada delivery</span><b>›</b></button>`}
+var semOff=0;
+function semRango(){const t=today();const lun=addDays(weekStart(t),semOff*7);const dom=addDays(lun,6);return{from:lun,to:dom>t?t:dom,dom}}
 function viewSemana(){
-  const t=today();const days=[];for(let i=0;i<7;i++)days.push(addDays(t,-i));
+  const t=today();const SR=semRango();const days=[];for(let k=SR.to;k>=SR.from;k=addDays(k,-1))days.push(k);const F0=SR.from,T0=SR.to;
   const st=days.map(k=>[k,stats(listDay(k))]);const max=Math.max(1,...st.map(([,s])=>s.total));
-  const wl=listRange(days[6],t);const T=stats(wl);const gr=groups(wl);
+  const wl=listRange(F0,T0);const T=stats(wl);const gr=groups(wl);
   const bars=st.map(([k,s])=>{const w=v=>(v/max*100).toFixed(1)+"%";
     return `<button class="wrow" data-goto="${k}"><span class="d">${dayName(k)}<small class="num">${ddmm(k)}</small></span>
       <span class="bar" aria-hidden="true"><i class="d-cash" style="width:${w(s.efectivo)}"></i><i class="d-transfer" style="width:${w(s.transferencia)}"></i><i class="d-due" style="width:${w(s.anotado)}"></i></span>
       <span class="t num">${gs(s.total)}<small>${plural(s.n,"entrega")}</small></span></button>`}).join("");
-  return `${rgPorDelivery(gr,days[6],t)}${totTiles(T,myGt(days[6],t))}${chartsBlock(wl)}
-  ${cmpBlock(wl,listRange(addDays(t,-13),addDays(t,-7)),"los 7 días anteriores")}
-  ${cierreSemBlock()}
-  ${S.mode==="db"?pendBlock(days[6],t):""}
-  <section class="summary">${acertoBlock(T,acertoLabel("Liquidación de la semana",gr),"",myGt(days[6],t))}${driverTable(gr)}${showEmp()?empresaBlock(T,egStats(egRange(days[6],t)).total,"Resultado de la empresa · 7 días"):""}
+  return `<div class="daynav"><button data-semoff="-1" aria-label="Semana anterior">‹</button><div class="daylabel"><b>${semOff===0?"Esta semana":semOff===-1?"Semana pasada":"Semana"}</b><span>lunes ${ddmm(F0)} al domingo ${ddmm(SR.dom)}</span></div><button data-semoff="1" aria-label="Semana siguiente" ${semOff>=0?"disabled":""}>›</button></div>
+  ${rgPorDelivery(gr,F0,T0)}${totTiles(T,myGt(F0,T0))}${chartsBlock(wl)}
+  ${cmpBlock(wl,listRange(addDays(F0,-7),addDays(T0,-7)),"los mismos días de la semana anterior")}
+  ${semOff===0?cierreSemBlock():""}
+  ${S.mode==="db"?pendBlock(F0,T0):""}
+  <section class="summary">${acertoBlock(T,acertoLabel("Liquidación de la semana",gr),"",myGt(F0,T0))}${driverTable(gr)}${showEmp()?empresaBlock(T,egStats(egRange(F0,T0)).total,"Resultado de la empresa · semana"):""}
     <div class="sum-actions"><span></span><button type="button" class="linkbtn" data-copyweek>${hideMoney()?"Copiar resumen de la semana":"Copiar liquidación de la semana"}</button></div></section>
-  <section class="sec"><div class="sec-h"><h2>Últimos 7 días</h2></div>
+  <section class="sec"><div class="sec-h"><h2>Día por día</h2></div>
     <div class="legend"><span><i class="dot d-cash"></i>Efectivo</span><span><i class="dot d-transfer"></i>Transferencia</span><span><i class="dot d-due"></i>Anotado</span></div>
     <div class="week">${bars}</div></section>
-  ${showEmp()?egastosBlock(days[6],t):""}
-  ${gastosBlock(days[6],t)}
+  ${showEmp()?egastosBlock(F0,T0):""}
+  ${gastosBlock(F0,T0)}
   ${clientesBlock(wl)}${zonasBlock(wl)}${tiemposBlock(wl)}`;
 }
 function panelMes(r,pr,prTo){if(!(S.mode==="db"&&S.owner&&showEmp()))return"";
@@ -4489,7 +4521,8 @@ document.addEventListener("click",async e=>{
   else if(t.id==="gsave")saveGasto();
   else if(t.dataset.gdel){const k=t.dataset.gdel;if(gDelArm!==k){gDelArm=k;render();setTimeout(()=>{if(gDelArm===k){gDelArm=null;render()}},3000);return}
     gDelArm=null;try{await delGasto(k);toast("Gasto eliminado")}catch(err){toast("No se eliminó.")}}
-  else if(t.hasAttribute("data-copyweek")){const tk=today(),f=addDays(tk,-6);copy(resumo(`Liquidación ${ddmm(f)} al ${ddmm(tk)}`,listRange(f,tk)))}
+  else if(t.hasAttribute("data-copyweek")){const R=semRango();copy(resumo(`Liquidación ${ddmm(R.from)} al ${ddmm(R.to)}`,listRange(R.from,R.to)))}
+  else if(t.dataset.semoff){semOff=Math.min(0,semOff+Number(t.dataset.semoff));{const R=semRango();if(S.mode==="db"&&R.from<addDays(today(),-WINDOW+1))loadMonth(R.from,R.to)}render(true)}
   else if(t.hasAttribute("data-copymes")){const r=monthRange(mesOff);const ml=listRange(r.from,r.to);let txt=resumo("Resumen de "+r.label,ml);
     const top=topClientes(ml,5);if(top.length)txt+="\n\nMejores clientes:\n"+top.map((c,i)=>`${i+1}. ${c.nome}: ${plural(c.n,"entrega")}`).join("\n");copy(txt)}
 });
