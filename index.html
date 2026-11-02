@@ -1300,6 +1300,9 @@ html[data-letra="g"] body{zoom:1.12}html[data-letra="xg"] body{zoom:1.25}
 .rgd-row>b,.rgd-tot>b{font-size:18px;display:grid;justify-items:end;line-height:1.1}.rgd-row>b small,.rgd-tot>b small{font-size:11px;color:var(--muted);font-weight:500}.rgd-tot>span{display:grid}
 .rgd-row:nth-child(1) .rgd-p{color:#e8b93a}
 .rgd-tot{display:flex;justify-content:space-between;align-items:center;font-weight:700}.rgd-tot b{font-size:20px;color:var(--accent)}
+.rgd-row[data-rgdel]{cursor:pointer}.rgd-row .caja-go{color:var(--muted);margin-left:2px}
+.rgi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rgi-t{border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;gap:2px}.rgi-t small{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}.rgi-t b{font-size:18px}.rgi-t span{color:var(--muted);font-size:12.5px}
+.rgi-txt{white-space:pre-wrap;font:13px/1.45 var(--body);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0;max-height:220px;overflow:auto;color:var(--muted)}
 .rgd-copy{display:flex;align-items:center;justify-content:center;gap:8px}.rgd-copy .ic{width:18px;height:18px}
 .inv-link{font-size:13px;word-break:break-all;padding:10px 12px;border:1px dashed var(--line);border-radius:12px;color:var(--muted)}
 .inv-wa{display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;background:#25d366!important;color:#fff!important}.inv-wa .ic{width:18px;height:18px}
@@ -1426,7 +1429,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="216";
+const APPV="217";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -3693,13 +3696,37 @@ function rgQuincenas(){const d=fromKey(today()),t=today();const out=[];const mc=
     const a1=keyOf(f),b1=keyOf(new Date(y,m,15)),a2=keyOf(new Date(y,m,16)),b2=keyOf(fin);
     if(a1<=t)out.push([`1 al 15 ${mc(mi)}`,a1,b1>t?t:b1]);if(a2<=t)out.push([`16 al ${fin.getDate()} ${mc(mi)}`,a2,b2>t?t:b2])}
   return out}
-var RGL=[];
+var RGL=[],RGG=null;
 function rgPorDelivery(gr,from,to){const l=gr.filter(g=>g.s.n).sort((a,b)=>b.s.n-a.s.n||a.name.localeCompare(b.name));if(!l.length)return"";
-  const tot=l.reduce((a,g)=>a+g.s.n,0),totV=l.reduce((a,g)=>a+g.s.total,0);RGL=[from,to,l.map(g=>[g.name,g.s.n,g.s.total]),tot,totV];
+  const tot=l.reduce((a,g)=>a+g.s.n,0),totV=l.reduce((a,g)=>a+g.s.total,0);RGG={from,to,l};RGL=[from,to,l.map(g=>[g.name,g.s.n,g.s.total]),tot,totV];
   return `<div class="rgd-card"><div class="rgd-h"><b>Entregas por delivery</b><small>${ddmm(from)} al ${ddmm(to)}</small></div>
-    <div class="rgd-list">${l.map((g,i)=>`<div class="rgd-row"><span class="rgd-p num">${i+1}</span>${avatarHtml(g.name,g.k)}<span class="rgd-n">${esc(g.name)}<small class="num">${gs(g.s.total)}</small></span><b class="num">${g.s.n}<small>entregas</small></b></div>`).join("")}</div>
+    <div class="rgd-list">${l.map((g,i)=>`<div class="rgd-row" role="button" tabindex="0" data-rgdel="${i}"><span class="rgd-p num">${i+1}</span>${avatarHtml(g.name,g.k)}<span class="rgd-n">${esc(g.name)}<small class="num">${gs(g.s.total)}</small></span><b class="num">${g.s.n}<small>entregas</small></b><span class="caja-go">›</span></div>`).join("")}</div>
+    <p class="hint" style="margin:0">Tocá un nombre para ver su informe y mandárselo.</p>
     <div class="rgd-tot"><span>Total del equipo<small class="num">${gs(totV)}</small></span><b class="num">${tot}<small>entregas</small></b></div>
     <button type="button" class="ghost rgd-copy" data-rgcopy>${icSvg("clipboard")} Copiar lista</button></div>`}
+/* informe de un delivery en el período, para mandarle */
+function rgdTexto(g,from,to){const s=g.s;const nm=(g.name||"").split(" ")[0];const L=[];
+  const dias=new Map();for(const[,d]of g.list){if(d.metodo==="fijo"&&d.diario)continue;const x=dias.get(d.dia)||{n:0,v:0};x.n+=d.cant||1;x.v+=Number(d.valor)||0;dias.set(d.dia,x)}
+  const dn=k=>["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][fromKey(k).getDay()];
+  L.push(`*Tú Delivery · Informe de ${g.name}*`,`Del ${ddmm(from)} al ${ddmm(to)}`,"",`*Entregas: ${s.n}*`,`*Total cobrado: ${gs(s.total)}*`,"");
+  L.push(`Efectivo: ${gs(s.efectivo)} (${plural(s.ne,"entrega")})`);
+  if(s.transferencia||s.nt)L.push(`Transferencia: ${gs(s.transferencia)} (${plural(s.nt,"entrega")})`);
+  if(s.anotado||s.na)L.push(`Anotado: ${gs(s.anotado)} (${plural(s.na,"entrega")})`);
+  if(s.pagado||s.np)L.push(`Pedidos pagos: ${gs(s.pagado)} (${plural(s.np,"entrega")})`);
+  if(s.nf||s.fijo)L.push(`Clientes fijos: ${plural(s.nf||0,"entrega")}`);
+  if(s.com)L.push("",`Comisión Tú Delivery${s.pct?" ("+s.pct+"%)":""}: ${gs(s.com)}`);
+  if(dias.size){L.push("","*Por día*");for(const k of[...dias.keys()].sort())L.push(`${dn(k)} ${ddmm(k)}: ${plural(dias.get(k).n,"entrega")} · ${gs(dias.get(k).v)}`)}
+  L.push("",`¡Gracias por tu trabajo, ${nm}!`);return L.join("\n")}
+function openRgDel(i){if(!RGG)return;const g=RGG.l[i];if(!g)return;const{from,to}=RGG;const s=g.s;const txt=rgdTexto(g,from,to);
+  const tile=(k,v,n)=>`<div class="rgi-t"><small>${k}</small><b class="num">${v}</b>${n!==undefined?`<span>${n}</span>`:""}</div>`;
+  edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Informe">${sheetHead("Informe de "+esc((g.name||"").split(" ")[0]))}
+    <p class="hint" style="margin:0">${esc(g.name)} · del ${ddmm(from)} al ${ddmm(to)}</p>
+    <div class="rgi-grid">${tile("Entregas",s.n)}${tile("Total cobrado",gs(s.total))}${tile("Efectivo",gs(s.efectivo),plural(s.ne,"entrega"))}${tile("Transferencia",gs(s.transferencia),plural(s.nt,"entrega"))}${s.anotado||s.na?tile("Anotado",gs(s.anotado),plural(s.na,"entrega")):""}${s.pagado||s.np?tile("Pedidos pagos",gs(s.pagado),plural(s.np,"entrega")):""}${s.com?tile("Comisión"+(s.pct?" "+s.pct+"%":""),gs(s.com)):""}</div>
+    <pre class="rgi-txt">${esc(txt)}</pre>
+    <a class="primary inv-wa" href="${esc(waOpen(txt,g.k&&!String(g.k).startsWith("n:")?g.k:""))}" target="_blank" rel="noopener">${icSvg("send")} Mandar por WhatsApp</a>
+    <button type="button" class="ghost" data-rgdcopy="${i}">${icSvg("clipboard")} Copiar</button></div></div>`}
+document.addEventListener("click",e=>{const r=e.target.closest&&e.target.closest("[data-rgdel]");if(r&&!r.closest("#layer")){openRgDel(Number(r.dataset.rgdel));return}
+  const c=e.target.closest&&e.target.closest("[data-rgdcopy]");if(c&&RGG){const g=RGG.l[Number(c.dataset.rgdcopy)];if(g)copy(rgdTexto(g,RGG.from,RGG.to))}});
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-rgcopy]");if(!t||!RGL.length)return;const[f,to,l,tot,totV]=RGL;
   copy(`*Tú Delivery · Entregas del ${ddmm(f)} al ${ddmm(to)}*\n\n`+l.map(([n,c,v],i)=>`${i+1}. ${n}: ${c} entregas · ${gs(v)}`).join("\n")+`\n\n*Total: ${tot} entregas · ${gs(totV)}*`)});
 var RG=null;
