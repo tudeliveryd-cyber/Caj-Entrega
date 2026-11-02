@@ -1296,7 +1296,8 @@ html[data-letra="g"] body{zoom:1.12}html[data-letra="xg"] body{zoom:1.25}
 .rgd-card{border:1px solid var(--line);border-radius:18px;background:var(--surface);padding:14px 16px;display:grid;gap:10px;box-shadow:var(--shadow)}
 .rgd-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.rgd-h b{font-size:17px}.rgd-h small{color:var(--muted)}
 .rgd-list{display:grid}.rgd-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
-.rgd-p{width:22px;color:var(--muted);font-weight:700;text-align:center}.rgd-row .av{width:30px;height:30px;font-size:12px}.rgd-n{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rgd-row>b{font-size:18px}
+.rgd-p{width:22px;color:var(--muted);font-weight:700;text-align:center}.rgd-row .av{width:30px;height:30px;font-size:12px}.rgd-n{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:grid}.rgd-n small,.rgd-tot small{color:var(--muted);font-weight:500;font-size:13px}
+.rgd-row>b,.rgd-tot>b{font-size:18px;display:grid;justify-items:end;line-height:1.1}.rgd-row>b small,.rgd-tot>b small{font-size:11px;color:var(--muted);font-weight:500}.rgd-tot>span{display:grid}
 .rgd-row:nth-child(1) .rgd-p{color:#e8b93a}
 .rgd-tot{display:flex;justify-content:space-between;align-items:center;font-weight:700}.rgd-tot b{font-size:20px;color:var(--accent)}
 .rgd-copy{display:flex;align-items:center;justify-content:center;gap:8px}.rgd-copy .ic{width:18px;height:18px}
@@ -1425,7 +1426,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="215";
+const APPV="216";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -3694,13 +3695,13 @@ function rgQuincenas(){const d=fromKey(today()),t=today();const out=[];const mc=
   return out}
 var RGL=[];
 function rgPorDelivery(gr,from,to){const l=gr.filter(g=>g.s.n).sort((a,b)=>b.s.n-a.s.n||a.name.localeCompare(b.name));if(!l.length)return"";
-  const tot=l.reduce((a,g)=>a+g.s.n,0);RGL=[from,to,l.map(g=>[g.name,g.s.n]),tot];
+  const tot=l.reduce((a,g)=>a+g.s.n,0),totV=l.reduce((a,g)=>a+g.s.total,0);RGL=[from,to,l.map(g=>[g.name,g.s.n,g.s.total]),tot,totV];
   return `<div class="rgd-card"><div class="rgd-h"><b>Entregas por delivery</b><small>${ddmm(from)} al ${ddmm(to)}</small></div>
-    <div class="rgd-list">${l.map((g,i)=>`<div class="rgd-row"><span class="rgd-p num">${i+1}</span>${avatarHtml(g.name,g.k)}<span class="rgd-n">${esc(g.name)}</span><b class="num">${g.s.n}</b></div>`).join("")}</div>
-    <div class="rgd-tot"><span>Total del equipo</span><b class="num">${tot}</b></div>
+    <div class="rgd-list">${l.map((g,i)=>`<div class="rgd-row"><span class="rgd-p num">${i+1}</span>${avatarHtml(g.name,g.k)}<span class="rgd-n">${esc(g.name)}<small class="num">${gs(g.s.total)}</small></span><b class="num">${g.s.n}<small>entregas</small></b></div>`).join("")}</div>
+    <div class="rgd-tot"><span>Total del equipo<small class="num">${gs(totV)}</small></span><b class="num">${tot}<small>entregas</small></b></div>
     <button type="button" class="ghost rgd-copy" data-rgcopy>${icSvg("clipboard")} Copiar lista</button></div>`}
-document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-rgcopy]");if(!t||!RGL.length)return;const[f,to,l,tot]=RGL;
-  copy(`*Tú Delivery · Entregas del ${ddmm(f)} al ${ddmm(to)}*\n\n`+l.map(([n,c],i)=>`${i+1}. ${n}: ${c}`).join("\n")+`\n\n*Total: ${tot} entregas*`)});
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-rgcopy]");if(!t||!RGL.length)return;const[f,to,l,tot,totV]=RGL;
+  copy(`*Tú Delivery · Entregas del ${ddmm(f)} al ${ddmm(to)}*\n\n`+l.map(([n,c,v],i)=>`${i+1}. ${n}: ${c} entregas · ${gs(v)}`).join("\n")+`\n\n*Total: ${tot} entregas · ${gs(totV)}*`)});
 var RG=null;
 function viewRango(){const t=today();if(!RG)RG={from:t.slice(0,8)+"01",to:t};let{from,to}=RG;if(from>to)[from,to]=[to,from];
   if(S.mode==="db"&&from<addDays(t,-WINDOW+1)){const d=fromKey(from);let y=d.getFullYear(),m=d.getMonth();while(keyOf(new Date(y,m,1))<=to&&keyOf(new Date(y,m,1))<addDays(t,-WINDOW+1)){const a=keyOf(new Date(y,m,1)),b=keyOf(new Date(y,m+1,0));loadMonth(a,b);m++}}
@@ -3789,7 +3790,7 @@ function viewSemana(){
     return `<button class="wrow" data-goto="${k}"><span class="d">${dayName(k)}<small class="num">${ddmm(k)}</small></span>
       <span class="bar" aria-hidden="true"><i class="d-cash" style="width:${w(s.efectivo)}"></i><i class="d-transfer" style="width:${w(s.transferencia)}"></i><i class="d-due" style="width:${w(s.anotado)}"></i></span>
       <span class="t num">${gs(s.total)}<small>${plural(s.n,"entrega")}</small></span></button>`}).join("");
-  return `${totTiles(T,myGt(days[6],t))}${chartsBlock(wl)}
+  return `${rgPorDelivery(gr,days[6],t)}${totTiles(T,myGt(days[6],t))}${chartsBlock(wl)}
   ${cmpBlock(wl,listRange(addDays(t,-13),addDays(t,-7)),"los 7 días anteriores")}
   ${cierreSemBlock()}
   ${S.mode==="db"?pendBlock(days[6],t):""}
@@ -3834,7 +3835,7 @@ function viewMes(){
     <div class="daylabel"><b>${r.label}</b><span>${ddmm(r.from)} al ${ddmm(r.to)}</span></div>
     <button data-mes="1" aria-label="Mes siguiente" ${mesOff>=0?"disabled":""}>›</button></div>
   ${panelMes(r,pr,prTo)}
-  ${totTiles(T,myGt(r.from,r.to))}${chartsBlock(ml)}
+  ${rgPorDelivery(gr,r.from,r.to)}${totTiles(T,myGt(r.from,r.to))}${chartsBlock(ml)}
   ${cmpBlock(ml,listRange(pr.from,prTo),cmpLbl)}
   <section class="summary">
     <div class="split">
