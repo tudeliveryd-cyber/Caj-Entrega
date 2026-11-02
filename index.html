@@ -1423,7 +1423,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="213";
+const APPV="214";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -4037,7 +4037,7 @@ async function openHist(u){edit=null;const nm=personName(u)||"Delivery";const us
 function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].filter(u=>u!==S.me);
   const pend=all.filter(u=>!isAprob(u)&&!isBaja(u)),act=all.filter(u=>isAprob(u)&&!isBaja(u)),inact=all.filter(isBaja);
   const mail=u=>{const p=S.people.get(u);return (p&&p.email?" · "+esc(p.email):"")+(p&&p.tel?" · 📞 "+esc(p.tel):"")+(p&&p.aux?" · sin horario · acerto en el día":p&&p.horario&&(p.horario.t1||p.horario.sem)?" · 🕒 "+esc(horLabel(p.horario)):"")};
-  const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b class="tm-n">${avatarHtml(personName(u),u)}<span>${esc(personName(u))}</span></b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}${kind==="act"&&!soc&&!sinComU(u)?((S.people.get(u)||{}).qrEm?` <button type="button" class="pill p-cash qr-pill" data-verqr="${esc(u)}">QR listo</button>`:' <span class="pill p-muted">Sin QR</span>'):""}</b><small>${kind==="pend"?"Esperando aprobación"+(sameAux(u).length>1?' · <span class="cz-warn">ya trabajó antes con este nombre: el historial se junta</span>':""):kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
+  const row=(u,kind)=>{const soc=roles.socios.includes(u);return `<div class="team-row"><div class="who"><b class="tm-n">${avatarHtml(personName(u),u)}<span>${esc(personName(u))}</span></b> ${vistoTxt(u)}<b>${soc?' <span class="pill p-fijo">Socia/o</span>':""}${isAux(u)?' <span class="pill p-aux">Auxiliar</span>':""}${(S.people.get(u)||{}).sinApp?' <span class="pill">Sin app</span>':""}${kind==="act"&&!soc&&!sinComU(u)?((S.people.get(u)||{}).qrEm?` <button type="button" class="pill p-cash qr-pill" data-verqr="${esc(u)}">QR listo</button>`:' <span class="pill p-muted">Sin QR</span>'):""}</b><small>${kind==="pend"?"Esperando aprobación"+(sameAux(u).length>1?' · <span class="cz-warn">ya trabajó antes con este nombre: el historial se junta</span>':""):kind==="baja"?"Dado de baja":"Activo"}${mail(u)}</small></div>
     <div class="team-act">${kind==="pend"?`<button type="button" class="small ok" data-aprobar="${esc(u)}">Aprobar</button><button type="button" class="small baja" data-baja="${esc(u)}">Rechazar</button>`
       :kind==="baja"?`<button type="button" class="small" data-hist="${esc(u)}">${icSvg("calendar")} Historial</button>${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?'<span class="pill p-aux">Pide volver hoy</span> ':""}<button type="button" class="small ${(S.people.get(u)||{}).pideVolver&&keyOf(new Date((S.people.get(u)||{}).pideVolver))===today()?"ok":""}" data-reactivar="${esc(u)}">${isAux(u)?"Aceptar de nuevo":"Reactivar"}</button>`
       :`<button type="button" class="small" data-cuenta="${esc(u)}">💰 Cuenta</button><button type="button" class="small" data-tel="${esc(u)}">📞 ${(S.people.get(u)||{}).tel?"Teléfono":"Agregar tel."}</button>${isAux(u)?"":`<button type="button" class="small" data-horario="${esc(u)}">🕒 Horario</button>`}<button type="button" class="small tm-mas" data-tmmore>Más ▾</button>
@@ -4050,10 +4050,26 @@ function openEquipo(){edit=null;const all=[...new Set([...S.people.keys()])].fil
     ${(()=>{const ds=act.filter(u=>!roles.socios.includes(u)&&!sinComU(u));if(!ds.length)return"";const ok=ds.filter(u=>(S.people.get(u)||{}).qrEm);const sin=ds.filter(u=>!(S.people.get(u)||{}).qrEm);
       return `<div class="qr-res ${sin.length?"":"all"}">${icSvg("qr")}<span><b>QR de cobro: ${ok.length} de ${ds.length} ${ds.length===1?"configurado":"configurados"}</b>${sin.length?`<small>Falta: ${sin.map(u=>esc((personName(u)||"").split(" ")[0])).join(", ")}</small>`:"<small>Todos ya cargaron su QR</small>"}</span></div>`})()}
     <div class="list">${act.length?act.map(u=>row(u,"act")).join(""):`<div class="team-row"><small>Todavía no hay deliverys aprobados. Mandales el link de la app: se registran y aparecen acá para aprobar.</small></div>`}</div>
+    <button type="button" class="ghost" data-sinapp>${icSvg("plus")} Agregar persona sin app</button>
     ${inact.length?`<div class="lbl">Dados de baja</div><div class="list">${inact.map(u=>row(u,"baja")).join("")}</div>`:""}
     <p class="hint" style="margin:0">Dar de baja le quita el acceso a la app. Su historial queda guardado en los totales de la empresa. Un socio ve todo, igual que vos.</p>
     <button type="button" class="ghost" data-logout>Cerrar sesión (${esc((auth&&auth.currentUser&&auth.currentUser.email)||"")})</button>
   </div></div>`}
+/* persona que trabajó sin entrar a la app: el dueño la crea y le carga las entregas */
+let SATIPO="aux";
+function openSinApp(){edit=null;layer.innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-label="Persona sin app">${sheetHead("Agregar persona sin app")}
+  <p class="hint" style="margin:0">Para alguien que trabajó y no tiene la app. Vos le cargás las entregas de cada día y entra en el informe, el ranking y su cuenta, igual que los demás.</p>
+  <div class="field"><label for="sa-n">Nombre</label><input id="sa-n" autocomplete="off" maxlength="30" placeholder="Ej.: Juan Pérez"></div>
+  <div class="lbl">Trabajó como</div><div class="chips" id="sa-t"><button type="button" class="chip ${SATIPO==="aux"?"on":""}" data-satipo="aux">Auxiliar</button><button type="button" class="chip ${SATIPO==="del"?"on":""}" data-satipo="del">Delivery</button></div>
+  <button type="button" class="primary" data-sasave>Agregar y cargar sus entregas</button></div></div>`}
+document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("button");if(!t||!S.owner)return;
+  if(t.hasAttribute("data-sinapp")){openSinApp();return}
+  if(t.dataset.satipo){SATIPO=t.dataset.satipo;document.querySelectorAll("#sa-t .chip").forEach(c=>c.classList.toggle("on",c.dataset.satipo===SATIPO));return}
+  if(t.hasAttribute("data-sasave")){const n=(document.getElementById("sa-n").value||"").trim();if(!n){toast("Escribí el nombre");return}
+    if([...S.people.values()].some(p=>p&&!p.baja&&String(p.nome||"").toLowerCase()===n.toLowerCase())){toast("Ya hay alguien con ese nombre");return}
+    const u="sa"+uid();const doc={nome:n,email:"",aprobado:true,aprobadoEm:Date.now(),baja:false,sinApp:true,criadoEm:Date.now(),atualizado:Date.now(),...(SATIPO==="aux"?{aux:true,auxNombres:[n]}:{})};
+    S.people.set(u,doc);try{if(db&&S.mode==="db"){await sendW(db.doc("turnos/"+u).set(doc));db.doc("ranking/"+u).set({nome:n},{merge:true}).catch(()=>{})}}catch(err){toast("No se guardó.");return}
+    closeSheet();S.tab="dia";S.filter=u;render(true);window.scrollTo(0,0);toast(n+" agregado · elegí el día con ‹ y cargá sus entregas")}});
 function viewSol(){
   if(S.mode!=="db")return `<div class="empty">Las solicitudes funcionan cuando la app está conectada a la cuenta.</div>`;
   const cl=[...cambios.values()].filter(x=>S.owner?!isBaja(x._u):x._u===S.me).sort((a,b)=>((a.estado==="pendiente")?0:1)-((b.estado==="pendiente")?0:1)||(b.criadoEm||0)-(a.criadoEm||0));
