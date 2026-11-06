@@ -603,6 +603,10 @@ details.sec.fold{display:grid;gap:10px}
 .pe-row{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px}.pe-row input{min-width:0;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:16px var(--body)}
 .cp-row{grid-template-columns:minmax(0,1fr) auto}.cp-row small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .vp-btn .nb,.vp-row .nb{display:inline-block;min-width:20px;height:20px;line-height:20px;border-radius:10px;background:var(--due);color:#fff;font-size:12px;font-weight:700;text-align:center;padding:0 6px;margin-left:auto}
+.cr-dev{display:grid;justify-items:center;gap:2px;margin-top:10px}.cr-dev small{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.cr-dev img{height:46px;width:auto;display:block}.cr-at-l{display:none!important}
+html[data-theme="light"] .cr-at-l{display:block!important}html[data-theme="light"] .cr-at-d{display:none!important}
+#login .cr-dev{margin:22px auto 8px}
 .credit{display:grid;justify-items:center;gap:4px;margin-top:18px;padding:6px 0 4px;text-align:center}
 .cr-line{width:64px;height:3px;border-radius:2px;background:linear-gradient(90deg,var(--accent),#d9a93a);margin-bottom:8px;opacity:.9}
 .cr-brand{display:flex;align-items:center;gap:8px;font:15px var(--body);color:var(--ink)}
@@ -1432,7 +1436,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="218";
+const APPV="219";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1619,7 +1623,7 @@ function drawLogin(err){
       ${err?`<p class="err">${err}</p>`:""}
       <button type="submit" class="primary">${lgMode==="up"?"Crear cuenta":"Entrar"}</button>
       ${lgMode==="in"?`<button type="button" class="ghost lg-forgot" data-forgot>¿Olvidaste tu contraseña? Tocá acá</button><small class="hint" style="margin:0;text-align:center">Escribí tu e-mail arriba y tocá el botón: te llega un e-mail para crear una contraseña nueva.</small>`:`<p class="hint" style="margin:0">Después de crear la cuenta, el dueño tiene que aprobarte.</p>`}
-    </form><button type="button" class="lg-aux-btn" data-lgmode="aux">${LGBIKE}<span><b>Soy auxiliar</b><small>Trabajo algunos días · entrar sin cuenta</small></span></button></div>`}`}
+    </form><button type="button" class="lg-aux-btn" data-lgmode="aux">${LGBIKE}<span><b>Soy auxiliar</b><small>Trabajo algunos días · entrar sin cuenta</small></span></button></div>`}<div class="cr-dev"><small>Desarrollado por</small><img class="cr-at-d" src="araujo-tech-dark.png" alt="Araújo Tech Sistemas" width="150" height="50"><img class="cr-at-l" src="araujo-tech.png" alt="Araújo Tech Sistemas" width="150" height="50"></div>`}
 function authMsg(e){const c=(e&&e.code)||"";
   if(/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c))return"E-mail o contraseña incorrectos.";
   if(/email-already-in-use/.test(c))return"Ese e-mail ya tiene cuenta. Tocá “Entrar”.";
@@ -1939,8 +1943,8 @@ temaApply(temaGet());
 /* rodapé con la firma del sistema */
 function addCredit(){if(!main||document.getElementById("credit"))return;if(main.querySelector(".block"))return;
   main.insertAdjacentHTML("beforeend",`<footer class="credit" id="credit"><span class="cr-line"></span>
-    <div class="cr-brand"><img src="icon-192.png" alt="" width="26" height="26"><span><b>Tú Delivery</b> <i>Sistemas</i></span></div>
-    <em class="cr-lema">Cada entrega cuenta.</em>
+    <em class="cr-lema">Tú Delivery · Cada entrega cuenta.</em>
+    <div class="cr-dev"><small>Desarrollado por</small><img class="cr-at-d" src="araujo-tech-dark.png" alt="Araújo Tech Sistemas" width="150" height="50"><img class="cr-at-l" src="araujo-tech.png" alt="Araújo Tech Sistemas" width="150" height="50"></div>
     <small class="cr-v">Santa Rita, Paraguay • © ${new Date().getFullYear()} • versión ${APPV}</small>
     <button type="button" class="cr-tema" data-tema>Colores y configuración</button></footer>`)}
 function render(full){if(full)builtKey="";if(raf)return;raf=setTimeout(()=>{raf=0;try{paint();addCredit();try{tabBack()}catch(e){}dlApply();if(S.mode==="db"&&!S.owner&&isAux(S.me)&&!auxHoy(S.me)&&S.tab==="dia"&&window.__auxAsk!==today()&&!layer.innerHTML.trim()){window.__auxAsk=today();openAuxQuien()}if(S.mode==="db"&&!S.owner&&S.canWrite!==false&&S.people.get(S.me)&&S.tab==="dia"&&!layer.innerHTML.trim()&&!window.__bvAsk&&!bvVisto()){window.__bvAsk=1;openBienv(0)}}catch(e){console.error(e)}},0)}

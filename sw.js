@@ -1,7 +1,7 @@
 // Caja de Entregas: guarda la app para abrir sin señal; busca la versión nueva primero,
 // pero si la señal está lenta (más de 3 s) abre la copia guardada y actualiza por detrás.
-const CACHE="caja-v218";
-const SHELL=["./","index.html","firebase-config.js","manifest.webmanifest","icon-192.png","icon-512.png","apple-touch-icon.png"];
+const CACHE="caja-v219";
+const SHELL=["./","index.html","firebase-config.js","manifest.webmanifest","icon-192.png","icon-512.png","apple-touch-icon.png","araujo-tech.png","araujo-tech-dark.png"];
 // librerías de Firebase (otro sitio): se guardan también para que la app abra sin internet
 const LIBS=["app","auth","firestore"].map(n=>"https://www.gstatic.com/firebasejs/10.12.2/firebase-"+n+"-compat.js");
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(async c=>{await c.addAll(SHELL);
