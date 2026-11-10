@@ -1436,7 +1436,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="222";
+const APPV="223";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1607,6 +1607,8 @@ var INV=null;try{const q=new URLSearchParams(location.search);const a=q.get("acc
 if(INV)lgMode="aux";
 function showLogin(){LG.hidden=false;drawLogin()}
 function hideLogin(){LG.hidden=true}
+/* Al mostrar un error en la entrada no se pierde lo que la persona ya escribió (nombre y e-mail). */
+drawLogin=(orig=>function(err){const k={};["lg-name","lg-mail"].forEach(i=>{const e=document.getElementById(i);if(e&&e.value)k[i]=e.value});orig(err);if(err)for(const i in k){const e=document.getElementById(i);if(e&&!e.value)e.value=k[i]}})(drawLogin);
 const LGBIKE="<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"6\" cy=\"17\" r=\"3\"/><circle cx=\"18\" cy=\"17\" r=\"3\"/><path d=\"M6 17h6l3-6h-4M15 11l3 6M8 8h3l1 3\"/></svg>";
 function drawLogin(err){
   LG.innerHTML=`<div class="lg-box"><img src="icon-192.png" alt="Tú Delivery" width="88" height="88" class="lg-logo">
@@ -1758,7 +1760,9 @@ async function getT(ref){try{return await Promise.race([ref.get(),new Promise((_
 var lastErr="",bootStage="inicio";
 window.addEventListener("error",e=>{lastErr=(e&&e.message)||"error"});
 window.addEventListener("unhandledrejection",e=>{const r=e&&e.reason;lastErr=(r&&(r.code||r.message))||String(r)});
-setTimeout(function watch(){const sy=document.getElementById("sync");if(sy&&/Conectando|Cargando|Sin conexión/.test(sy.textContent)&&navigator.onLine!==false){
+setTimeout(function watch(){const sy=document.getElementById("sync");const lg=document.getElementById("login");const enLogin=!!(lg&&lg.getClientRects().length);/* en la pantalla de entrada no hay nada que conectar todavía */
+  if(enLogin){const b0=document.getElementById("boot-warn");if(b0)b0.remove();setTimeout(watch,5000);return}
+  if(sy&&/Conectando|Cargando|Sin conexión/.test(sy.textContent)&&navigator.onLine!==false){
   let b=document.getElementById("boot-warn");if(!b){b=document.createElement("div");b.id="boot-warn";b.className="net-banner";document.body.prepend(b)}
   b.innerHTML=`No se pudo conectar (${esc(bootStage)}${lastErr?" · "+esc(lastErr):""}). <button type="button" class="linkbtn" style="color:#fff" onclick="location.reload()">Reintentar</button>${bootStage==="inicio"&&!isStandalone()?`<br><small>Tip: cerrá las otras pestañas de esta app en el navegador y abrí desde el ícono <b>Tú</b>.</small>`:""}`;setTimeout(watch,5000)}
   else{const b=document.getElementById("boot-warn");if(b)b.remove()}},12000);
