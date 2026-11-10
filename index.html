@@ -1436,7 +1436,7 @@ async function unPago(u,dia){S.pagos.delete(u+"|"+dia);if(db)await db.doc("liq/"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{checkAutoInicio();heartbeat(true)}catch(e){}},800);const el=document.getElementById("clock");if(el&&!document.hidden){const d=new Date();el.textContent=pad(d.getHours())+":"+pad(d.getMinutes())}});
 window.addEventListener("scroll",()=>{document.body.classList.toggle("compact",window.scrollY>40)},{passive:true});
 /* aviso de versión nueva: compara con version.txt publicado junto con la app */
-const APPV="223";
+const APPV="224";
 function checkVersion(){try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(v=>{v=(v||"").trim();if(!v||v===APPV)return;
   if(document.getElementById("upd-banner"))return;const b=document.createElement("div");b.id="upd-banner";b.className="net-banner upd";
   b.innerHTML=`✨ Hay una versión nueva de la app. <button type="button" class="linkbtn" style="color:#fff">Actualizar ahora</button>`;
@@ -1936,6 +1936,7 @@ function openTema(){edit=null;const t=temaGet();const mode=t.mode||"auto",ac=t.a
       ${S.owner?`<button type="button" class="cfg-it" data-cfgexp>${icSvg("chart")}<span>Respaldo de datos<small>Bajar el Excel del mes</small></span><span class="caja-go">›</span></button>`:""}
       ${S.owner?`<button type="button" class="cfg-it" data-cfglogs>${icSvg("clock")}<span>Registro de cambios<small>Quién editó o borró entregas</small></span><span class="caja-go">›</span></button>`:""}
       ${S.owner?"":`<button type="button" class="cfg-it" data-cfgsug>${icSvg("message")}<span>Sugerir una mejora<small>¿Algo te confunde o falta? Contale a la empresa</small></span><span class="caja-go">›</span></button>`}
+      ${isRealOwner?`<button type="button" class="cfg-it" data-cfgid>${icSvg("lock")}<span>Identificador de la cuenta<small>Copiar para enviar al soporte técnico</small></span><span class="caja-go">›</span></button>`:""}
       <button type="button" class="cfg-it" data-cfgbienv>${icSvg("note")}<span>Cómo usar la app<small>Los pasos básicos, en 1 minuto</small></span><span class="caja-go">›</span></button>
       ${S.owner?`<button type="button" class="cfg-it" data-cfgqremp>${icSvg("qr")}<span>QR de la empresa<small>Para que los deliverys te paguen la cuenta</small></span><span class="caja-go">›</span></button>`:""}
       <button type="button" class="cfg-it" data-cfgqr>${icSvg("qr")}<span>Mi QR de cobro<small>Para que el cliente pague escaneando</small></span><span class="caja-go">›</span></button>
@@ -2452,6 +2453,7 @@ function openBienv(i){edit=null;BVI=i==null?0:i;const[ic,t,d]=BV[BVI];const last
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");if(!t)return;
   if(t.dataset.bv!=null){openBienv(+t.dataset.bv);return}
   if(t.hasAttribute("data-bvfin")){try{localStorage.setItem(bvKey(),"1")}catch(err){}closeSheet();return}
+  if(t.hasAttribute("data-cfgid")){const u=auth&&auth.currentUser;if(!u)return;const tx="Caja de Entregas · identificador: "+u.uid+" · correo verificado: "+(u.emailVerified?"sí":"no");const fin=()=>toast("Copiado. Pegalo en la conversación con soporte.");try{navigator.clipboard.writeText(tx).then(fin,()=>prompt("Copiá este texto:",tx))}catch(e){prompt("Copiá este texto:",tx)}return}
   if(t.hasAttribute("data-cfgbienv")){openBienv(0);return}});
 
 /* ---------- Resumen del día para el dueño ---------- */
